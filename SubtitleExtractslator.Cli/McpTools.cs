@@ -25,6 +25,11 @@ internal sealed class SubtitleMcpTools
         => _orchestrator.ExtractSubtitleAsync(input, output, prefer);
 
     [McpServerTool(Name = "run_workflow", Title = "Run full subtitle workflow")]
-    public Task<WorkflowResult> RunWorkflow(string input, string lang, string output)
-        => _orchestrator.RunWorkflowAsync(input, lang, output);
+    public Task<WorkflowResult> RunWorkflow(
+        string input,
+        string lang,
+        string output,
+        int? cuesPerGroup = null,
+        int? bodySize = null)
+        => _orchestrator.RunWorkflowAsync(input, lang, output, cuesPerGroup, bodySize);
 }

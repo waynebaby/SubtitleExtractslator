@@ -1,8 +1,26 @@
 ﻿using SubtitleExtractslator.Cli;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Globalization;
 
 var options = AppOptions.Parse(args);
+
+var cliLogsEnabled = true;
+if (options.Arguments.TryGetValue("quiet", out var quietArg)
+	&& bool.TryParse(quietArg, out var quiet)
+	&& quiet)
+{
+	cliLogsEnabled = false;
+}
+
+var logEnv = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_CLI_LOG");
+if (!string.IsNullOrWhiteSpace(logEnv)
+	&& bool.TryParse(logEnv, out var envEnabled))
+{
+	cliLogsEnabled = envEnabled;
+}
+
+CliRuntimeLog.Configure(options.Mode == AppMode.Cli && cliLogsEnabled);
 
 if (options.Mode == AppMode.Mcp)
 {
@@ -25,5 +43,24 @@ if (string.IsNullOrWhiteSpace(options.Command))
 }
 
 var orchestrator = new WorkflowOrchestrator(ModeContext.Cli);
-var result = await CliCommandRunner.RunAsync(orchestrator, options);
-Console.WriteLine(result);
+try
+{
+	var result = await CliCommandRunner.RunAsync(orchestrator, options);
+	Console.WriteLine(result);
+}
+catch (Exception ex)
+{
+	var snapshotPath = ErrorSnapshotWriter.Write(
+		"cli-unhandled-error",
+		new Dictionary<string, string?>
+		{
+			["mode"] = options.Mode.ToString(),
+			["command"] = options.Command,
+			["arguments"] = string.Join(" ", args),
+			["time"] = DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture),
+			["exception"] = ex.ToString()
+		});
+	Console.Error.WriteLine(ex.Message);
+	Console.Error.WriteLine($"Detailed error log: {snapshotPath}");
+	Environment.ExitCode = 1;
+}
