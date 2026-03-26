@@ -25,15 +25,29 @@ internal sealed class SubtitleMcpTools
         => _orchestrator.ExtractSubtitleAsync(input, output, prefer);
 
     [McpServerTool(Name = "run_workflow", Title = "Run full subtitle workflow")]
-    public Task<WorkflowResult> RunWorkflow(
+    public async Task<WorkflowResult> RunWorkflow(
         string input,
         string lang,
         string output,
         int? cuesPerGroup = null,
         int? bodySize = null,
         int? llmRetryCount = null,
-        string? envOverrides = null)
-        => _orchestrator.RunWorkflowAsync(
+        string? envOverrides = null,
+        McpServer mcpServer = null!)
+    {
+        if (mcpServer is null)
+        {
+            CliRuntimeLog.Warn(
+                "workflow",
+                "MCP server instance injection failed in RunWorkflow parameter. Sampling path will be skipped and external provider fallback will be used.");
+        }
+        else
+        {
+            CliRuntimeLog.Info("workflow", "MCP server instance injection succeeded for RunWorkflow parameter.");
+        }
+
+        using var samplingScope = McpSamplingRuntimeContext.BeginServerScope(mcpServer);
+        return await _orchestrator.RunWorkflowAsync(
             input,
             lang,
             output,
@@ -41,4 +55,5 @@ internal sealed class SubtitleMcpTools
             bodySize,
             llmRetryCount,
             RuntimeEnvironmentOverrides.Parse(envOverrides));
+    }
 }

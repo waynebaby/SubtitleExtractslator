@@ -15,12 +15,21 @@ metadata:
 
 ## Purpose
 
-This skill orchestrates subtitle discovery and translation using the local CLI and optional MCP mode.
+This skill orchestrates subtitle discovery and translation using MCP-first execution with local CLI fallback.
 
 Primary goals:
 1. Keep timeline and subtitle structure stable.
 2. Prioritize existing subtitle resources before extraction.
 3. Use grouped rolling context for better semantic consistency.
+
+## MCP-First Setup
+
+Default policy (important):
+1. Prefer MCP mode first. CLI mode is fallback.
+2. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
+3. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
+4. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
+5. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
 
 ## Trigger Guidance
 
@@ -32,17 +41,34 @@ Use this skill when user asks to:
 
 ## Runtime Paths
 
-Windows binary path inside this skill:
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
-*use  [binary] --help* to get detailed CLI usage.
+Execution path rule (important):
+1. Paths below are deterministic and relative to the skill root folder.
+2. Do not scan the whole disk to locate the binary.
+3. If current working directory is repository root, prepend `./.github/skills/subtitle-extractslator/`.
 
-CLI mode examples:
+Platform binary paths inside this skill:
+1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
+2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli`
+3. macOS (Apple Silicon): `./assets/bin/osx-arm64/SubtitleExtractslator.Cli`
+
+Quick check (`--help`):
+1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --help`
+2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
+3. macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
+
+CLI mode examples (Windows / Linux / macOS):
 1. Probe:
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
+- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
+- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
+- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
 2. Search OpenSubtitles candidates:
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
+- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
+- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
+- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
 3. Full workflow:
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
+- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
+- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
+- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
 
 MCP tool names:
 1. probe
@@ -54,29 +80,33 @@ MCP tool names:
 
 Follow this exact order:
 
-0. Confirm user target: input file and target language.
-1. Probe internal subtitle tracks.
+0. MCP setup prompt first.
+Ask user whether to configure MCP for current workspace now.
+If yes, create or update `./.vscode/mcp.json` and confirm `subtitle-extractslator` server is available.
+If no, continue in CLI mode.
+1. Confirm user target: input file and target language.
+2. Probe internal subtitle tracks.
 If target language exists, report and stop.
-2. Query OpenSubtitles candidates.
+3. Query OpenSubtitles candidates.
 If user mention not using open subtitles or no candidates, continue next.
 If candidates exist,  adopt the most popular candidate. download, rename to output path.
-3. Extract local subtitle.
+4. Extract local subtitle.
 Prefer English track.
 If English not present, pick deterministic nearest-language fallback.
-4. Build timeline cue objects and split into groups.
+5. Build timeline cue objects and split into groups.
 Rule A: if current stack is non-empty and no dialogue for one minute, start new group.
 Rule B: if group exceeds 100 cues, start new group.
-5. Rolling context update.
+6. Rolling context update.
 For each group, generate scene summary and update historical core knowledge state.
-6. Translate each group using scene summary plus historical knowledge plus group timeline objects.
+7. Translate each group using scene summary plus historical knowledge plus group timeline objects.
 Preserve index, timestamps, line counts, and segmentation rhythm.
-7. Merge all translated groups into final SRT.
+8. Merge all translated groups into final SRT.
 
 ## Mode-Aware Translation Source Policy
 
-1. MCP mode:
+1. MCP mode (preferred):
 Sampling first, external provider fallback.
-2. Non-MCP mode:
+2. Non-MCP mode (fallback):
 External provider only.
 
 ## Guardrails

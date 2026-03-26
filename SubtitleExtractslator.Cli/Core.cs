@@ -10,6 +10,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -51,8 +53,8 @@ Notes:
     Parameter override precedence:
         command parameter > --env overrides > process environment variable > built-in default.
     Grouping knobs:
-        --cues-per-group (or env SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP), default 10
-        --body-size (or env SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE), default 3
+        --cues-per-group (or env SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP), default 5
+        --body-size (or env SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE), default 20
     LLM knobs:
         --llm-retry-count (or env LLM_RETRY_COUNT), default 3
 """;
@@ -200,6 +202,7 @@ internal sealed class WorkflowOrchestrator
         IReadOnlyDictionary<string, string>? envOverrides = null)
     {
         using var workflowScope = CliRuntimeLog.BeginScope("workflow", $"Start run_workflow input={input} target={targetLanguage} output={output}");
+        using var responseHealthScope = ResponseSizeHealthMonitor.BeginTaskScope($"workflow-{Guid.NewGuid():N}");
         using var envScope = RuntimeEnvironmentOverrides.Begin(envOverrides);
         using var historyScope = ErrorSnapshotWriter.BeginTranslateHistoryScope(output);
         using var llmRetryScope = LlmRuntimeOverrides.BeginRetryCountScope(llmRetryCountOverride);
@@ -378,12 +381,12 @@ internal sealed class WorkflowOrchestrator
         var raw = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_TRANSLATION_PARALLELISM");
         if (string.IsNullOrWhiteSpace(raw))
         {
-            return 8;
+            return 4;
         }
 
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
         {
-            return 8;
+            return 4;
         }
 
         return Math.Clamp(parsed, 1, 32);
@@ -391,13 +394,13 @@ internal sealed class WorkflowOrchestrator
 
     private static int ResolveCuesPerGroup(int? overrideValue)
     {
-        var parsed = overrideValue ?? ResolvePositiveIntFromEnvironment("SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP", 10);
+        var parsed = overrideValue ?? ResolvePositiveIntFromEnvironment("SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP", 5);
         return Math.Clamp(parsed, 1, 500);
     }
 
     private static int ResolveTranslationBodySize(int? overrideValue)
     {
-        var parsed = overrideValue ?? ResolvePositiveIntFromEnvironment("SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE", 5);
+        var parsed = overrideValue ?? ResolvePositiveIntFromEnvironment("SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE", 20);
         return Math.Clamp(parsed, 1, 32);
     }
 
@@ -934,7 +937,7 @@ internal static class FfmpegBootstrap
 
 internal static class GroupingEngine
 {
-    public static List<SubtitleGroup> Group(List<SubtitleCue> cues, int cuesPerGroup = 10)
+    public static List<SubtitleGroup> Group(List<SubtitleCue> cues, int cuesPerGroup = 5)
     {
         var ordered = cues.OrderBy(x => x.Start).ToList();
         var groups = new List<SubtitleGroup>();
@@ -1018,12 +1021,23 @@ internal sealed class TranslationPipeline
         IReadOnlyList<string> translated;
         if (ModeContext == ModeContext.Mcp)
         {
-            CliRuntimeLog.Info("translate", "Mode=MCP. Try sampling provider first.");
-            translated = await _samplingProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
-            if (translated.Count == 0)
+            var mcpServerAvailable = McpSamplingRuntimeContext.CurrentServer is not null;
+            if (!mcpServerAvailable)
             {
-                CliRuntimeLog.Warn("translate", "Sampling provider returned empty result. Fallback to external provider.");
+                CliRuntimeLog.Warn(
+                    "translate",
+                    "Mode=MCP but McpServer instance is unavailable (RunWorkflow parameter injection failed or missing). Skip sampling and fallback to external provider.");
                 translated = await _externalProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
+            }
+            else
+            {
+                CliRuntimeLog.Info("translate", "Mode=MCP. McpServer instance available. Try sampling provider first.");
+                translated = await _samplingProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
+                if (translated.Count == 0)
+                {
+                    CliRuntimeLog.Warn("translate", "Sampling provider returned empty result. Fallback to external provider.");
+                    translated = await _externalProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
+                }
             }
         }
         else
@@ -1054,9 +1068,9 @@ internal sealed class TranslationPipeline
             .Select(c => FlattenCueLines(c.Lines))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
-        var main = mainGroup.Cues
+        var mainIndexed = mainGroup.Cues
             .OrderBy(c => c.Index)
-            .Select(c => FlattenCueLines(c.Lines))
+            .Select((c, i) => $"[{i + 1}]\t{FlattenCueLines(c.Lines)}")
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
         var after = contextWindow
@@ -1075,8 +1089,8 @@ internal sealed class TranslationPipeline
         sb.AppendLine("  <previous_context>");
         AppendPlainLines(sb, before, "    ");
         sb.AppendLine("  </previous_context>");
-        sb.AppendLine("  <main_section>");  
-        AppendPlainLines(sb, main, "    "); 
+        sb.AppendLine("  <main_section>");
+        AppendPlainLines(sb, mainIndexed, "    ");
         sb.AppendLine("  </main_section>");
         sb.AppendLine("  <following_context>");
         AppendPlainLines(sb, after, "    ");
@@ -1291,13 +1305,95 @@ internal interface ITranslationProvider
 
 internal sealed class SamplingTranslationProvider : ITranslationProvider
 {
-    public Task<IReadOnlyList<string>> TranslateIndexedAsync(
+    public async Task<IReadOnlyList<string>> TranslateIndexedAsync(
         IReadOnlyList<string> lines,
         string targetLanguage,
         string contextParaphrase,
         string contextHint)
     {
-        return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
+        using var scope = CliRuntimeLog.BeginScope("sampling", $"Start MCP sampling translation call. lines={lines.Count} target={targetLanguage}");
+        if (lines.Count == 0)
+        {
+            CliRuntimeLog.Info("sampling", "No lines to translate. Returning empty result.");
+            return Array.Empty<string>();
+        }
+
+        var server = McpSamplingRuntimeContext.CurrentServer;
+        if (server is null)
+        {
+            CliRuntimeLog.Warn("sampling", "MCP sampling server context is unavailable (RunWorkflow McpServer parameter injection failed or missing). Returning empty result for external fallback.");
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            var settings = ExternalTranslationProvider.LlmSettings.FromEnvironment();
+            var systemPrompt = settings.SystemPrompt
+                ?? "You are a subtitle translator. Use the provided context sections to reason first, then output only the line-by-line translation for the target lines. Never add commentary in final output. Keep every index and return exactly one translated line for each input index.";
+            var indexedInput = ExternalTranslationProvider.BuildIndexedInput(
+                lines,
+                targetLanguage,
+                contextParaphrase,
+                includeRetryOversizeHint: false);
+
+            var samplingRequest = new CreateMessageRequestParams
+            {
+                SystemPrompt = systemPrompt,
+                MaxTokens = settings.MaxTokens,
+                Temperature = 0.2f,
+                Messages =
+                [
+                    new SamplingMessage
+                    {
+                        Role = Role.User,
+                        Content =
+                        [
+                            new TextContentBlock { Text = indexedInput }
+                        ]
+                    }
+                ],
+                ModelPreferences = string.IsNullOrWhiteSpace(settings.Model)
+                    ? null
+                    : new ModelPreferences
+                    {
+                        Hints =
+                        [
+                            new ModelHint { Name = settings.Model }
+                        ]
+                    }
+            };
+
+            var sampled = await server.SampleAsync(samplingRequest);
+            var sampledText = string.Join(
+                "\n",
+                sampled.Content
+                    .OfType<TextContentBlock>()
+                    .Select(x => x.Text)
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+            if (string.IsNullOrWhiteSpace(sampledText))
+            {
+                CliRuntimeLog.Warn("sampling", "Sampling response content was empty. Returning empty result for external fallback.");
+                return Array.Empty<string>();
+            }
+
+            var translated = ExternalTranslationProvider.ParseIndexedOutput(sampledText, lines.Count);
+            if (translated.Count != lines.Count)
+            {
+                CliRuntimeLog.Warn(
+                    "sampling",
+                    $"Sampling output line count mismatch. parsedLines={translated.Count} expectedLines={lines.Count}. Returning empty result for external fallback.");
+                return Array.Empty<string>();
+            }
+
+            CliRuntimeLog.Info("sampling", $"Sampling translation succeeded. parsedLines={translated.Count}");
+            return translated;
+        }
+        catch (Exception ex)
+        {
+            CliRuntimeLog.Warn("sampling", $"Sampling provider failed: {ex.Message}. Returning empty result for external fallback.");
+            return Array.Empty<string>();
+        }
     }
 
     public Task<IReadOnlyList<string>> TranslateAsync(
@@ -1337,18 +1433,89 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         var systemPrompt = settings.SystemPrompt
             ?? "You are a subtitle translator. Use the provided context sections to reason first, then output only the line-by-line translation for the target lines. Never add commentary in final output. Keep every index and return exactly one translated line for each input index.";
 
-        var indexedInput = BuildIndexedInput(lines, targetLanguage, contextParaphrase, contextHint);
-        CliRuntimeLog.Info("llm", $"Prompt built. chars={indexedInput.Length}");
         var maxAttempts = settings.RetryCount;
+        var qualifiedForHealth = IsQualifiedHealthSample(contextParaphrase);
+        var healthBucket = ResponseSizeHealthMonitor.BuildBucketKey(settings.Model, targetLanguage);
+        CliRuntimeLog.Info(
+            "llm",
+            $"Response health qualification: qualified={qualifiedForHealth} requiresPreviousAndFollowingContext=true bucket={healthBucket}");
+        var previousAttemptOversized = false;
+        int? lastSeenGuardThresholdBytes = null;
         Exception? lastError = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
+            var health = ResponseSizeHealthMonitor.GetSnapshot(healthBucket);
+            if (lastSeenGuardThresholdBytes.HasValue && lastSeenGuardThresholdBytes.Value != health.GuardThresholdBytes)
+            {
+                var delta = health.GuardThresholdBytes - lastSeenGuardThresholdBytes.Value;
+                var thresholdMultiplier = lastSeenGuardThresholdBytes.Value > 0
+                    ? ((double)health.GuardThresholdBytes / lastSeenGuardThresholdBytes.Value).ToString("F3", CultureInfo.InvariantCulture)
+                    : "n/a";
+                var thresholdMultiplierPercent = lastSeenGuardThresholdBytes.Value > 0
+                    ? ((double)health.GuardThresholdBytes / lastSeenGuardThresholdBytes.Value * 100.0).ToString("F1", CultureInfo.InvariantCulture)
+                    : "n/a";
+                CliRuntimeLog.Info(
+                    "llm",
+                    $"Health guard threshold changed before attempt. old={lastSeenGuardThresholdBytes.Value} new={health.GuardThresholdBytes} delta={delta} thresholdMultiplier={thresholdMultiplier}x thresholdMultiplierPercent={thresholdMultiplierPercent}% baselineMultiplier={ResponseSizeHealthMonitor.GuardMultiplierPercent}% bucket={healthBucket}");
+            }
+
+            var indexedInput = BuildIndexedInput(
+                lines,
+                targetLanguage,
+                contextParaphrase,
+                includeRetryOversizeHint: previousAttemptOversized);
+            CliRuntimeLog.Info(
+                "llm",
+                $"Prompt built. chars={indexedInput.Length} healthSamples={health.SampleCount} healthAvgBytes={health.AverageBytes:F1} healthValid={health.IsValid} streamGuardBytes={health.GuardThresholdBytes.ToString(CultureInfo.InvariantCulture)} hardCapBytes={ResponseSizeHealthMonitor.AbsoluteGuardBytes} guardBaselineMultiplier={ResponseSizeHealthMonitor.GuardMultiplierPercent}%");
+            lastSeenGuardThresholdBytes = health.GuardThresholdBytes;
+            if (previousAttemptOversized)
+            {
+                CliRuntimeLog.Warn("llm", "Retry oversize hint injected into prompt for this attempt.");
+            }
             CliRuntimeLog.Info("llm", $"LLM request attempt {attempt}/{maxAttempts}.");
             try
             {
-                var execution = await ExecutePromptAsync(settings, systemPrompt, indexedInput);
+                var execution = await ExecutePromptAsync(settings, systemPrompt, indexedInput, health.GuardThresholdBytes);
                 var output = execution.OutputText;
-                CliRuntimeLog.Info("llm", $"Output text extracted. chars={output?.Length ?? 0} outputTokens={execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a"}");
+                var responseToGuardRatio = health.GuardThresholdBytes > 0
+                    ? ((double)execution.ResponseBytes / health.GuardThresholdBytes).ToString("F3", CultureInfo.InvariantCulture)
+                    : "n/a";
+                CliRuntimeLog.Info("llm", $"Output text extracted. chars={output?.Length ?? 0} outputTokens={execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a"} responseBytes={execution.ResponseBytes} guardBytes={health.GuardThresholdBytes} sizeToGuardMultiplier={responseToGuardRatio}x");
+                var responseToGuardPercent = health.GuardThresholdBytes > 0
+                    ? ((double)execution.ResponseBytes / health.GuardThresholdBytes * 100.0).ToString("F1", CultureInfo.InvariantCulture)
+                    : "n/a";
+                CliRuntimeLog.Info("llm", $"Response size usage. responseBytes={execution.ResponseBytes} guardBytes={health.GuardThresholdBytes} sizeToGuardPercent={responseToGuardPercent}%");
+
+                if (qualifiedForHealth)
+                {
+                    ResponseSizeHealthMonitor.Record(healthBucket, execution.ResponseBytes, qualifiedForHealth);
+                    var postRecord = ResponseSizeHealthMonitor.GetSnapshot(healthBucket);
+                    if (postRecord.GuardThresholdBytes != health.GuardThresholdBytes)
+                    {
+                        var delta = postRecord.GuardThresholdBytes - health.GuardThresholdBytes;
+                        var thresholdMultiplier = health.GuardThresholdBytes > 0
+                            ? ((double)postRecord.GuardThresholdBytes / health.GuardThresholdBytes).ToString("F3", CultureInfo.InvariantCulture)
+                            : "n/a";
+                        var thresholdMultiplierPercent = health.GuardThresholdBytes > 0
+                            ? ((double)postRecord.GuardThresholdBytes / health.GuardThresholdBytes * 100.0).ToString("F1", CultureInfo.InvariantCulture)
+                            : "n/a";
+                        CliRuntimeLog.Info(
+                            "llm",
+                            $"Health guard threshold changed after sample record. old={health.GuardThresholdBytes} new={postRecord.GuardThresholdBytes} delta={delta} thresholdMultiplier={thresholdMultiplier}x thresholdMultiplierPercent={thresholdMultiplierPercent}% baselineMultiplier={ResponseSizeHealthMonitor.GuardMultiplierPercent}% bucket={healthBucket}");
+                    }
+
+                    var postRecordSizeToGuardRatio = postRecord.GuardThresholdBytes > 0
+                        ? ((double)execution.ResponseBytes / postRecord.GuardThresholdBytes).ToString("F3", CultureInfo.InvariantCulture)
+                        : "n/a";
+                    CliRuntimeLog.Info(
+                        "llm",
+                        $"Health sample recorded. responseBytes={execution.ResponseBytes} windowCount={postRecord.SampleCount} windowAvgBytes={postRecord.AverageBytes:F1} nextGuardBytes={postRecord.GuardThresholdBytes.ToString(CultureInfo.InvariantCulture)} hardCapBytes={ResponseSizeHealthMonitor.AbsoluteGuardBytes} baselineMultiplier={ResponseSizeHealthMonitor.GuardMultiplierPercent}% sizeToNextGuardMultiplier={postRecordSizeToGuardRatio}x");
+                    lastSeenGuardThresholdBytes = postRecord.GuardThresholdBytes;
+                }
+                else
+                {
+                    CliRuntimeLog.Info("llm", $"Health sample skipped for this response. responseBytes={execution.ResponseBytes}");
+                }
 
                 var ioDumpPath = ErrorSnapshotWriter.WriteMarkdown(
                     "llm-io",
@@ -1364,6 +1531,13 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                         ["reasoningSetting"] = settings.Reasoning ?? "low",
                         ["reasoningOutput"] = execution.ReasoningText,
                         ["outputTokens"] = execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a",
+                        ["responseBytes"] = execution.ResponseBytes.ToString(CultureInfo.InvariantCulture),
+                        ["healthSampleQualified"] = qualifiedForHealth ? "true" : "false",
+                        ["healthBucket"] = healthBucket,
+                        ["healthSampleCount"] = health.SampleCount.ToString(CultureInfo.InvariantCulture),
+                        ["healthAverageBytes"] = health.AverageBytes.ToString("F1", CultureInfo.InvariantCulture),
+                        ["healthGuardThresholdBytes"] = health.GuardThresholdBytes.ToString(CultureInfo.InvariantCulture),
+                        ["healthGuardHardCapBytes"] = ResponseSizeHealthMonitor.AbsoluteGuardBytes.ToString(CultureInfo.InvariantCulture),
                         ["systemPrompt"] = systemPrompt,
                         ["inputPrompt"] = indexedInput,
                         ["output"] = output
@@ -1424,6 +1598,8 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
             {
                 var reasoningFromError = ex is LlmRequestException reqEx ? reqEx.ReasoningText : null;
                 var responseBodyFromError = ex is LlmRequestException reqEx2 ? reqEx2.ResponseBody : null;
+                var responseBytesFromError = ex is LlmRequestException reqEx3 ? reqEx3.ResponseBytes?.ToString(CultureInfo.InvariantCulture) : null;
+                var guardBytesFromError = ex is LlmRequestException reqEx4 ? reqEx4.GuardThresholdBytes?.ToString(CultureInfo.InvariantCulture) : null;
                 var ioDumpPath = ErrorSnapshotWriter.WriteMarkdown(
                     "llm-io-error",
                     new Dictionary<string, string?>
@@ -1438,12 +1614,23 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                         ["reasoningSetting"] = settings.Reasoning ?? "low",
                         ["reasoningOutput"] = reasoningFromError,
                         ["responseBody"] = responseBodyFromError,
+                        ["responseBytes"] = responseBytesFromError,
+                        ["healthGuardThresholdBytes"] = guardBytesFromError,
+                        ["healthSampleQualified"] = qualifiedForHealth ? "true" : "false",
+                        ["healthBucket"] = healthBucket,
+                        ["healthGuardHardCapBytes"] = ResponseSizeHealthMonitor.AbsoluteGuardBytes.ToString(CultureInfo.InvariantCulture),
                         ["systemPrompt"] = systemPrompt,
                         ["inputPrompt"] = indexedInput,
                         ["error"] = ex.ToString()
                     },
                     BuildSnapshotTag(contextHint, attempt, maxAttempts));
                 CliRuntimeLog.Warn("llm", $"LLM I/O error dump written: {ioDumpPath}");
+
+                previousAttemptOversized = ex is LlmRequestException sizeEx && sizeEx.IsOversized;
+                if (previousAttemptOversized)
+                {
+                    CliRuntimeLog.Warn("llm", "Failure classified as oversized stream response. Next retry will include concise-reasoning warning.");
+                }
 
                 lastError = ex;
                 CliRuntimeLog.Warn("llm", $"Attempt {attempt}/{maxAttempts} failed: {ex.Message}");
@@ -1488,7 +1675,11 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return TranslateIndexedAsync(lines, targetLanguage, mergedParaphrase, "legacy");
     }
 
-    private async Task<LlmExecutionResult> ExecutePromptAsync(LlmSettings settings, string systemPrompt, string userPrompt)
+    private async Task<LlmExecutionResult> ExecutePromptAsync(
+        LlmSettings settings,
+        string systemPrompt,
+        string userPrompt,
+        int? streamGuardThresholdBytes)
     {
         var requestPayload = BuildRequestPayload(settings, systemPrompt, userPrompt);
         string? body = null;
@@ -1501,10 +1692,11 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         await ApplyAuthorizationAsync(request, settings);
 
         CliRuntimeLog.Info("llm", "Sending HTTP request to translation endpoint.");
-        using var response = await Http.SendAsync(request);
-        body = await response.Content.ReadAsStringAsync();
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        body = await ReadResponseBodyWithGuardAsync(response, streamGuardThresholdBytes);
         CliRuntimeLog.Info("llm", $"Received response. status={(int)response.StatusCode} bodyChars={body.Length}");
         var reasoningText = TryExtractReasoningText(body);
+        var responseBytes = Encoding.UTF8.GetByteCount(body);
         if (!response.IsSuccessStatusCode)
         {
             var snapshotPath = ErrorSnapshotWriter.Write(
@@ -1523,20 +1715,73 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                 $"LLM translation request failed ({(int)response.StatusCode} {response.ReasonPhrase}). Endpoint: {settings.Endpoint}. Body: {body}\n"
                 + $"Detailed LLM log: {snapshotPath}",
                 body,
-                reasoningText);
+                reasoningText,
+                isOversized: false,
+                responseBytes,
+                streamGuardThresholdBytes);
         }
 
         var outputText = TryExtractOutputText(body, settings.ApiType) ?? string.Empty;
         var outputTokenCount = TryExtractOutputTokenCount(body, settings.ApiType)
             ?? ApproximateTokenCount(outputText);
-        return new LlmExecutionResult(outputText, outputTokenCount, reasoningText);
+        return new LlmExecutionResult(outputText, outputTokenCount, reasoningText, responseBytes);
     }
 
-    private static string BuildIndexedInput(
+    private static async Task<string> ReadResponseBodyWithGuardAsync(HttpResponseMessage response, int? guardThresholdBytes)
+    {
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var ms = new MemoryStream();
+        var buffer = new byte[8192];
+        var totalBytes = 0;
+        var nextProgressLog = 64 * 1024;
+
+        CliRuntimeLog.Info(
+            "llm",
+            $"Stream read started. guardThresholdBytes={(guardThresholdBytes?.ToString(CultureInfo.InvariantCulture) ?? "n/a")}");
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length));
+            if (read <= 0)
+            {
+                break;
+            }
+
+            totalBytes += read;
+            if (totalBytes >= nextProgressLog)
+            {
+                CliRuntimeLog.Info("llm", $"Stream progress. downloadedBytes={totalBytes}");
+                nextProgressLog += 64 * 1024;
+            }
+
+            if (guardThresholdBytes is > 0 && totalBytes > guardThresholdBytes.Value)
+            {
+                CliRuntimeLog.Warn(
+                    "llm",
+                    $"Stream guard triggered. downloadedBytes={totalBytes} guardThresholdBytes={guardThresholdBytes.Value}. Aborting stream.");
+                var partialBody = Encoding.UTF8.GetString(ms.ToArray());
+                var reasoningText = TryExtractReasoningText(partialBody);
+                throw new LlmRequestException(
+                    $"LLM streaming response exceeded health guard threshold ({totalBytes} bytes > {guardThresholdBytes.Value} bytes). Aborting and retrying.",
+                    partialBody,
+                    reasoningText,
+                    isOversized: true,
+                    totalBytes,
+                    guardThresholdBytes);
+            }
+
+            await ms.WriteAsync(buffer.AsMemory(0, read));
+        }
+
+        CliRuntimeLog.Info("llm", $"Stream read completed. downloadedBytes={totalBytes}");
+        return Encoding.UTF8.GetString(ms.ToArray());
+    }
+
+    internal static string BuildIndexedInput(
         IReadOnlyList<string> lines,
         string targetLanguage,
         string contextParaphrase,
-        string contextHint)
+        bool includeRetryOversizeHint)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Translate the following MAIN GROUP subtitle cues to {targetLanguage}.");
@@ -1545,20 +1790,46 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         sb.AppendLine("2) Keep one output line for each input cue. Total output lines must equal total input lines.");
         sb.AppendLine("3) Never delete non-dialogue lines, including CC/music/sound/environment descriptions.");
         sb.AppendLine("4) Preserve conversational atmosphere, character voice, and humor. Keep jokes and references where possible; do not dilute punchlines.");
-        sb.AppendLine("5) Think silently in this order before output: (a) first create a brief holistic paraphrase of the whole MAIN GROUP in your mind, (b) then refine line-by-line details and references, (c) preserve jokes/puns/religion/sexual/pop-culture effects, (d) align each output line to its input index.");
-        sb.AppendLine("6) Context is provided in XML sections. Use <previous_context> and <following_context> only for guidance. Translate only the indexed MAIN GROUP lines that correspond to <main_section>.");
+        sb.AppendLine("5) If source and target language word order differ, you may reorder phrasing across adjacent indexed lines to make natural target-language syntax. Keep the same total indexed line count and subtitle rhythm.");
+        sb.AppendLine("6) For split long sentences, prioritize natural target-language reading flow over rigid source order. You may move modifiers/clauses between nearby lines as long as meaning, tone, and pacing are preserved.");
+        sb.AppendLine("7) Think silently in this order before output: (a) first create a brief holistic paraphrase of the whole MAIN GROUP in your mind, (b) then refine line-by-line details and references, (c) preserve jokes/puns/religion/sexual/pop-culture effects, (d) align each output line to its input index.");
+        sb.AppendLine("8) Context is provided in XML sections. Use <previous_context> and <following_context> only for guidance. Translate only the indexed lines inside <main_section>.");
+        if (includeRetryOversizeHint)
+        {
+            sb.AppendLine("IMPORTANT RETRY NOTE: The previous attempt may have failed due to overly long reasoning. Keep your reasoning concise and do not let your thoughts sprawl.");
+        }
         sb.AppendLine("Return ONLY numbered lines in the exact format: [index]\ttranslated text");
-        sb.AppendLine($"Context hint: {contextHint}");
         sb.AppendLine("Context sections:");
         sb.AppendLine(contextParaphrase);
-        sb.AppendLine("Main group lines:");
-
-        for (var i = 0; i < lines.Count; i++)
-        {
-            sb.AppendLine($"[{i + 1}]\t{lines[i]}");
-        }
 
         return sb.ToString();
+    }
+
+    private static bool IsQualifiedHealthSample(string contextParaphrase)
+    {
+        return HasNonEmptyContextSection(contextParaphrase, "previous_context")
+            && HasNonEmptyContextSection(contextParaphrase, "following_context");
+    }
+
+    private static bool HasNonEmptyContextSection(string xml, string sectionName)
+    {
+        var markerStart = $"<{sectionName}>";
+        var markerEnd = $"</{sectionName}>";
+        var start = xml.IndexOf(markerStart, StringComparison.OrdinalIgnoreCase);
+        if (start < 0)
+        {
+            return false;
+        }
+
+        start += markerStart.Length;
+        var end = xml.IndexOf(markerEnd, start, StringComparison.OrdinalIgnoreCase);
+        if (end < 0)
+        {
+            return false;
+        }
+
+        var body = xml[start..end].Trim();
+        return body.Length > 0 && !body.Equals("(none)", StringComparison.OrdinalIgnoreCase);
     }
 
     private static object BuildRequestPayload(LlmSettings settings, string systemPrompt, string indexedInput)
@@ -1725,20 +1996,35 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         }
     }
 
-    private sealed record LlmExecutionResult(string OutputText, int? OutputTokenCount, string? ReasoningText);
+    private sealed record LlmExecutionResult(string OutputText, int? OutputTokenCount, string? ReasoningText, int ResponseBytes);
 
     private sealed class LlmRequestException : InvalidOperationException
     {
-        public LlmRequestException(string message, string? responseBody, string? reasoningText)
+        public LlmRequestException(
+            string message,
+            string? responseBody,
+            string? reasoningText,
+            bool isOversized,
+            int? responseBytes,
+            int? guardThresholdBytes)
             : base(message)
         {
             ResponseBody = responseBody;
             ReasoningText = reasoningText;
+            IsOversized = isOversized;
+            ResponseBytes = responseBytes;
+            GuardThresholdBytes = guardThresholdBytes;
         }
 
         public string? ResponseBody { get; }
 
         public string? ReasoningText { get; }
+
+        public bool IsOversized { get; }
+
+        public int? ResponseBytes { get; }
+
+        public int? GuardThresholdBytes { get; }
     }
 
     private static async Task ApplyAuthorizationAsync(HttpRequestMessage request, LlmSettings settings)
@@ -1993,7 +2279,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return buffer.Length == 0 ? null : buffer.ToString();
     }
 
-    private static List<string> ParseIndexedOutput(string output, int expectedCount)
+    internal static List<string> ParseIndexedOutput(string output, int expectedCount)
     {
         var lines = output.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var map = new Dictionary<int, string>();
@@ -2049,7 +2335,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return line;
     }
 
-    private sealed record LlmSettings(
+    internal sealed record LlmSettings(
         string Endpoint,
         string Model,
         string ApiType,
@@ -2064,7 +2350,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         {
             var endpoint = Environment.GetEnvironmentVariable("LLM_ENDPOINT")
                 ?? "http://localhost:1234/api/v1/chat";
-            var model = Environment.GetEnvironmentVariable("LLM_MODEL") ?? "qwen/qwen3.5-35b-a3b";
+            var model = Environment.GetEnvironmentVariable("LLM_MODEL") ?? "qwen3.5-9b-uncensored-hauhaucs-aggressive";
             var apiType = (Environment.GetEnvironmentVariable("LLM_API_TYPE") ?? "openai").Trim().ToLowerInvariant();
             if (apiType is not ("openai" or "claude"))
             {
@@ -2127,6 +2413,35 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
             retryCount = Math.Clamp(retryCount, 1, 20);
 
             return new LlmSettings(endpoint, model, apiType, authType, apiKey, systemPrompt, maxTokens, reasoning, retryCount);
+        }
+    }
+}
+
+internal static class McpSamplingRuntimeContext
+{
+    private static readonly AsyncLocal<McpServer?> Current = new();
+
+    public static McpServer? CurrentServer => Current.Value;
+
+    public static IDisposable BeginServerScope(McpServer? server)
+    {
+        var previous = Current.Value;
+        Current.Value = server;
+        return new Scope(previous);
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private readonly McpServer? _previous;
+
+        public Scope(McpServer? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            Current.Value = _previous;
         }
     }
 }
@@ -2236,6 +2551,101 @@ internal static class RuntimeEnvironmentOverrides
         }
     }
 }
+
+internal static class ResponseSizeHealthMonitor
+{
+    public const int AbsoluteGuardBytes = 64 * 1024;
+    public const double GuardMultiplier = 2.0;
+    public const int GuardMultiplierPercent = 200;
+    private static readonly object Sync = new();
+    private static readonly Dictionary<string, Queue<int>> QualifiedWindowsByBucket = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly AsyncLocal<string?> CurrentTaskScopeId = new();
+    private const int WindowSize = 5;
+
+    public static IDisposable BeginTaskScope(string taskScopeId)
+    {
+        var previous = CurrentTaskScopeId.Value;
+        CurrentTaskScopeId.Value = string.IsNullOrWhiteSpace(taskScopeId) ? null : taskScopeId.Trim();
+        return new Scope(previous);
+    }
+
+    public static string BuildBucketKey(string model, string targetLanguage)
+    {
+        var taskScopeId = string.IsNullOrWhiteSpace(CurrentTaskScopeId.Value)
+            ? "task-unknown"
+            : CurrentTaskScopeId.Value;
+        var normalizedModel = string.IsNullOrWhiteSpace(model) ? "model-unknown" : model.Trim();
+        var normalizedLanguage = string.IsNullOrWhiteSpace(targetLanguage) ? "lang-unknown" : targetLanguage.Trim();
+        return $"{taskScopeId}|{normalizedModel}|{normalizedLanguage}";
+    }
+
+    public static ResponseSizeHealthSnapshot GetSnapshot(string bucketKey)
+    {
+        lock (Sync)
+        {
+            var bucket = GetOrCreateBucket_NoLock(bucketKey);
+            var sampleCount = bucket.Count;
+            var average = sampleCount == 0 ? 0.0 : bucket.Average();
+            var isValid = sampleCount > 3;
+            var dynamicGuard = isValid ? (int)Math.Ceiling(average * GuardMultiplier) : (int?)null;
+            var guard = dynamicGuard.HasValue
+                ? Math.Min(dynamicGuard.Value, AbsoluteGuardBytes)
+                : AbsoluteGuardBytes;
+            return new ResponseSizeHealthSnapshot(sampleCount, average, guard, isValid);
+        }
+    }
+
+    public static void Record(string bucketKey, int responseBytes, bool qualifiedSample)
+    {
+        if (!qualifiedSample)
+        {
+            return;
+        }
+
+        lock (Sync)
+        {
+            var bucket = GetOrCreateBucket_NoLock(bucketKey);
+            bucket.Enqueue(Math.Max(0, responseBytes));
+            while (bucket.Count > WindowSize)
+            {
+                bucket.Dequeue();
+            }
+        }
+    }
+
+    private static Queue<int> GetOrCreateBucket_NoLock(string bucketKey)
+    {
+        var normalized = string.IsNullOrWhiteSpace(bucketKey) ? "task-unknown|model-unknown|lang-unknown" : bucketKey.Trim();
+        if (!QualifiedWindowsByBucket.TryGetValue(normalized, out var bucket))
+        {
+            bucket = new Queue<int>();
+            QualifiedWindowsByBucket[normalized] = bucket;
+        }
+
+        return bucket;
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private readonly string? _previous;
+
+        public Scope(string? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            CurrentTaskScopeId.Value = _previous;
+        }
+    }
+}
+
+internal sealed record ResponseSizeHealthSnapshot(
+    int SampleCount,
+    double AverageBytes,
+    int GuardThresholdBytes,
+    bool IsValid);
 
 internal static class SrtSerializer
 {
