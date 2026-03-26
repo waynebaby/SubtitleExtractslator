@@ -1,26 +1,49 @@
 # SubtitleExtractslator
 
-A .NET single-file CLI with optional MCP stdio mode for subtitle probing, extraction, grouping, rolling-context translation, and SRT merge output.
+SubtitleExtractslator is a .NET 9 subtitle workflow tool that can run as:
+- a CLI application for local automation
+- an MCP stdio server for agent-driven workflows
+
+It is built for end-to-end subtitle processing: detect existing tracks, search candidates, extract source subtitles, translate with context-aware batching, and emit final SRT output while preserving subtitle timing and structure.
+
+## What This Project Solves
+
+- Avoids manual subtitle pipeline glue code for probe/search/extract/translate/merge.
+- Keeps cue order and timestamps stable while translating text content.
+- Provides a single executable that works in both direct CLI and MCP tool environments.
+- Exposes runtime knobs for grouping, batch sizing, retries, and model endpoint settings.
 
 ## Current implementation scope
 
-- Dual mode startup in one executable:
-  - CLI mode (default)
-  - MCP stdio mode (`--mode mcp`)
-- Workflow routing:
-  1. Probe media subtitle tracks for target language.
-  2. Query OpenSubtitles candidates (mocked unless configured).
-  3. Extract local subtitle (prefer English, fallback nearest available).
-  4. Group cues by timeline rules.
-  5. Build rolling scene summary + historical knowledge state.
-  6. Translate by policy (MCP: sampling-only, fail on sampling errors; CLI: external provider only).
-  7. Merge and emit SRT.
+Execution modes:
+- CLI mode (default)
+- MCP stdio mode (`--mode mcp`)
+
+Workflow steps:
+1. Probe media subtitle tracks for target language.
+2. Query OpenSubtitles candidates (mocked unless configured).
+3. Extract local subtitle (prefer English, fallback nearest available).
+4. Group cues by timeline rules.
+5. Build rolling scene summary and historical context.
+6. Translate by mode policy.
+7. Merge and emit SRT.
+
+Translation policy:
+- MCP mode: sampling-only (`sampling/createMessage`). Sampling failures return errors.
+- CLI mode: external provider only (including custom endpoint access).
 
 ## Build
 
 ```powershell
 dotnet build SubtitleExtractslator.sln
 ```
+
+## Project structure
+
+- `SubtitleExtractslator.Cli/`: main app, MCP tools, workflow core
+- `subtitle-extractslator/`: skill package and runtime assets
+- `docs/`: setup and operational notes
+- `samples/`: sample SRT and trace files
 
 ## CLI usage
 
@@ -51,9 +74,10 @@ The MCP server supports:
 
 ## Translation providers
 
-- MCP sampling provider uses official MCP sampling (`sampling/createMessage`) with retry behavior aligned to `LLM_RETRY_COUNT`.
-- In MCP mode, oversized sampling responses trigger a concise-reasoning warning on next retry to reduce overthinking output.
-- In MCP mode, sampling is required; there is no external fallback on sampling failures.
+- MCP sampling provider uses official MCP sampling (`sampling/createMessage`).
+- MCP sampling retries follow `LLM_RETRY_COUNT` (or overrides).
+- Oversized responses trigger a concise-reasoning warning in the next retry.
+- MCP has no external fallback on translation errors.
 - External/custom endpoint access is CLI route only.
 
 ## OpenSubtitles
