@@ -26,10 +26,11 @@ Primary goals:
 
 Default policy (important):
 1. Prefer MCP mode first. CLI mode is fallback.
-2. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
-3. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
-4. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
-5. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
+2. MCP mode supports official sampling (`sampling/createMessage`) when client capabilities are available.
+3. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
+4. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
+5. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
+6. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
 
 ## Trigger Guidance
 
@@ -106,6 +107,7 @@ Preserve index, timestamps, line counts, and segmentation rhythm.
 
 1. MCP mode (preferred):
 Sampling first, external provider fallback.
+When the MCP server instance cannot be injected during `run_workflow`, skip sampling, log the reason, and go directly to external provider.
 2. Non-MCP mode (fallback):
 External provider only.
 
@@ -122,3 +124,4 @@ External provider only.
 2. Keep translation natural and context aware, but preserve subtitle pacing.
 3. For command details and troubleshooting, read `references/commands.md` and `references/troubleshooting.md`.
 4. For literary or entertainment subtitles (jokes, sarcasm, taboo language, sexual humor, dark comedy), strongly prefer an uncensored model variant. Censored models are more likely to weaken punchlines, skip sensitive phrasing, or leave source fragments untranslated.
+5. In agent scenarios, prefer MCP mode with explicit plan steps. Reusing MCP sampling through the existing client session can reduce token spend and lower deployment/ops overhead compared with standing up separate external-only translation services.
