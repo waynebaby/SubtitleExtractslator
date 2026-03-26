@@ -13,7 +13,7 @@ A .NET single-file CLI with optional MCP stdio mode for subtitle probing, extrac
   3. Extract local subtitle (prefer English, fallback nearest available).
   4. Group cues by timeline rules.
   5. Build rolling scene summary + historical knowledge state.
-  6. Translate by policy (MCP: sampling -> external fallback; CLI: external only).
+  6. Translate by policy (MCP: sampling-only, fail on sampling errors; CLI: external provider only).
   7. Merge and emit SRT.
 
 ## Build
@@ -51,9 +51,10 @@ The MCP server supports:
 
 ## Translation providers
 
-- Sampling provider is currently a stub that returns unavailable.
-- External provider defaults to no-op (preserves original text).
-- Set environment variable `TRANSLATION_MODE=prefix` to simulate translated output.
+- MCP sampling provider uses official MCP sampling (`sampling/createMessage`) with retry behavior aligned to `LLM_RETRY_COUNT`.
+- In MCP mode, oversized sampling responses trigger a concise-reasoning warning on next retry to reduce overthinking output.
+- In MCP mode, sampling is required; there is no external fallback on sampling failures.
+- External/custom endpoint access is CLI route only.
 
 ## OpenSubtitles
 

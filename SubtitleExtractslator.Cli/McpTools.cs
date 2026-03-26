@@ -43,7 +43,7 @@ internal sealed class SubtitleMcpTools
         => _orchestrator.ExtractSubtitleAsync(input, output, prefer);
 
     [McpServerTool(Name = "run_workflow", Title = "Run full subtitle workflow")]
-    [Description("Run the end-to-end subtitle workflow: probe existing tracks, optionally search OpenSubtitles, extract fallback subtitles, perform grouped context-aware translation, and write final SRT output. In MCP mode, sampling is attempted first when McpServer injection is available; otherwise it explicitly falls back to external translation.")]
+    [Description("Run the end-to-end subtitle workflow: probe existing tracks, optionally search OpenSubtitles, extract fallback subtitles, perform grouped context-aware translation, and write final SRT output. In MCP mode, translation is sampling-only and any sampling/injection failure returns an error.")]
     public async Task<WorkflowResult> RunWorkflow(
         [Description("Input media file path or subtitle file path.")]
         string input,
@@ -57,14 +57,17 @@ internal sealed class SubtitleMcpTools
         int? bodySize = null,
         [Description("Optional override for LLM retry count. If null, environment/default settings are used.")]
         int? llmRetryCount = null,
-        [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and falls back to external translation.")]
+        [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and returns an error under sampling-only policy.")]
         McpServer mcpServer = null!)
     {
         if (mcpServer is null)
         {
             CliRuntimeLog.Warn(
                 "workflow",
-                "MCP server instance injection failed in RunWorkflow parameter. Sampling path will be skipped and external provider fallback will be used.");
+                "MCP server instance injection failed in RunWorkflow parameter. Sampling-only policy active; returning error.");
+            throw new InvalidOperationException(
+                "MCP server instance injection failed in RunWorkflow parameter. "
+                + "Under sampling-only policy, external fallback is disabled.");
         }
         else
         {

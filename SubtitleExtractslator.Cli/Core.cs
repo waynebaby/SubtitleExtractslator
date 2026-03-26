@@ -48,8 +48,8 @@ Commands:
         run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
 
 Notes:
-  In MCP mode, translation source policy is: sampling first, then external provider fallback.
-  In CLI mode, translation source policy is: external provider only.
+    In MCP mode, translation source policy is: sampling only. Any sampling failure returns an error.
+    In CLI mode, translation source policy is: external provider only (including custom endpoint access).
     Parameter override precedence:
         command parameter > --env overrides > process environment variable > built-in default.
     Grouping knobs:
@@ -1026,17 +1026,20 @@ internal sealed class TranslationPipeline
             {
                 CliRuntimeLog.Warn(
                     "translate",
-                    "Mode=MCP but McpServer instance is unavailable (RunWorkflow parameter injection failed or missing). Skip sampling and fallback to external provider.");
-                translated = await _externalProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
+                    "Mode=MCP but McpServer instance is unavailable (RunWorkflow parameter injection failed or missing). Sampling-only policy active; returning error.");
+                throw new InvalidOperationException(
+                    "MCP translation requires sampling, but McpServer instance is unavailable. "
+                    + "Under sampling-only policy, external fallback is disabled.");
             }
             else
             {
-                CliRuntimeLog.Info("translate", "Mode=MCP. McpServer instance available. Try sampling provider first.");
+                CliRuntimeLog.Info("translate", "Mode=MCP. McpServer instance available. Sampling-only policy active.");
                 translated = await _samplingProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
                 if (translated.Count == 0)
                 {
-                    CliRuntimeLog.Warn("translate", "Sampling provider returned empty result. Fallback to external provider.");
-                    translated = await _externalProvider.TranslateIndexedAsync(sourceCueTexts, targetLanguage, contextGuide, contextHint);
+                    throw new InvalidOperationException(
+                        "Sampling provider returned empty translation result in MCP mode. "
+                        + "Under sampling-only policy, external fallback is disabled.");
                 }
             }
         }
@@ -1305,6 +1308,17 @@ internal interface ITranslationProvider
 
 internal sealed class SamplingTranslationProvider : ITranslationProvider
 {
+    private sealed class SamplingRequestException : InvalidOperationException
+    {
+        public SamplingRequestException(string message, bool isOversized)
+            : base(message)
+        {
+            IsOversized = isOversized;
+        }
+
+        public bool IsOversized { get; }
+    }
+
     public async Task<IReadOnlyList<string>> TranslateIndexedAsync(
         IReadOnlyList<string> lines,
         string targetLanguage,
@@ -1321,79 +1335,133 @@ internal sealed class SamplingTranslationProvider : ITranslationProvider
         var server = McpSamplingRuntimeContext.CurrentServer;
         if (server is null)
         {
-            CliRuntimeLog.Warn("sampling", "MCP sampling server context is unavailable (RunWorkflow McpServer parameter injection failed or missing). Returning empty result for external fallback.");
-            return Array.Empty<string>();
+            CliRuntimeLog.Warn("sampling", "MCP sampling server context is unavailable (RunWorkflow McpServer parameter injection failed or missing). Sampling-only policy active; returning error.");
+            throw new InvalidOperationException(
+                "MCP sampling server context is unavailable. "
+                + "Under sampling-only policy, external fallback is disabled.");
         }
 
-        try
+        var settings = ExternalTranslationProvider.LlmSettings.FromEnvironment();
+        var systemPrompt = settings.SystemPrompt
+            ?? "You are a subtitle translator. Use the provided context sections to reason first, then output only the line-by-line translation for the target lines. Never add commentary in final output. Keep every index and return exactly one translated line for each input index.";
+        var maxAttempts = settings.RetryCount;
+        var qualifiedForHealth = ExternalTranslationProvider.IsQualifiedHealthSample(contextParaphrase);
+        var healthBucket = ResponseSizeHealthMonitor.BuildBucketKey(settings.Model, targetLanguage);
+        CliRuntimeLog.Info(
+            "sampling",
+            $"Resolved settings. model={settings.Model} retryCount={settings.RetryCount} qualifiedHealth={qualifiedForHealth} bucket={healthBucket}");
+
+        var previousAttemptOversized = false;
+        Exception? lastError = null;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            var settings = ExternalTranslationProvider.LlmSettings.FromEnvironment();
-            var systemPrompt = settings.SystemPrompt
-                ?? "You are a subtitle translator. Use the provided context sections to reason first, then output only the line-by-line translation for the target lines. Never add commentary in final output. Keep every index and return exactly one translated line for each input index.";
+            var health = ResponseSizeHealthMonitor.GetSnapshot(healthBucket);
             var indexedInput = ExternalTranslationProvider.BuildIndexedInput(
                 lines,
                 targetLanguage,
                 contextParaphrase,
-                includeRetryOversizeHint: false);
-
-            var samplingRequest = new CreateMessageRequestParams
+                includeRetryOversizeHint: previousAttemptOversized);
+            if (previousAttemptOversized)
             {
-                SystemPrompt = systemPrompt,
-                MaxTokens = settings.MaxTokens,
-                Temperature = 0.2f,
-                Messages =
-                [
-                    new SamplingMessage
-                    {
-                        Role = Role.User,
-                        Content =
-                        [
-                            new TextContentBlock { Text = indexedInput }
-                        ]
-                    }
-                ],
-                ModelPreferences = string.IsNullOrWhiteSpace(settings.Model)
-                    ? null
-                    : new ModelPreferences
-                    {
-                        Hints =
-                        [
-                            new ModelHint { Name = settings.Model }
-                        ]
-                    }
-            };
-
-            var sampled = await server.SampleAsync(samplingRequest);
-            var sampledText = string.Join(
-                "\n",
-                sampled.Content
-                    .OfType<TextContentBlock>()
-                    .Select(x => x.Text)
-                    .Where(x => !string.IsNullOrWhiteSpace(x)));
-
-            if (string.IsNullOrWhiteSpace(sampledText))
-            {
-                CliRuntimeLog.Warn("sampling", "Sampling response content was empty. Returning empty result for external fallback.");
-                return Array.Empty<string>();
+                CliRuntimeLog.Warn("sampling", "Retry oversize hint injected into sampling prompt for this attempt.");
             }
 
-            var translated = ExternalTranslationProvider.ParseIndexedOutput(sampledText, lines.Count);
-            if (translated.Count != lines.Count)
-            {
-                CliRuntimeLog.Warn(
-                    "sampling",
-                    $"Sampling output line count mismatch. parsedLines={translated.Count} expectedLines={lines.Count}. Returning empty result for external fallback.");
-                return Array.Empty<string>();
-            }
+            CliRuntimeLog.Info(
+                "sampling",
+                $"Sampling request attempt {attempt}/{maxAttempts}. healthSamples={health.SampleCount} healthAvgBytes={health.AverageBytes:F1} streamGuardBytes={health.GuardThresholdBytes}");
 
-            CliRuntimeLog.Info("sampling", $"Sampling translation succeeded. parsedLines={translated.Count}");
-            return translated;
+            try
+            {
+                var samplingRequest = new CreateMessageRequestParams
+                {
+                    SystemPrompt = systemPrompt,
+                    MaxTokens = settings.MaxTokens,
+                    Temperature = 0.2f,
+                    Messages =
+                    [
+                        new SamplingMessage
+                        {
+                            Role = Role.User,
+                            Content =
+                            [
+                                new TextContentBlock { Text = indexedInput }
+                            ]
+                        }
+                    ],
+                    ModelPreferences = string.IsNullOrWhiteSpace(settings.Model)
+                        ? null
+                        : new ModelPreferences
+                        {
+                            Hints =
+                            [
+                                new ModelHint { Name = settings.Model }
+                            ]
+                        }
+                };
+
+                var sampled = await server.SampleAsync(samplingRequest);
+                var sampledText = string.Join(
+                    "\n",
+                    sampled.Content
+                        .OfType<TextContentBlock>()
+                        .Select(x => x.Text)
+                        .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                if (string.IsNullOrWhiteSpace(sampledText))
+                {
+                    throw new InvalidOperationException("Sampling response content was empty.");
+                }
+
+                var sampledBytes = Encoding.UTF8.GetByteCount(sampledText);
+                if (sampledBytes > health.GuardThresholdBytes)
+                {
+                    throw new SamplingRequestException(
+                        $"Sampling response exceeded health guard threshold ({sampledBytes} bytes > {health.GuardThresholdBytes} bytes).",
+                        isOversized: true);
+                }
+
+                var translated = ExternalTranslationProvider.ParseIndexedOutput(sampledText, lines.Count);
+                if (translated.Count != lines.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"Sampling output line count mismatch. parsedLines={translated.Count} expectedLines={lines.Count}.");
+                }
+
+                if (qualifiedForHealth)
+                {
+                    ResponseSizeHealthMonitor.Record(healthBucket, sampledBytes, qualifiedForHealth);
+                    var postRecord = ResponseSizeHealthMonitor.GetSnapshot(healthBucket);
+                    CliRuntimeLog.Info(
+                        "sampling",
+                        $"Health sample recorded. responseBytes={sampledBytes} windowCount={postRecord.SampleCount} windowAvgBytes={postRecord.AverageBytes:F1} nextGuardBytes={postRecord.GuardThresholdBytes}");
+                }
+                else
+                {
+                    CliRuntimeLog.Info("sampling", "Health sample skipped for this response because context is not qualified.");
+                }
+
+                CliRuntimeLog.Info("sampling", $"Sampling translation succeeded. parsedLines={translated.Count}");
+                return translated;
+            }
+            catch (Exception ex)
+            {
+                previousAttemptOversized = ex is SamplingRequestException sampleEx && sampleEx.IsOversized;
+                if (previousAttemptOversized)
+                {
+                    CliRuntimeLog.Warn("sampling", "Failure classified as oversized sampling response. Next retry will include concise-reasoning warning.");
+                }
+
+                lastError = ex;
+                CliRuntimeLog.Warn("sampling", $"Attempt {attempt}/{maxAttempts} failed under sampling-only policy: {ex.Message}");
+                if (attempt < maxAttempts)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(400 * attempt));
+                    continue;
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            CliRuntimeLog.Warn("sampling", $"Sampling provider failed: {ex.Message}. Returning empty result for external fallback.");
-            return Array.Empty<string>();
-        }
+
+        throw new InvalidOperationException($"MCP sampling translation failed after {maxAttempts} attempts.", lastError);
     }
 
     public Task<IReadOnlyList<string>> TranslateAsync(
@@ -1806,7 +1874,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return sb.ToString();
     }
 
-    private static bool IsQualifiedHealthSample(string contextParaphrase)
+    internal static bool IsQualifiedHealthSample(string contextParaphrase)
     {
         return HasNonEmptyContextSection(contextParaphrase, "previous_context")
             && HasNonEmptyContextSection(contextParaphrase, "following_context");

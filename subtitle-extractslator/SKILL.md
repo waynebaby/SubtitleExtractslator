@@ -27,10 +27,12 @@ Primary goals:
 Default policy (important):
 1. Prefer MCP mode first. CLI mode is fallback.
 2. MCP mode supports official sampling (`sampling/createMessage`) when client capabilities are available.
-3. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
-4. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
-5. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
-6. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
+3. MCP translation path is sampling-only. If sampling fails (including missing MCP server injection), return error directly.
+4. Custom external endpoint access (for example `LLM_ENDPOINT` and related auth/key config) belongs to CLI route only.
+5. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
+6. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
+7. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
+8. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
 
 ## Trigger Guidance
 
@@ -106,10 +108,12 @@ Preserve index, timestamps, line counts, and segmentation rhythm.
 ## Mode-Aware Translation Source Policy
 
 1. MCP mode (preferred):
-Sampling first, external provider fallback.
-When the MCP server instance cannot be injected during `run_workflow`, skip sampling, log the reason, and go directly to external provider.
+Sampling only.
+When sampling fails (including missing MCP server instance injection during `run_workflow`), return error directly.
+MCP sampling uses retry policy consistent with LLM retry settings (`LLM_RETRY_COUNT` / override parameter). When oversized responses are detected, the next retry injects a concise-reasoning warning to reduce overthinking output.
 2. Non-MCP mode (fallback):
 External provider only.
+All custom external endpoint access is CLI route responsibility.
 
 ## Guardrails
 
