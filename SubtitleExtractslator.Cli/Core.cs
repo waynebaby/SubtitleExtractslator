@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
 
@@ -169,6 +170,7 @@ internal sealed class WorkflowOrchestrator
         int? bodySizeOverride = null)
     {
         using var workflowScope = CliRuntimeLog.BeginScope("workflow", $"Start run_workflow input={input} target={targetLanguage} output={output}");
+        using var historyScope = ErrorSnapshotWriter.BeginTranslateHistoryScope(output);
         var probe = await ProbeAsync(input, targetLanguage);
         CliRuntimeLog.Info("workflow", $"Probe completed. tracks={probe.Tracks.Count} hasTarget={probe.HasTargetLanguage}");
         if (probe.HasTargetLanguage)
@@ -445,15 +447,10 @@ internal sealed class WorkflowOrchestrator
 
     private static string BuildTemporaryExtractionPath(string output, string sourceLanguage)
     {
-        var directory = Path.GetDirectoryName(output);
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            directory = Directory.GetCurrentDirectory();
-        }
-
+        var directory = Path.Combine(Path.GetTempPath(), "SubtitleExtractslator");
         Directory.CreateDirectory(directory);
         var baseName = Path.GetFileNameWithoutExtension(output);
-        return Path.Combine(directory, $"{baseName}.{sourceLanguage}.tmp.srt");
+        return Path.Combine(directory, $"{baseName}.{sourceLanguage}.{Guid.NewGuid():N}.tmp");
     }
 
     private static string NormalizeLanguageToken(string? language)
@@ -536,7 +533,7 @@ internal sealed class SubtitleOperations
         }
 
         var ffmpeg = ResolveExecutable("ffmpeg");
-        var args = $"-y -i \"{input}\" -map 0:s:{selected.SubtitleOrder} \"{output}\"";
+        var args = $"-y -i \"{input}\" -map 0:s:{selected.SubtitleOrder} -f srt \"{output}\"";
         CliRuntimeLog.Info("extract", $"Selected subtitle track order={selected.SubtitleOrder} language={selected.Language}");
         CliRuntimeLog.Info("extract", $"Running ffmpeg: {ffmpeg} {args}");
         await RunProcessAsync(ffmpeg, args);
@@ -1310,23 +1307,6 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
 
         var indexedInput = BuildIndexedInput(lines, targetLanguage, contextParaphrase, contextHint);
         CliRuntimeLog.Info("llm", $"Prompt built. chars={indexedInput.Length}");
-        if (ShouldDumpPromptForDebug())
-        {
-            var dumpPath = ErrorSnapshotWriter.Write(
-                "llm-prompt",
-                new Dictionary<string, string?>
-                {
-                    ["endpoint"] = settings.Endpoint,
-                    ["model"] = settings.Model,
-                    ["apiType"] = settings.ApiType,
-                    ["targetLanguage"] = targetLanguage,
-                    ["expectedLineCount"] = lines.Count.ToString(CultureInfo.InvariantCulture),
-                    ["contextHint"] = contextHint,
-                    ["systemPrompt"] = systemPrompt,
-                    ["inputPrompt"] = indexedInput
-                });
-            CliRuntimeLog.Info("llm", $"Prompt dump written: {dumpPath}");
-        }
         const int maxAttempts = 3;
         Exception? lastError = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -1338,10 +1318,25 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                 var output = execution.OutputText;
                 CliRuntimeLog.Info("llm", $"Output text extracted. chars={output?.Length ?? 0} outputTokens={execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a"}");
 
-                if (execution.OutputTokenCount is > 10000)
-                {
-                    throw new InvalidOperationException($"LLM output token count too large: {execution.OutputTokenCount} (>10000). Treating as abnormal response.");
-                }
+                var ioDumpPath = ErrorSnapshotWriter.WriteMarkdown(
+                    "llm-io",
+                    new Dictionary<string, string?>
+                    {
+                        ["attempt"] = $"{attempt}/{maxAttempts}",
+                        ["endpoint"] = settings.Endpoint,
+                        ["model"] = settings.Model,
+                        ["apiType"] = settings.ApiType,
+                        ["targetLanguage"] = targetLanguage,
+                        ["expectedLineCount"] = lines.Count.ToString(CultureInfo.InvariantCulture),
+                        ["contextHint"] = contextHint,
+                        ["outputTokens"] = execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a",
+                        ["systemPrompt"] = systemPrompt,
+                        ["inputPrompt"] = indexedInput,
+                        ["output"] = output
+                    });
+                CliRuntimeLog.Info("llm", $"LLM I/O dump written: {ioDumpPath}");
+
+     
 
                 if (string.IsNullOrWhiteSpace(output))
                 {
@@ -1392,6 +1387,23 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
             }
             catch (Exception ex)
             {
+                var ioDumpPath = ErrorSnapshotWriter.WriteMarkdown(
+                    "llm-io-error",
+                    new Dictionary<string, string?>
+                    {
+                        ["attempt"] = $"{attempt}/{maxAttempts}",
+                        ["endpoint"] = settings.Endpoint,
+                        ["model"] = settings.Model,
+                        ["apiType"] = settings.ApiType,
+                        ["targetLanguage"] = targetLanguage,
+                        ["expectedLineCount"] = lines.Count.ToString(CultureInfo.InvariantCulture),
+                        ["contextHint"] = contextHint,
+                        ["systemPrompt"] = systemPrompt,
+                        ["inputPrompt"] = indexedInput,
+                        ["error"] = ex.ToString()
+                    });
+                CliRuntimeLog.Warn("llm", $"LLM I/O error dump written: {ioDumpPath}");
+
                 lastError = ex;
                 CliRuntimeLog.Warn("llm", $"Attempt {attempt}/{maxAttempts} failed: {ex.Message}");
                 if (attempt < maxAttempts)
@@ -1923,7 +1935,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         {
             var endpoint = Environment.GetEnvironmentVariable("LLM_ENDPOINT")
                 ?? "http://localhost:1234/api/v1/chat";
-            var model = Environment.GetEnvironmentVariable("LLM_MODEL") ?? "qwen/qwen3.5-9b";
+            var model = Environment.GetEnvironmentVariable("LLM_MODEL") ?? "qwen/qwen3.5-35b-a3b";
             var apiType = (Environment.GetEnvironmentVariable("LLM_API_TYPE") ?? "openai").Trim().ToLowerInvariant();
             if (apiType is not ("openai" or "claude"))
             {
@@ -2087,6 +2099,8 @@ internal static class JsonOptions
 
 internal static class ErrorSnapshotWriter
 {
+    private static readonly AsyncLocal<string?> TranslateHistoryDirectory = new();
+
     public static string Write(string prefix, IReadOnlyDictionary<string, string?> sections)
     {
         var dir = Path.Combine(Directory.GetCurrentDirectory(), "tmp");
@@ -2110,6 +2124,71 @@ internal static class ErrorSnapshotWriter
 
         File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
         return filePath;
+    }
+
+    public static IDisposable BeginTranslateHistoryScope(string outputPath)
+    {
+        var current = TranslateHistoryDirectory.Value;
+
+        var outputDir = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrWhiteSpace(outputDir))
+        {
+            outputDir = Directory.GetCurrentDirectory();
+        }
+
+        var historyDir = Path.Combine(outputDir, ".translatehistory");
+        Directory.CreateDirectory(historyDir);
+        TranslateHistoryDirectory.Value = historyDir;
+        return new HistoryScope(current);
+    }
+
+    public static string WriteMarkdown(string prefix, IReadOnlyDictionary<string, string?> sections)
+    {
+        var dir = TranslateHistoryDirectory.Value;
+        if (string.IsNullOrWhiteSpace(dir))
+        {
+            dir = Path.Combine(Directory.GetCurrentDirectory(), ".translatehistory");
+        }
+
+        Directory.CreateDirectory(dir);
+
+        var filePath = Path.Combine(
+            dir,
+            $"{prefix}.{DateTimeOffset.Now:yyyyMMdd_HHmmss_fff}.{Guid.NewGuid():N}.md");
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"# {prefix}");
+        sb.AppendLine();
+        sb.AppendLine($"- timestamp: {DateTimeOffset.Now:O}");
+        sb.AppendLine();
+
+        foreach (var kv in sections)
+        {
+            sb.AppendLine($"## {kv.Key}");
+            sb.AppendLine();
+            sb.AppendLine("```text");
+            sb.AppendLine(kv.Value ?? string.Empty);
+            sb.AppendLine("```");
+            sb.AppendLine();
+        }
+
+        File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
+        return filePath;
+    }
+
+    private sealed class HistoryScope : IDisposable
+    {
+        private readonly string? _previous;
+
+        public HistoryScope(string? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            TranslateHistoryDirectory.Value = _previous;
+        }
     }
 }
 

@@ -26,7 +26,7 @@ public sealed class TranslationBatchTests
     [MemberData(nameof(InputSubtitleFiles))]
     public async Task EachInputFile_ShouldTranslateToChinese_AndWriteToOutputFiles(string inputPath)
     {
-        Environment.SetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_TRANSLATION_PARALLELISM", "1");
+        Environment.SetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_TRANSLATION_PARALLELISM", "4");
         Environment.SetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_DUMP_PROMPT", "1");
 
         var outputDir = GetOutputDirectory();

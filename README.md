@@ -69,3 +69,20 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingl
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
+## CI publish matrix (win/linux/macos)
+
+The repository includes GitHub Actions workflow `.github/workflows/publish-single-file-matrix.yml`.
+
+It publishes single-file self-contained binaries for:
+
+- `win-x64`
+- `linux-x64`
+- `osx-arm64`
+
+Trigger options:
+
+- Manual: run `Publish Single-File Matrix` from GitHub Actions UI.
+- Tag: push tag like `v1.0.0`.
+
+Each matrix job uploads artifact `subtitle-extractslator-<rid>`.

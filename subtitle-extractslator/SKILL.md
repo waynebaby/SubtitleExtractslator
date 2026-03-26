@@ -34,6 +34,7 @@ Use this skill when user asks to:
 
 Windows binary path inside this skill:
 `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
+*use  [binary] --help* to get detailed CLI usage.
 
 CLI mode examples:
 1. Probe:
@@ -57,8 +58,8 @@ Follow this exact order:
 1. Probe internal subtitle tracks.
 If target language exists, report and stop.
 2. Query OpenSubtitles candidates.
-If candidates exist, ask user whether to adopt.
-If user rejects or no candidates, continue.
+If user mention not using open subtitles or no candidates, continue next.
+If candidates exist,  adopt the most popular candidate. download, rename to output path.
 3. Extract local subtitle.
 Prefer English track.
 If English not present, pick deterministic nearest-language fallback.
