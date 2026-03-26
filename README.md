@@ -1,26 +1,57 @@
-# SubtitleExtractslator
+# Subtitle Extractslator
 
-A .NET single-file CLI with optional MCP stdio mode for subtitle probing, extraction, grouping, rolling-context translation, and SRT merge output.
+[English](README.md) | [中文](README.zh-CN.md)
+
+
+SubtitleExtractslator is a subtitle translation skill project.
+
+The primary deliverable in this repository is the skill package (prompts, policy, runtime assets, and usage contract). The .NET CLI and MCP server are runtime implementations that exist to execute this skill reliably in local scripts and agent environments.
+
+Runtime forms in this repository:
+- CLI application for local automation
+- MCP stdio server for agent-driven workflows
+
+It is built for end-to-end subtitle processing: detect existing tracks, search candidates, extract source subtitles, translate with context-aware batching, and emit final SRT output while preserving subtitle timing and structure.
+
+## What The Skill Solves
+
+- Provides a reusable subtitle workflow skill contract for probe/search/extract/translate/merge.
+- Keeps cue order and timestamps stable while translating text content.
+- Standardizes agent-side execution through MCP tools.
+- Provides CLI runtime knobs for grouping, batch sizing, retries, and model endpoint settings.
 
 ## Current implementation scope
 
-- Dual mode startup in one executable:
-  - CLI mode (default)
-  - MCP stdio mode (`--mode mcp`)
-- Workflow routing:
-  1. Probe media subtitle tracks for target language.
-  2. Query OpenSubtitles candidates (mocked unless configured).
-  3. Extract local subtitle (prefer English, fallback nearest available).
-  4. Group cues by timeline rules.
-  5. Build rolling scene summary + historical knowledge state.
-  6. Translate by policy (MCP: sampling -> external fallback; CLI: external only).
-  7. Merge and emit SRT.
+Execution modes:
+- CLI mode (default)
+- MCP stdio mode (`--mode mcp`)
+
+Workflow steps:
+1. Probe media subtitle tracks for target language.
+2. Query OpenSubtitles candidates (mocked unless configured).
+3. Extract local subtitle (prefer English, fallback nearest available).
+4. Group cues by timeline rules.
+5. Build rolling scene summary and historical context.
+6. Translate by mode policy.
+7. Merge and emit SRT.
+8. Optional: remux generated AI subtitle into source media as a new subtitle language track.
+
+Translation policy:
+- MCP mode: sampling-only (`sampling/createMessage`). Sampling failures return errors.
+- CLI mode: external provider only (including custom endpoint access).
 
 ## Build
 
 ```powershell
 dotnet build SubtitleExtractslator.sln
 ```
+
+## Project structure
+
+- `subtitle-extractslator/`: skill package (primary)
+- `SubtitleExtractslator.Cli/`: skill runtime host (CLI + MCP tools + workflow core)
+- `docs/`: setup and operational notes
+- `samples/`: sample SRT and trace files
 
 ## CLI usage
 
@@ -32,6 +63,8 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-searc
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" --mux-output "movie.with-ai-zh.mkv"
 ```
 
 ## MCP stdio mode
@@ -51,9 +84,11 @@ The MCP server supports:
 
 ## Translation providers
 
-- Sampling provider is currently a stub that returns unavailable.
-- External provider defaults to no-op (preserves original text).
-- Set environment variable `TRANSLATION_MODE=prefix` to simulate translated output.
+- MCP sampling provider uses official MCP sampling (`sampling/createMessage`).
+- MCP sampling retries follow `LLM_RETRY_COUNT` (or overrides).
+- Oversized responses trigger a concise-reasoning warning in the next retry.
+- MCP has no external fallback on translation errors.
+- External/custom endpoint access is CLI route only.
 
 ## OpenSubtitles
 

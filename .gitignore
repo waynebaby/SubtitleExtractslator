@@ -1,10 +1,14 @@
-bin/
+
 obj/
 .vs/
 .vscode/
+.github/
 *.user
 *.suo
 *.cache
 *.tmp
 *.log
 artifacts/
+tmp/
+TestSubtitles/
+*/bin/
