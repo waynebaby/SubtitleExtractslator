@@ -1794,11 +1794,12 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         sb.AppendLine("6) For split long sentences, prioritize natural target-language reading flow over rigid source order. You may move modifiers/clauses between nearby lines as long as meaning, tone, and pacing are preserved.");
         sb.AppendLine("7) Think silently in this order before output: (a) first create a brief holistic paraphrase of the whole MAIN GROUP in your mind, (b) then refine line-by-line details and references, (c) preserve jokes/puns/religion/sexual/pop-culture effects, (d) align each output line to its input index.");
         sb.AppendLine("8) Context is provided in XML sections. Use <previous_context> and <following_context> only for guidance. Translate only the indexed lines inside <main_section>.");
+        sb.AppendLine("9) Output translated result only. Never echo source text. Never output bilingual comparison pairs such as 'source -> translation', 'source => translation', or 'source : translation'.");
         if (includeRetryOversizeHint)
         {
             sb.AppendLine("IMPORTANT RETRY NOTE: The previous attempt may have failed due to overly long reasoning. Keep your reasoning concise and do not let your thoughts sprawl.");
         }
-        sb.AppendLine("Return ONLY numbered lines in the exact format: [index]\ttranslated text");
+        sb.AppendLine("Return ONLY numbered lines in the exact format: [index]\ttranslated text (translated text only, no source text).");
         sb.AppendLine("Context sections:");
         sb.AppendLine(contextParaphrase);
 

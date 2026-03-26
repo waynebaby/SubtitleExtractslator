@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using ModelContextProtocol.Server;
 
 namespace SubtitleExtractslator.Cli;
@@ -25,14 +26,21 @@ internal sealed class SubtitleMcpTools
         => _orchestrator.ExtractSubtitleAsync(input, output, prefer);
 
     [McpServerTool(Name = "run_workflow", Title = "Run full subtitle workflow")]
+    [Description("Run the end-to-end subtitle workflow: probe existing tracks, optionally search OpenSubtitles, extract fallback subtitles, perform grouped context-aware translation, and write final SRT output. In MCP mode, sampling is attempted first when McpServer injection is available; otherwise it explicitly falls back to external translation.")]
     public async Task<WorkflowResult> RunWorkflow(
+        [Description("Input media file path or subtitle file path.")]
         string input,
+        [Description("Target subtitle language code, e.g. zh, en, ja.")]
         string lang,
+        [Description("Output SRT file path.")]
         string output,
+        [Description("Optional override for cues per group. If null, workflow default is used.")]
         int? cuesPerGroup = null,
+        [Description("Optional override for body size (number of groups per translation unit). If null, workflow default is used.")]
         int? bodySize = null,
+        [Description("Optional override for LLM retry count. If null, environment/default settings are used.")]
         int? llmRetryCount = null,
-        string? envOverrides = null,
+        [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and falls back to external translation.")]
         McpServer mcpServer = null!)
     {
         if (mcpServer is null)
@@ -54,6 +62,6 @@ internal sealed class SubtitleMcpTools
             cuesPerGroup,
             bodySize,
             llmRetryCount,
-            RuntimeEnvironmentOverrides.Parse(envOverrides));
+            null);
     }
 }
