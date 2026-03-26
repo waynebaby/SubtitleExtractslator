@@ -1,4 +1,4 @@
-bin/
+
 obj/
 .vs/
 .vscode/
@@ -11,3 +11,4 @@ obj/
 artifacts/
 tmp/
 TestSubtitles/
+*/bin/
