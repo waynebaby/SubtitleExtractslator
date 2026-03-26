@@ -5,15 +5,15 @@ This document follows Anthropic skill structure requirements and explains how to
 ## Skill Folder
 
 Skill root:
-- `subtitle-extractslator-agent-skill/`
+- `.github/skills/subtitle-extractslator/`
 
 Required file:
-- `subtitle-extractslator-agent-skill/SKILL.md`
+- `.github/skills/subtitle-extractslator/SKILL.md`
 
 Optional resources used here:
-- `subtitle-extractslator-agent-skill/references/commands.md`
-- `subtitle-extractslator-agent-skill/references/troubleshooting.md`
-- `subtitle-extractslator-agent-skill/assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
+- `.github/skills/subtitle-extractslator/references/commands.md`
+- `.github/skills/subtitle-extractslator/references/troubleshooting.md`
+- `.github/skills/subtitle-extractslator/assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
 
 No README is placed inside the skill folder.
 
@@ -22,7 +22,7 @@ No README is placed inside the skill folder.
 From repository root:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\subtitle-extractslator-agent-skill\assets\bin\win-x64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\win-x64
 ```
 
 ## Optional Additional Runtime Builds
@@ -30,18 +30,18 @@ dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c R
 Linux x64:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\subtitle-extractslator-agent-skill\assets\bin\linux-x64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\linux-x64
 ```
 
 macOS arm64:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true -o .\subtitle-extractslator-agent-skill\assets\bin\osx-arm64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\osx-arm64
 ```
 
 ## Upload to Claude
 
-1. Zip the skill folder `subtitle-extractslator-agent-skill`.
+1. Zip the skill folder `.github/skills/subtitle-extractslator`.
 2. Upload in Claude settings skills section.
 3. Enable the skill.
 
