@@ -15,12 +15,15 @@ metadata:
 
 ## Purpose
 
+This repository is skill-first: the subtitle skill package is the primary deliverable, while CLI and MCP are runtime layers used to execute the skill.
+
 This skill orchestrates subtitle discovery and translation using MCP-first execution with local CLI fallback.
 
 Primary goals:
 1. Keep timeline and subtitle structure stable.
 2. Prioritize existing subtitle resources before extraction.
 3. Use grouped rolling context for better semantic consistency.
+4. Keep skill behavior consistent across agent (MCP) and script (CLI) execution paths.
 
 ## MCP-First Setup
 

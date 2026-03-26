@@ -1,17 +1,24 @@
-# SubtitleExtractslator
+# Subtitle Extractslator
 
-SubtitleExtractslator is a .NET 9 subtitle workflow tool that can run as:
-- a CLI application for local automation
-- an MCP stdio server for agent-driven workflows
+[English](README.md) | [中文](README.zh-CN.md)
+
+
+SubtitleExtractslator is a subtitle translation skill project.
+
+The primary deliverable in this repository is the skill package (prompts, policy, runtime assets, and usage contract). The .NET CLI and MCP server are runtime implementations that exist to execute this skill reliably in local scripts and agent environments.
+
+Runtime forms in this repository:
+- CLI application for local automation
+- MCP stdio server for agent-driven workflows
 
 It is built for end-to-end subtitle processing: detect existing tracks, search candidates, extract source subtitles, translate with context-aware batching, and emit final SRT output while preserving subtitle timing and structure.
 
-## What This Project Solves
+## What The Skill Solves
 
-- Avoids manual subtitle pipeline glue code for probe/search/extract/translate/merge.
+- Provides a reusable subtitle workflow skill contract for probe/search/extract/translate/merge.
 - Keeps cue order and timestamps stable while translating text content.
-- Provides a single executable that works in both direct CLI and MCP tool environments.
-- Exposes runtime knobs for grouping, batch sizing, retries, and model endpoint settings.
+- Standardizes agent-side execution through MCP tools.
+- Provides CLI runtime knobs for grouping, batch sizing, retries, and model endpoint settings.
 
 ## Current implementation scope
 
@@ -27,6 +34,7 @@ Workflow steps:
 5. Build rolling scene summary and historical context.
 6. Translate by mode policy.
 7. Merge and emit SRT.
+8. Optional: remux generated AI subtitle into source media as a new subtitle language track.
 
 Translation policy:
 - MCP mode: sampling-only (`sampling/createMessage`). Sampling failures return errors.
@@ -40,8 +48,8 @@ dotnet build SubtitleExtractslator.sln
 
 ## Project structure
 
-- `SubtitleExtractslator.Cli/`: main app, MCP tools, workflow core
-- `subtitle-extractslator/`: skill package and runtime assets
+- `subtitle-extractslator/`: skill package (primary)
+- `SubtitleExtractslator.Cli/`: skill runtime host (CLI + MCP tools + workflow core)
 - `docs/`: setup and operational notes
 - `samples/`: sample SRT and trace files
 
@@ -55,6 +63,8 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-searc
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" --mux-output "movie.with-ai-zh.mkv"
 ```
 
 ## MCP stdio mode

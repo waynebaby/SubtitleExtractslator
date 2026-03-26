@@ -45,7 +45,7 @@ Commands:
   probe --input <mediaFile> --lang <targetLang>
   opensubtitles-search --input <mediaFile> --lang <targetLang>
   extract --input <mediaFile> --out <subtitleFile> [--prefer en]
-        run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
+    run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>] [--mux-output <mediaFile>]
 
 Notes:
     In MCP mode, translation source policy is: sampling only. Any sampling failure returns an error.
@@ -134,6 +134,7 @@ internal static class CliCommandRunner
             options.OptionalInt("cues-per-group"),
             options.OptionalInt("body-size"),
             retryOverride,
+            options.OptionalString("mux-output"),
             RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
     }
 
@@ -199,6 +200,7 @@ internal sealed class WorkflowOrchestrator
         int? cuesPerGroupOverride = null,
         int? bodySizeOverride = null,
         int? llmRetryCountOverride = null,
+        string? muxOutputPath = null,
         IReadOnlyDictionary<string, string>? envOverrides = null)
     {
         using var workflowScope = CliRuntimeLog.BeginScope("workflow", $"Start run_workflow input={input} target={targetLanguage} output={output}");
@@ -211,7 +213,7 @@ internal sealed class WorkflowOrchestrator
         if (probe.HasTargetLanguage)
         {
             CliRuntimeLog.Info("workflow", "Target subtitle already exists. Workflow exits early.");
-            return new WorkflowResult("completed", "target-track-exists", output, new List<GroupTranslationResult>());
+            return new WorkflowResult("completed", "target-track-exists", output, new List<GroupTranslationResult>(), null);
         }
 
         var openResult = await SearchOpenSubtitlesAsync(input, targetLanguage);
@@ -274,7 +276,15 @@ internal sealed class WorkflowOrchestrator
         await _ops.SaveSrtAsync(output, merged);
         CliRuntimeLog.Info("workflow", $"Output written: {output}");
 
-        return new WorkflowResult("completed", accepted ? "opensubtitles-adopted" : "local-extraction", output, groupResults);
+        string? muxedOutput = null;
+        if (!string.IsNullOrWhiteSpace(muxOutputPath))
+        {
+            CliRuntimeLog.Info("workflow", $"Mux output requested. inputMedia={input} subtitle={output} muxOutput={muxOutputPath}");
+            muxedOutput = await _ops.MuxSubtitleIntoVideoAsync(input, output, muxOutputPath, targetLanguage);
+            CliRuntimeLog.Info("workflow", $"Mux output written: {muxedOutput}");
+        }
+
+        return new WorkflowResult("completed", accepted ? "opensubtitles-adopted" : "local-extraction", output, groupResults, muxedOutput);
     }
 
     private static List<TranslationUnit> BuildTranslationUnits(List<SubtitleGroup> groups, int bodySize)
@@ -592,6 +602,47 @@ internal sealed class SubtitleOperations
         var text = SrtSerializer.Serialize(cues);
         await File.WriteAllTextAsync(path, text, Encoding.UTF8);
         CliRuntimeLog.Info("srt", $"SRT saved. chars={text.Length}");
+    }
+
+    public async Task<string> MuxSubtitleIntoVideoAsync(string inputMedia, string subtitlePath, string outputMedia, string language)
+    {
+        if (Path.GetExtension(inputMedia).Equals(".srt", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Mux requires a media input file. Received subtitle file as input.");
+        }
+
+        if (!File.Exists(subtitlePath))
+        {
+            throw new InvalidOperationException($"Subtitle file for mux not found: {subtitlePath}");
+        }
+
+        var tracks = await ProbeWithFfprobeAsync(inputMedia);
+        var newSubtitleIndex = tracks.Count;
+        var normalizedLanguage = NormalizeLanguageToken(language);
+        var subtitleCodec = ResolveSubtitleCodecForContainer(outputMedia);
+        var ffmpeg = ResolveExecutable("ffmpeg");
+
+        var args = $"-y -i \"{inputMedia}\" -i \"{subtitlePath}\" -map 0 -map 1:0 -c copy -c:s {subtitleCodec} -metadata:s:s:{newSubtitleIndex} language={normalizedLanguage} -metadata:s:s:{newSubtitleIndex} title=\"AI {normalizedLanguage} subtitle\" \"{outputMedia}\"";
+        CliRuntimeLog.Info("mux", $"Running ffmpeg mux: {ffmpeg} {args}");
+        await RunProcessAsync(ffmpeg, args);
+        return outputMedia;
+    }
+
+    private static string ResolveSubtitleCodecForContainer(string outputMedia)
+    {
+        var ext = Path.GetExtension(outputMedia).ToLowerInvariant();
+        return ext is ".mp4" or ".m4v" or ".mov" ? "mov_text" : "srt";
+    }
+
+    private static string NormalizeLanguageToken(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return "und";
+        }
+
+        var token = language.Trim().ToLowerInvariant();
+        return token.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_') ? token : "und";
     }
 
     private static SubtitleTrack? SelectBestTrack(List<SubtitleTrack> tracks, string preferredLanguage)
@@ -2817,7 +2868,7 @@ internal sealed record SubtitleGroup(int GroupIndex, List<SubtitleCue> Cues);
 
 internal sealed record GroupTranslationResult(int GroupIndex, string ParaphraseSummary, string ParaphraseHistory, List<SubtitleCue> Cues);
 
-internal sealed record WorkflowResult(string Status, string Branch, string OutputPath, List<GroupTranslationResult> Groups);
+internal sealed record WorkflowResult(string Status, string Branch, string OutputPath, List<GroupTranslationResult> Groups, string? MuxedOutputPath);
 
 internal static class JsonOptions
 {

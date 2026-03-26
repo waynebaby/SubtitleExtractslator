@@ -57,6 +57,8 @@ internal sealed class SubtitleMcpTools
         int? bodySize = null,
         [Description("Optional override for LLM retry count. If null, environment/default settings are used.")]
         int? llmRetryCount = null,
+        [Description("Optional output media path for remuxing generated AI subtitle back into the source video as a new subtitle language track.")]
+        string? muxOutput = null,
         [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and returns an error under sampling-only policy.")]
         McpServer mcpServer = null!)
     {
@@ -82,6 +84,7 @@ internal sealed class SubtitleMcpTools
             cuesPerGroup,
             bodySize,
             llmRetryCount,
+            muxOutput,
             null);
     }
 }
