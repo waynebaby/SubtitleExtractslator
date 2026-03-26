@@ -34,8 +34,25 @@ Default policy (important):
 4. Custom external endpoint access (for example `LLM_ENDPOINT` and related auth/key config) belongs to CLI route only.
 5. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
 6. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
-7. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
-8. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
+7. On Windows, set `servers.subtitle-extractslator.command` to an absolute executable path (do not use relative `./.github/...` in MCP config).
+8. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
+9. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
+
+Recommended Windows workspace MCP config example:
+```json
+{
+  "servers": {
+    "subtitle-extractslator": {
+      "type": "stdio",
+      "command": "E:\\code\\g\\SubtitleExtractslator\\.github\\skills\\subtitle-extractslator\\assets\\bin\\win-x64\\SubtitleExtractslator.Cli.exe",
+      "args": [
+        "--mode",
+        "mcp"
+      ]
+    }
+  }
+}
+```
 
 ## Trigger Guidance
 
@@ -89,7 +106,7 @@ Follow this exact order:
 
 0. MCP setup prompt first.
 Ask user whether to configure MCP for current workspace now.
-If yes, create or update `./.vscode/mcp.json` and confirm `subtitle-extractslator` server is available.
+If yes, create or update `./.vscode/mcp.json`; on Windows use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
 1. Confirm user target: input file and target language.
 2. Probe internal subtitle tracks.
