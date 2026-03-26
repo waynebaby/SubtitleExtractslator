@@ -63,6 +63,13 @@ Notes:
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var positional = new List<string>();
+        var multiTokenOptionKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "input",
+            "output",
+            "out",
+            "mux-output"
+        };
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -78,6 +85,13 @@ Notes:
             if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
             {
                 value = args[++i];
+                if (multiTokenOptionKeys.Contains(key))
+                {
+                    while (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+                    {
+                        value += " " + args[++i];
+                    }
+                }
             }
 
             map[key] = value;
@@ -578,9 +592,9 @@ internal sealed class SubtitleOperations
         }
 
         var ffmpeg = ResolveExecutable("ffmpeg");
-        var args = $"-y -i \"{input}\" -map 0:s:{selected.SubtitleOrder} -f srt \"{output}\"";
+        var args = $"-y -i {QuoteArg(input)} -map 0:s:{selected.SubtitleOrder} -f srt {QuoteArg(output)}";
         CliRuntimeLog.Info("extract", $"Selected subtitle track order={selected.SubtitleOrder} language={selected.Language}");
-        CliRuntimeLog.Info("extract", $"Running ffmpeg: {ffmpeg} {args}");
+        CliRuntimeLog.Info("extract", $"Running ffmpeg: {QuoteArg(ffmpeg)} {args}");
         await RunProcessAsync(ffmpeg, args);
         CliRuntimeLog.Info("extract", "ffmpeg extraction completed.");
 
@@ -622,8 +636,8 @@ internal sealed class SubtitleOperations
         var subtitleCodec = ResolveSubtitleCodecForContainer(outputMedia);
         var ffmpeg = ResolveExecutable("ffmpeg");
 
-        var args = $"-y -i \"{inputMedia}\" -i \"{subtitlePath}\" -map 0 -map 1:0 -c copy -c:s {subtitleCodec} -metadata:s:s:{newSubtitleIndex} language={normalizedLanguage} -metadata:s:s:{newSubtitleIndex} title=\"AI {normalizedLanguage} subtitle\" \"{outputMedia}\"";
-        CliRuntimeLog.Info("mux", $"Running ffmpeg mux: {ffmpeg} {args}");
+        var args = $"-y -i {QuoteArg(inputMedia)} -i {QuoteArg(subtitlePath)} -map 0 -map 1:0 -c copy -c:s {subtitleCodec} -metadata:s:s:{newSubtitleIndex} language={normalizedLanguage} -metadata:s:s:{newSubtitleIndex} title={QuoteArg($"AI {normalizedLanguage} subtitle")} {QuoteArg(outputMedia)}";
+        CliRuntimeLog.Info("mux", $"Running ffmpeg mux: {QuoteArg(ffmpeg)} {args}");
         await RunProcessAsync(ffmpeg, args);
         return outputMedia;
     }
@@ -643,6 +657,12 @@ internal sealed class SubtitleOperations
 
         var token = language.Trim().ToLowerInvariant();
         return token.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_') ? token : "und";
+    }
+
+    private static string QuoteArg(string value)
+    {
+        var safe = value.Replace("\"", "\\\"", StringComparison.Ordinal);
+        return $"\"{safe}\"";
     }
 
     private static SubtitleTrack? SelectBestTrack(List<SubtitleTrack> tracks, string preferredLanguage)
@@ -669,8 +689,8 @@ internal sealed class SubtitleOperations
         await FfmpegBootstrap.EnsureAsync();
 
         var ffprobe = ResolveExecutable("ffprobe");
-        var args = $"-v error -select_streams s -show_entries stream=index:stream_tags=language,title -of json \"{input}\"";
-        CliRuntimeLog.Info("ffprobe", $"Running ffprobe: {ffprobe} {args}");
+        var args = $"-v error -select_streams s -show_entries stream=index:stream_tags=language,title -of json {QuoteArg(input)}";
+        CliRuntimeLog.Info("ffprobe", $"Running ffprobe: {QuoteArg(ffprobe)} {args}");
         var output = await RunProcessAsync(ffprobe, args);
 
         using var doc = JsonDocument.Parse(output);

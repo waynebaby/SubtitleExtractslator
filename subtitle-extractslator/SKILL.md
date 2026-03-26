@@ -51,6 +51,7 @@ Execution path rule (important):
 1. Paths below are deterministic and relative to the skill root folder.
 2. Do not scan the whole disk to locate the binary.
 3. If current working directory is repository root, prepend `./.github/skills/subtitle-extractslator/`.
+4. Always quote file paths that contain spaces (for example `--input "Z:\\My Folder\\movie.mp4"`). This provides best cross-shell compatibility.
 
 Platform binary paths inside this skill:
 1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
