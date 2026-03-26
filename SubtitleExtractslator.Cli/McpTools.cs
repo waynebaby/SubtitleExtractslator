@@ -30,6 +30,15 @@ internal sealed class SubtitleMcpTools
         string lang,
         string output,
         int? cuesPerGroup = null,
-        int? bodySize = null)
-        => _orchestrator.RunWorkflowAsync(input, lang, output, cuesPerGroup, bodySize);
+        int? bodySize = null,
+        int? llmRetryCount = null,
+        string? envOverrides = null)
+        => _orchestrator.RunWorkflowAsync(
+            input,
+            lang,
+            output,
+            cuesPerGroup,
+            bodySize,
+            llmRetryCount,
+            RuntimeEnvironmentOverrides.Parse(envOverrides));
 }

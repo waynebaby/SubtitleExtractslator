@@ -36,21 +36,25 @@ internal sealed record AppOptions(
 SubtitleExtractslator CLI
 
 Usage:
-  SubtitleExtractslator.Cli --mode cli <command> [--key value ...]
+    SubtitleExtractslator.Cli --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
   SubtitleExtractslator.Cli --mode mcp
 
 Commands:
   probe --input <mediaFile> --lang <targetLang>
   opensubtitles-search --input <mediaFile> --lang <targetLang>
   extract --input <mediaFile> --out <subtitleFile> [--prefer en]
-    run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>]
+        run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
 
 Notes:
   In MCP mode, translation source policy is: sampling first, then external provider fallback.
   In CLI mode, translation source policy is: external provider only.
+    Parameter override precedence:
+        command parameter > --env overrides > process environment variable > built-in default.
     Grouping knobs:
         --cues-per-group (or env SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP), default 10
         --body-size (or env SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE), default 3
+    LLM knobs:
+        --llm-retry-count (or env LLM_RETRY_COUNT), default 3
 """;
 
     public static AppOptions Parse(string[] args)
@@ -95,6 +99,7 @@ internal static class CliCommandRunner
 {
     public static async Task<string> RunAsync(WorkflowOrchestrator orchestrator, AppOptions options)
     {
+        using var envScope = RuntimeEnvironmentOverrides.Begin(RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
         return options.Command?.ToLowerInvariant() switch
         {
             "probe" => JsonSerializer.Serialize(await orchestrator.ProbeAsync(
@@ -107,14 +112,27 @@ internal static class CliCommandRunner
                 options.Require("input"),
                 options.Require("out"),
                 options.Arguments.TryGetValue("prefer", out var prefer) ? prefer : "en"), JsonOptions.Pretty),
-            "run-workflow" => JsonSerializer.Serialize(await orchestrator.RunWorkflowAsync(
-                options.Require("input"),
-                options.Require("lang"),
-                options.Require("output"),
-                options.OptionalInt("cues-per-group"),
-                options.OptionalInt("body-size")), JsonOptions.Pretty),
+            "run-workflow" => JsonSerializer.Serialize(await RunWorkflowWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
             _ => AppOptions.HelpText
         };
+    }
+
+    private static async Task<WorkflowResult> RunWorkflowWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
+    {
+        var retryOverride = options.OptionalInt("llm-retry-count");
+        if (retryOverride is <= 0)
+        {
+            throw new InvalidOperationException("--llm-retry-count must be greater than 0.");
+        }
+
+        return await orchestrator.RunWorkflowAsync(
+            options.Require("input"),
+            options.Require("lang"),
+            options.Require("output"),
+            options.OptionalInt("cues-per-group"),
+            options.OptionalInt("body-size"),
+            retryOverride,
+            RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
     }
 
     private static string Require(this AppOptions options, string key)
@@ -140,6 +158,16 @@ internal static class CliCommandRunner
         }
 
         throw new InvalidOperationException($"Invalid integer for --{key}: {value}");
+    }
+
+    private static string? OptionalString(this AppOptions options, string key)
+    {
+        if (!options.Arguments.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value;
     }
 }
 
@@ -167,10 +195,14 @@ internal sealed class WorkflowOrchestrator
         string targetLanguage,
         string output,
         int? cuesPerGroupOverride = null,
-        int? bodySizeOverride = null)
+        int? bodySizeOverride = null,
+        int? llmRetryCountOverride = null,
+        IReadOnlyDictionary<string, string>? envOverrides = null)
     {
         using var workflowScope = CliRuntimeLog.BeginScope("workflow", $"Start run_workflow input={input} target={targetLanguage} output={output}");
+        using var envScope = RuntimeEnvironmentOverrides.Begin(envOverrides);
         using var historyScope = ErrorSnapshotWriter.BeginTranslateHistoryScope(output);
+        using var llmRetryScope = LlmRuntimeOverrides.BeginRetryCountScope(llmRetryCountOverride);
         var probe = await ProbeAsync(input, targetLanguage);
         CliRuntimeLog.Info("workflow", $"Probe completed. tracks={probe.Tracks.Count} hasTarget={probe.HasTargetLanguage}");
         if (probe.HasTargetLanguage)
@@ -1301,13 +1333,13 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         }
 
         var settings = LlmSettings.FromEnvironment();
-        CliRuntimeLog.Info("llm", $"Resolved settings. apiType={settings.ApiType} endpoint={settings.Endpoint} model={settings.Model}");
+        CliRuntimeLog.Info("llm", $"Resolved settings. apiType={settings.ApiType} endpoint={settings.Endpoint} model={settings.Model} retryCount={settings.RetryCount}");
         var systemPrompt = settings.SystemPrompt
             ?? "You are a subtitle translator. Use the provided context sections to reason first, then output only the line-by-line translation for the target lines. Never add commentary in final output. Keep every index and return exactly one translated line for each input index.";
 
         var indexedInput = BuildIndexedInput(lines, targetLanguage, contextParaphrase, contextHint);
         CliRuntimeLog.Info("llm", $"Prompt built. chars={indexedInput.Length}");
-        const int maxAttempts = 3;
+        var maxAttempts = settings.RetryCount;
         Exception? lastError = null;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -1329,11 +1361,14 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                         ["targetLanguage"] = targetLanguage,
                         ["expectedLineCount"] = lines.Count.ToString(CultureInfo.InvariantCulture),
                         ["contextHint"] = contextHint,
+                        ["reasoningSetting"] = settings.Reasoning ?? "low",
+                        ["reasoningOutput"] = execution.ReasoningText,
                         ["outputTokens"] = execution.OutputTokenCount?.ToString(CultureInfo.InvariantCulture) ?? "n/a",
                         ["systemPrompt"] = systemPrompt,
                         ["inputPrompt"] = indexedInput,
                         ["output"] = output
-                    });
+                    },
+                    BuildSnapshotTag(contextHint, attempt, maxAttempts));
                 CliRuntimeLog.Info("llm", $"LLM I/O dump written: {ioDumpPath}");
 
      
@@ -1387,6 +1422,8 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
             }
             catch (Exception ex)
             {
+                var reasoningFromError = ex is LlmRequestException reqEx ? reqEx.ReasoningText : null;
+                var responseBodyFromError = ex is LlmRequestException reqEx2 ? reqEx2.ResponseBody : null;
                 var ioDumpPath = ErrorSnapshotWriter.WriteMarkdown(
                     "llm-io-error",
                     new Dictionary<string, string?>
@@ -1398,10 +1435,14 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                         ["targetLanguage"] = targetLanguage,
                         ["expectedLineCount"] = lines.Count.ToString(CultureInfo.InvariantCulture),
                         ["contextHint"] = contextHint,
+                        ["reasoningSetting"] = settings.Reasoning ?? "low",
+                        ["reasoningOutput"] = reasoningFromError,
+                        ["responseBody"] = responseBodyFromError,
                         ["systemPrompt"] = systemPrompt,
                         ["inputPrompt"] = indexedInput,
                         ["error"] = ex.ToString()
-                    });
+                    },
+                    BuildSnapshotTag(contextHint, attempt, maxAttempts));
                 CliRuntimeLog.Warn("llm", $"LLM I/O error dump written: {ioDumpPath}");
 
                 lastError = ex;
@@ -1415,6 +1456,25 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         }
 
         throw new InvalidOperationException($"LLM translation failed after {maxAttempts} attempts.", lastError);
+    }
+
+    private static string BuildSnapshotTag(string contextHint, int attempt, int maxAttempts)
+    {
+        var main = "main-unknown";
+        var marker = "main=";
+        var start = contextHint.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (start >= 0)
+        {
+            start += marker.Length;
+            var end = contextHint.IndexOf(';', start);
+            var token = end >= 0 ? contextHint[start..end] : contextHint[start..];
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                main = $"main-{token.Trim()}";
+            }
+        }
+
+        return $"{main}.attempt-{attempt}-of-{maxAttempts}";
     }
 
     public Task<IReadOnlyList<string>> TranslateAsync(
@@ -1444,6 +1504,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         using var response = await Http.SendAsync(request);
         body = await response.Content.ReadAsStringAsync();
         CliRuntimeLog.Info("llm", $"Received response. status={(int)response.StatusCode} bodyChars={body.Length}");
+        var reasoningText = TryExtractReasoningText(body);
         if (!response.IsSuccessStatusCode)
         {
             var snapshotPath = ErrorSnapshotWriter.Write(
@@ -1458,15 +1519,17 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                     ["responseStatus"] = $"{(int)response.StatusCode} {response.ReasonPhrase}",
                     ["responseBody"] = body
                 });
-            throw new InvalidOperationException(
+            throw new LlmRequestException(
                 $"LLM translation request failed ({(int)response.StatusCode} {response.ReasonPhrase}). Endpoint: {settings.Endpoint}. Body: {body}\n"
-                + $"Detailed LLM log: {snapshotPath}");
+                + $"Detailed LLM log: {snapshotPath}",
+                body,
+                reasoningText);
         }
 
         var outputText = TryExtractOutputText(body, settings.ApiType) ?? string.Empty;
         var outputTokenCount = TryExtractOutputTokenCount(body, settings.ApiType)
             ?? ApproximateTokenCount(outputText);
-        return new LlmExecutionResult(outputText, outputTokenCount);
+        return new LlmExecutionResult(outputText, outputTokenCount, reasoningText);
     }
 
     private static string BuildIndexedInput(
@@ -1611,7 +1674,72 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return Math.Max(1, text.Length / 4);
     }
 
-    private sealed record LlmExecutionResult(string OutputText, int? OutputTokenCount);
+    private static string? TryExtractReasoningText(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var buffer = new List<string>();
+        CollectReasoningSegments(doc.RootElement, buffer);
+        return buffer.Count == 0 ? null : string.Join("\n", buffer);
+    }
+
+    private static void CollectReasoningSegments(JsonElement element, List<string> buffer)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                if (element.TryGetProperty("type", out var typeEl)
+                    && typeEl.ValueKind == JsonValueKind.String)
+                {
+                    var type = typeEl.GetString();
+                    if (type is not null
+                        && (type.Equals("reasoning", StringComparison.OrdinalIgnoreCase)
+                            || type.Equals("thinking", StringComparison.OrdinalIgnoreCase)
+                            || type.Equals("thought", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var text = ExtractTextFromElement(element, skipReasoning: false);
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            buffer.Add(text.Trim());
+                        }
+                    }
+                }
+
+                foreach (var property in element.EnumerateObject())
+                {
+                    CollectReasoningSegments(property.Value, buffer);
+                }
+
+                break;
+            }
+
+            case JsonValueKind.Array:
+            {
+                foreach (var item in element.EnumerateArray())
+                {
+                    CollectReasoningSegments(item, buffer);
+                }
+
+                break;
+            }
+        }
+    }
+
+    private sealed record LlmExecutionResult(string OutputText, int? OutputTokenCount, string? ReasoningText);
+
+    private sealed class LlmRequestException : InvalidOperationException
+    {
+        public LlmRequestException(string message, string? responseBody, string? reasoningText)
+            : base(message)
+        {
+            ResponseBody = responseBody;
+            ReasoningText = reasoningText;
+        }
+
+        public string? ResponseBody { get; }
+
+        public string? ReasoningText { get; }
+    }
 
     private static async Task ApplyAuthorizationAsync(HttpRequestMessage request, LlmSettings settings)
     {
@@ -1929,7 +2057,8 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         string? ApiKey,
         string? SystemPrompt,
         int MaxTokens,
-        string? Reasoning)
+        string? Reasoning,
+        int RetryCount)
     {
         public static LlmSettings FromEnvironment()
         {
@@ -1981,7 +2110,129 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
                 throw new InvalidOperationException("Unsupported LLM_REASONING. Supported values: off, low, medium, high, on.");
             }
 
-            return new LlmSettings(endpoint, model, apiType, authType, apiKey, systemPrompt, maxTokens, reasoning);
+            var retryRaw = Environment.GetEnvironmentVariable("LLM_RETRY_COUNT");
+            var retryCount = 3;
+            var retryOverride = LlmRuntimeOverrides.GetRetryCountOverride();
+            if (retryOverride is > 0)
+            {
+                retryCount = retryOverride.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(retryRaw)
+                && int.TryParse(retryRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedRetry)
+                && parsedRetry > 0)
+            {
+                retryCount = parsedRetry;
+            }
+
+            retryCount = Math.Clamp(retryCount, 1, 20);
+
+            return new LlmSettings(endpoint, model, apiType, authType, apiKey, systemPrompt, maxTokens, reasoning, retryCount);
+        }
+    }
+}
+
+internal static class LlmRuntimeOverrides
+{
+    private static readonly AsyncLocal<int?> RetryCountOverride = new();
+
+    public static int? GetRetryCountOverride() => RetryCountOverride.Value;
+
+    public static IDisposable BeginRetryCountScope(int? retryCount)
+    {
+        var previous = RetryCountOverride.Value;
+        RetryCountOverride.Value = retryCount;
+        return new Scope(previous);
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private readonly int? _previous;
+
+        public Scope(int? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            RetryCountOverride.Value = _previous;
+        }
+    }
+}
+
+internal static class RuntimeEnvironmentOverrides
+{
+    public static IDisposable Begin(IReadOnlyDictionary<string, string>? overrides)
+    {
+        if (overrides is null || overrides.Count == 0)
+        {
+            return NoopDisposable.Instance;
+        }
+
+        var previous = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in overrides)
+        {
+            previous[kv.Key] = Environment.GetEnvironmentVariable(kv.Key);
+            Environment.SetEnvironmentVariable(kv.Key, kv.Value);
+        }
+
+        return new Scope(previous);
+    }
+
+    public static Dictionary<string, string>? Parse(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var parts = raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var part in parts)
+        {
+            var idx = part.IndexOf('=');
+            if (idx <= 0 || idx == part.Length - 1)
+            {
+                throw new InvalidOperationException($"Invalid env override segment: {part}. Use KEY=VALUE;KEY2=VALUE2 format.");
+            }
+
+            var key = part[..idx].Trim();
+            var value = part[(idx + 1)..].Trim();
+            if (key.Length == 0)
+            {
+                throw new InvalidOperationException($"Invalid env override key in segment: {part}");
+            }
+
+            map[key] = value;
+        }
+
+        return map;
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private readonly IReadOnlyDictionary<string, string?> _previous;
+
+        public Scope(IReadOnlyDictionary<string, string?> previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            foreach (var kv in _previous)
+            {
+                Environment.SetEnvironmentVariable(kv.Key, kv.Value);
+            }
+        }
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public static readonly NoopDisposable Instance = new();
+
+        public void Dispose()
+        {
         }
     }
 }
@@ -2142,7 +2393,7 @@ internal static class ErrorSnapshotWriter
         return new HistoryScope(current);
     }
 
-    public static string WriteMarkdown(string prefix, IReadOnlyDictionary<string, string?> sections)
+    public static string WriteMarkdown(string prefix, IReadOnlyDictionary<string, string?> sections, string? fileTag = null)
     {
         var dir = TranslateHistoryDirectory.Value;
         if (string.IsNullOrWhiteSpace(dir))
@@ -2152,9 +2403,15 @@ internal static class ErrorSnapshotWriter
 
         Directory.CreateDirectory(dir);
 
+        var safeTag = string.IsNullOrWhiteSpace(fileTag)
+            ? null
+            : SanitizeFileTag(fileTag);
+
         var filePath = Path.Combine(
             dir,
-            $"{prefix}.{DateTimeOffset.Now:yyyyMMdd_HHmmss_fff}.{Guid.NewGuid():N}.md");
+            string.IsNullOrWhiteSpace(safeTag)
+                ? $"{prefix}.{DateTimeOffset.Now:yyyyMMdd_HHmmss_fff}.{Guid.NewGuid():N}.md"
+                : $"{prefix}.{safeTag}.{DateTimeOffset.Now:yyyyMMdd_HHmmss_fff}.{Guid.NewGuid():N}.md");
 
         var sb = new StringBuilder();
         sb.AppendLine($"# {prefix}");
@@ -2174,6 +2431,25 @@ internal static class ErrorSnapshotWriter
 
         File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
         return filePath;
+    }
+
+    private static string SanitizeFileTag(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var buffer = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (invalid.Contains(ch) || char.IsWhiteSpace(ch))
+            {
+                buffer.Append('-');
+            }
+            else
+            {
+                buffer.Append(ch);
+            }
+        }
+
+        return buffer.ToString().Trim('-');
     }
 
     private sealed class HistoryScope : IDisposable

@@ -91,3 +91,4 @@ External provider only.
 1. Prefer deterministic behavior over creative rewriting.
 2. Keep translation natural and context aware, but preserve subtitle pacing.
 3. For command details and troubleshooting, read `references/commands.md` and `references/troubleshooting.md`.
+4. For literary or entertainment subtitles (jokes, sarcasm, taboo language, sexual humor, dark comedy), strongly prefer an uncensored model variant. Censored models are more likely to weaken punchlines, skip sensitive phrasing, or leave source fragments untranslated.
