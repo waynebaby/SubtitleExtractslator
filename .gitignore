@@ -1,0 +1,15 @@
+
+obj/
+.vs/
+.vscode/
+.github/skills/
+*.user
+*.suo
+*.cache
+*.tmp
+*.log
+artifacts/
+tmp/
+TestSubtitles/
+*/bin/
+subtitle-extractslator/assets/bin/
