@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 
 namespace SubtitleExtractslator.Cli;
@@ -60,58 +61,43 @@ internal sealed class OpenSubtitlesAccessor
 
         await EnsureAuthAsync();
 
-        var url = BuildSearchUrl(query, targetLanguage);
-        using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        ApplyHeaders(req, includeAuth: true);
+        var queryVariants = BuildQueryVariants(query);
+        var normalizedLanguage = NormalizeLanguage(targetLanguage);
+        var languageFallbacks = BuildLanguageFallbacks(normalizedLanguage);
 
-        using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-        var body = await resp.Content.ReadAsStringAsync();
-        if (!resp.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(
-                $"OpenSubtitles search failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
-        }
+        // Try strict language matches first. If empty, retry without language filter.
+        var collected = new List<SubtitleCandidate>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        using var doc = JsonDocument.Parse(body);
-        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        foreach (var queryVariant in queryVariants)
         {
-            return new List<SubtitleCandidate>();
-        }
-
-        var list = new List<SubtitleCandidate>();
-        foreach (var item in data.EnumerateArray())
-        {
-            if (!item.TryGetProperty("attributes", out var attributes))
+            foreach (var language in languageFallbacks)
             {
-                continue;
-            }
-
-            var language = ReadString(attributes, "language") ?? targetLanguage;
-            var release = ReadString(attributes, "release")
-                ?? ReadString(attributes, "feature_details")
-                ?? "subtitle";
-            var score = ReadDouble(attributes, "ratings")
-                ?? ReadDouble(attributes, "download_count")
-                ?? 0.0;
-            var fileId = ReadFirstFileId(attributes);
-            var downloadUrl = ReadString(attributes, "url");
-
-            list.Add(new SubtitleCandidate(
-                list.Count + 1,
-                language,
-                score,
-                release,
-                "opensubtitles",
-                downloadUrl,
-                fileId));
-
-            if (list.Count >= maxResults)
-            {
-                break;
+                var page = await SearchSingleAsync(queryVariant, language, maxResults);
+                AppendUnique(collected, seen, page, maxResults);
+                if (collected.Count >= maxResults)
+                {
+                    return ReRank(collected, maxResults);
+                }
             }
         }
 
-        return list;
+        if (collected.Count > 0)
+        {
+            return ReRank(collected, maxResults);
+        }
+
+        foreach (var queryVariant in queryVariants)
+        {
+            var page = await SearchSingleAsync(queryVariant, null, maxResults);
+            AppendUnique(collected, seen, page, maxResults);
+            if (collected.Count >= maxResults)
+            {
+                return ReRank(collected, maxResults);
+            }
+        }
+
+        return ReRank(collected, maxResults);
     }
 
     public async Task DownloadCandidateToFileAsync(SubtitleCandidate candidate, string outputPath)
@@ -220,14 +206,209 @@ internal sealed class OpenSubtitlesAccessor
         throw new InvalidOperationException("OpenSubtitles response does not contain download link.");
     }
 
-    private string BuildSearchUrl(string query, string targetLanguage)
+    private async Task<List<SubtitleCandidate>> SearchSingleAsync(string query, string? language, int maxResults)
+    {
+        var url = BuildSearchUrl(query, language);
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        ApplyHeaders(req, includeAuth: true);
+
+        using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+        var body = await resp.Content.ReadAsStringAsync();
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"OpenSubtitles search failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
+        }
+
+        using var doc = JsonDocument.Parse(body);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        {
+            return new List<SubtitleCandidate>();
+        }
+
+        var list = new List<SubtitleCandidate>();
+        foreach (var item in data.EnumerateArray())
+        {
+            if (!item.TryGetProperty("attributes", out var attributes))
+            {
+                continue;
+            }
+
+            var detectedLanguage = ReadString(attributes, "language") ?? language ?? "und";
+            var release = ReadReleaseName(attributes);
+            var score = ReadDouble(attributes, "ratings")
+                ?? ReadDouble(attributes, "download_count")
+                ?? 0.0;
+            var fileId = ReadFirstFileId(attributes);
+            var downloadUrl = ReadString(attributes, "url");
+
+            list.Add(new SubtitleCandidate(
+                list.Count + 1,
+                detectedLanguage,
+                score,
+                release,
+                "opensubtitles",
+                downloadUrl,
+                fileId));
+
+            if (list.Count >= maxResults)
+            {
+                break;
+            }
+        }
+
+        return list;
+    }
+
+    private string BuildSearchUrl(string query, string? language)
     {
         var normalizedQuery = Uri.EscapeDataString(query);
-        var normalizedLanguage = Uri.EscapeDataString(targetLanguage);
-        return _settings.Endpoint
+        var url = _settings.Endpoint
             + "/subtitles?query=" + normalizedQuery
-            + "&languages=" + normalizedLanguage
             + "&order_by=download_count&order_direction=desc";
+
+        if (!string.IsNullOrWhiteSpace(language))
+        {
+            url += "&languages=" + Uri.EscapeDataString(language);
+        }
+
+        return url;
+    }
+
+    private static List<string> BuildQueryVariants(string query)
+    {
+        var list = new List<string>();
+        AddDistinct(list, query.Trim());
+
+        var spaced = Regex.Replace(query, "[._-]+", " ").Trim();
+        spaced = Regex.Replace(spaced, "\\s+", " ").Trim();
+        AddDistinct(list, spaced);
+
+        var stripped = Regex.Replace(
+            spaced,
+            "\\b(480p|576p|720p|1080p|2160p|x264|x265|h\\.?264|h\\.?265|webrip|web[- ]?dl|bluray|brrip|hdrip|amzn|nf|hmax|ddp\\d(\\.\\d)?|aac\\d(\\.\\d)?)\\b",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        stripped = Regex.Replace(stripped, "\\s+", " ").Trim();
+        AddDistinct(list, stripped);
+
+        return list.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+    }
+
+    private static string NormalizeLanguage(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "und";
+        }
+
+        return value.Trim().ToLowerInvariant();
+    }
+
+    private static List<string> BuildLanguageFallbacks(string language)
+    {
+        var list = new List<string>();
+        AddDistinct(list, language);
+
+        if (language is "zh" or "zh-cn" or "zh-tw")
+        {
+            AddDistinct(list, "zh");
+            AddDistinct(list, "zho");
+            AddDistinct(list, "chi");
+            AddDistinct(list, "zh-cn");
+            AddDistinct(list, "zh-tw");
+        }
+        else if (language is "en" or "eng")
+        {
+            AddDistinct(list, "en");
+            AddDistinct(list, "eng");
+        }
+
+        return list.Where(x => !string.IsNullOrWhiteSpace(x) && !x.Equals("und", StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private static string ReadReleaseName(JsonElement attributes)
+    {
+        var release = ReadString(attributes, "release");
+        if (!string.IsNullOrWhiteSpace(release))
+        {
+            return release;
+        }
+
+        if (attributes.TryGetProperty("feature_details", out var feature)
+            && feature.ValueKind == JsonValueKind.Object)
+        {
+            var title = ReadString(feature, "title");
+            var season = ReadString(feature, "season_number");
+            var episode = ReadString(feature, "episode_number");
+            var year = ReadString(feature, "year");
+
+            var label = title ?? "subtitle";
+            if (!string.IsNullOrWhiteSpace(season) && !string.IsNullOrWhiteSpace(episode))
+            {
+                label += $" S{season}E{episode}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(year))
+            {
+                label += $" ({year})";
+            }
+
+            return label;
+        }
+
+        return "subtitle";
+    }
+
+    private static List<SubtitleCandidate> ReRank(List<SubtitleCandidate> items, int maxResults)
+    {
+        return items
+            .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(Math.Max(1, maxResults))
+            .Select((x, i) => x with { Rank = i + 1 })
+            .ToList();
+    }
+
+    private static void AppendUnique(
+        List<SubtitleCandidate> target,
+        HashSet<string> seen,
+        IEnumerable<SubtitleCandidate> candidates,
+        int maxResults)
+    {
+        foreach (var candidate in candidates)
+        {
+            var key = !string.IsNullOrWhiteSpace(candidate.FileId)
+                ? $"file:{candidate.FileId}"
+                : $"name:{candidate.Name}|lang:{candidate.Language}";
+
+            if (!seen.Add(key))
+            {
+                continue;
+            }
+
+            target.Add(candidate);
+            if (target.Count >= maxResults)
+            {
+                break;
+            }
+        }
+    }
+
+    private static void AddDistinct(List<string> values, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var normalized = value.Trim();
+        if (values.Any(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        values.Add(normalized);
     }
 
     private void ApplyHeaders(HttpRequestMessage request, bool includeAuth)
