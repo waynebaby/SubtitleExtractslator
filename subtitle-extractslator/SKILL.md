@@ -81,6 +81,10 @@ ELSE continue.
 - search OpenSubtitles in any language
 - prefer English candidates first
 - then use the best available non-English candidate
+- OpenSubtitles query fallback strategy (required):
+- first try search with the video title/base filename
+- if no candidate is found, retry with normalized episode-style keyword generated from full input path, for example: `<series_or_title> s00e00`
+- if still no candidate, report not found and continue local extraction fallback
 
 OpenSubtitles credential interaction rule (must execute before real OpenSubtitles call):
 1. If `OPENSUBTITLES_API_KEY` is missing in current context/environment, ask user for it.
