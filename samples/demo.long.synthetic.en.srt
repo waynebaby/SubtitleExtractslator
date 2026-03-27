@@ -1,0 +1,320 @@
+1
+00:00:01,000 --> 00:00:03,000
+Synthetic cue 1. This line is original and safe for tests.
+
+2
+00:00:04,000 --> 00:00:06,000
+Synthetic cue 2. This line is original and safe for tests.
+
+3
+00:00:07,000 --> 00:00:09,000
+Synthetic cue 3. This line is original and safe for tests.
+
+4
+00:00:10,000 --> 00:00:12,000
+Synthetic cue 4. This line is original and safe for tests.
+
+5
+00:00:13,000 --> 00:00:15,000
+Synthetic cue 5. This line is original and safe for tests.
+
+6
+00:00:16,000 --> 00:00:18,000
+Synthetic cue 6. This line is original and safe for tests.
+
+7
+00:00:19,000 --> 00:00:21,000
+Synthetic cue 7. This line is original and safe for tests.
+
+8
+00:00:22,000 --> 00:00:24,000
+Synthetic cue 8. This line is original and safe for tests.
+
+9
+00:00:25,000 --> 00:00:27,000
+Synthetic cue 9. This line is original and safe for tests.
+
+10
+00:00:28,000 --> 00:00:30,000
+Synthetic cue 10. This line is original and safe for tests.
+
+11
+00:00:31,000 --> 00:00:33,000
+Synthetic cue 11. This line is original and safe for tests.
+
+12
+00:00:34,000 --> 00:00:36,000
+Synthetic cue 12. This line is original and safe for tests.
+
+13
+00:00:37,000 --> 00:00:39,000
+Synthetic cue 13. This line is original and safe for tests.
+
+14
+00:00:40,000 --> 00:00:42,000
+Synthetic cue 14. This line is original and safe for tests.
+
+15
+00:00:43,000 --> 00:00:45,000
+Synthetic cue 15. This line is original and safe for tests.
+
+16
+00:00:46,000 --> 00:00:48,000
+Synthetic cue 16. This line is original and safe for tests.
+
+17
+00:00:49,000 --> 00:00:51,000
+Synthetic cue 17. This line is original and safe for tests.
+
+18
+00:00:52,000 --> 00:00:54,000
+Synthetic cue 18. This line is original and safe for tests.
+
+19
+00:00:55,000 --> 00:00:57,000
+Synthetic cue 19. This line is original and safe for tests.
+
+20
+00:00:58,000 --> 00:01:00,000
+Synthetic cue 20. This line is original and safe for tests.
+
+21
+00:01:01,000 --> 00:01:03,000
+Synthetic cue 21. This line is original and safe for tests.
+
+22
+00:01:04,000 --> 00:01:06,000
+Synthetic cue 22. This line is original and safe for tests.
+
+23
+00:01:07,000 --> 00:01:09,000
+Synthetic cue 23. This line is original and safe for tests.
+
+24
+00:01:10,000 --> 00:01:12,000
+Synthetic cue 24. This line is original and safe for tests.
+
+25
+00:01:13,000 --> 00:01:15,000
+Synthetic cue 25. This line is original and safe for tests.
+
+26
+00:01:16,000 --> 00:01:18,000
+Synthetic cue 26. This line is original and safe for tests.
+
+27
+00:01:19,000 --> 00:01:21,000
+Synthetic cue 27. This line is original and safe for tests.
+
+28
+00:01:22,000 --> 00:01:24,000
+Synthetic cue 28. This line is original and safe for tests.
+
+29
+00:01:25,000 --> 00:01:27,000
+Synthetic cue 29. This line is original and safe for tests.
+
+30
+00:01:28,000 --> 00:01:30,000
+Synthetic cue 30. This line is original and safe for tests.
+
+31
+00:01:31,000 --> 00:01:33,000
+Synthetic cue 31. This line is original and safe for tests.
+
+32
+00:01:34,000 --> 00:01:36,000
+Synthetic cue 32. This line is original and safe for tests.
+
+33
+00:01:37,000 --> 00:01:39,000
+Synthetic cue 33. This line is original and safe for tests.
+
+34
+00:01:40,000 --> 00:01:42,000
+Synthetic cue 34. This line is original and safe for tests.
+
+35
+00:01:43,000 --> 00:01:45,000
+Synthetic cue 35. This line is original and safe for tests.
+
+36
+00:01:46,000 --> 00:01:48,000
+Synthetic cue 36. This line is original and safe for tests.
+
+37
+00:01:49,000 --> 00:01:51,000
+Synthetic cue 37. This line is original and safe for tests.
+
+38
+00:01:52,000 --> 00:01:54,000
+Synthetic cue 38. This line is original and safe for tests.
+
+39
+00:01:55,000 --> 00:01:57,000
+Synthetic cue 39. This line is original and safe for tests.
+
+40
+00:01:58,000 --> 00:02:00,000
+Synthetic cue 40. This line is original and safe for tests.
+
+41
+00:02:01,000 --> 00:02:03,000
+Synthetic cue 41. This line is original and safe for tests.
+
+42
+00:02:04,000 --> 00:02:06,000
+Synthetic cue 42. This line is original and safe for tests.
+
+43
+00:02:07,000 --> 00:02:09,000
+Synthetic cue 43. This line is original and safe for tests.
+
+44
+00:02:10,000 --> 00:02:12,000
+Synthetic cue 44. This line is original and safe for tests.
+
+45
+00:02:13,000 --> 00:02:15,000
+Synthetic cue 45. This line is original and safe for tests.
+
+46
+00:02:16,000 --> 00:02:18,000
+Synthetic cue 46. This line is original and safe for tests.
+
+47
+00:02:19,000 --> 00:02:21,000
+Synthetic cue 47. This line is original and safe for tests.
+
+48
+00:02:22,000 --> 00:02:24,000
+Synthetic cue 48. This line is original and safe for tests.
+
+49
+00:02:25,000 --> 00:02:27,000
+Synthetic cue 49. This line is original and safe for tests.
+
+50
+00:02:28,000 --> 00:02:30,000
+Synthetic cue 50. This line is original and safe for tests.
+
+51
+00:02:31,000 --> 00:02:33,000
+Synthetic cue 51. This line is original and safe for tests.
+
+52
+00:02:34,000 --> 00:02:36,000
+Synthetic cue 52. This line is original and safe for tests.
+
+53
+00:02:37,000 --> 00:02:39,000
+Synthetic cue 53. This line is original and safe for tests.
+
+54
+00:02:40,000 --> 00:02:42,000
+Synthetic cue 54. This line is original and safe for tests.
+
+55
+00:02:43,000 --> 00:02:45,000
+Synthetic cue 55. This line is original and safe for tests.
+
+56
+00:02:46,000 --> 00:02:48,000
+Synthetic cue 56. This line is original and safe for tests.
+
+57
+00:02:49,000 --> 00:02:51,000
+Synthetic cue 57. This line is original and safe for tests.
+
+58
+00:02:52,000 --> 00:02:54,000
+Synthetic cue 58. This line is original and safe for tests.
+
+59
+00:02:55,000 --> 00:02:57,000
+Synthetic cue 59. This line is original and safe for tests.
+
+60
+00:02:58,000 --> 00:03:00,000
+Synthetic cue 60. This line is original and safe for tests.
+
+61
+00:03:01,000 --> 00:03:03,000
+Synthetic cue 61. This line is original and safe for tests.
+
+62
+00:03:04,000 --> 00:03:06,000
+Synthetic cue 62. This line is original and safe for tests.
+
+63
+00:03:07,000 --> 00:03:09,000
+Synthetic cue 63. This line is original and safe for tests.
+
+64
+00:03:10,000 --> 00:03:12,000
+Synthetic cue 64. This line is original and safe for tests.
+
+65
+00:03:13,000 --> 00:03:15,000
+Synthetic cue 65. This line is original and safe for tests.
+
+66
+00:03:16,000 --> 00:03:18,000
+Synthetic cue 66. This line is original and safe for tests.
+
+67
+00:03:19,000 --> 00:03:21,000
+Synthetic cue 67. This line is original and safe for tests.
+
+68
+00:03:22,000 --> 00:03:24,000
+Synthetic cue 68. This line is original and safe for tests.
+
+69
+00:03:25,000 --> 00:03:27,000
+Synthetic cue 69. This line is original and safe for tests.
+
+70
+00:03:28,000 --> 00:03:30,000
+Synthetic cue 70. This line is original and safe for tests.
+
+71
+00:03:31,000 --> 00:03:33,000
+Synthetic cue 71. This line is original and safe for tests.
+
+72
+00:03:34,000 --> 00:03:36,000
+Synthetic cue 72. This line is original and safe for tests.
+
+73
+00:03:37,000 --> 00:03:39,000
+Synthetic cue 73. This line is original and safe for tests.
+
+74
+00:03:40,000 --> 00:03:42,000
+Synthetic cue 74. This line is original and safe for tests.
+
+75
+00:03:43,000 --> 00:03:45,000
+Synthetic cue 75. This line is original and safe for tests.
+
+76
+00:03:46,000 --> 00:03:48,000
+Synthetic cue 76. This line is original and safe for tests.
+
+77
+00:03:49,000 --> 00:03:51,000
+Synthetic cue 77. This line is original and safe for tests.
+
+78
+00:03:52,000 --> 00:03:54,000
+Synthetic cue 78. This line is original and safe for tests.
+
+79
+00:03:55,000 --> 00:03:57,000
+Synthetic cue 79. This line is original and safe for tests.
+
+80
+00:03:58,000 --> 00:04:00,000
+Synthetic cue 80. This line is original and safe for tests.
+
