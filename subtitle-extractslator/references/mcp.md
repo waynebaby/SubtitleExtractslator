@@ -47,7 +47,7 @@ Cross-platform command path rule:
 2. `opensubtitles_search`
 3. `opensubtitles_download`
 4. `extract`
-5. `run_workflow`
+5. `translate`
 
 `opensubtitles_download` behavior:
 1. Requires `fileId` from a previous `opensubtitles_search` candidate.
@@ -55,12 +55,30 @@ Cross-platform command path rule:
 3. Requires explicit `opensubtitlesApiKey` parameter for real API access.
 
 OpenSubtitles parameter contract:
-1. `opensubtitles_search` requires `opensubtitlesApiKey`.
-2. `opensubtitles_download` requires `opensubtitlesApiKey`.
+1. `opensubtitles_search` required parameters:
+- `input`
+- `lang`
+- `searchQueryPrimary`
+- `searchQueryNormalized`
+- `opensubtitlesApiKey`
+2. `opensubtitles_download` required parameters:
+- `fileId`
+- `output`
+- `opensubtitlesApiKey`
 3. Optional for both tools: `opensubtitlesUsername`, `opensubtitlesPassword`, `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
-4. `run_workflow` accepts optional OpenSubtitles parameters; without them, OpenSubtitles branch is skipped.
+4. `translate` is translation-only and does not accept OpenSubtitles parameters.
 
-`run_workflow_batch` is intentionally not exposed in MCP mode due to timeout risk in common MCP clients.
+`translate` behavior:
+1. Translation-only path: no probe/search/download/extract/mux orchestration.
+2. Required inputs: subtitle file input, target language, output path.
+3. Optional translation controls: `cuesPerGroup`, `bodySize`, `llmRetryCount`.
+
+`extract` behavior in MCP mode:
+1. Non-bitmap subtitle extraction follows the same FFmpeg flow as CLI.
+2. Bitmap subtitle branch (`hdmv_pgs_subtitle` / `dvd_subtitle`) runs SUP -> PNG+timeline in C# and OCR through MCP sampling.
+3. This differs from CLI only at OCR source: MCP uses sampling, CLI uses configured local OpenAI-compatible endpoint.
+
+`translate-batch` is intentionally not exposed in MCP mode due to timeout risk in common MCP clients.
 
 ## Tool Return Contract
 

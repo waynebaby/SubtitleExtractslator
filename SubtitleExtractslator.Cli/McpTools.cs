@@ -84,13 +84,33 @@ internal sealed class SubtitleMcpTools
         [Description("Output subtitle file path.")]
         string output,
         [Description("Preferred subtitle language code for extraction, default is en.")]
-        string prefer = "en")
-        => ExecuteWithResultAsync("extract", () => _orchestrator.ExtractSubtitleAsync(input, output, prefer));
+        string prefer = "en",
+        [Description("Injected MCP server instance used for sampling-based bitmap OCR in MCP mode.")]
+        McpServer mcpServer = null!)
+    {
+        if (mcpServer is null)
+        {
+            const string errorMessage = "MCP server instance injection failed in Extract parameter. Sampling-based bitmap OCR in MCP mode is unavailable.";
+            CliRuntimeLog.Error("workflow", errorMessage);
+            return Task.FromResult(McpToolResult<ExtractionResult>.Failure(
+                "mcp_server_injection_failed",
+                errorMessage,
+                null));
+        }
 
-    [McpServerTool(Name = "run_workflow", Title = "Run full subtitle workflow")]
-    [Description("Run the end-to-end subtitle workflow: probe existing tracks, optionally search OpenSubtitles, extract fallback subtitles, perform grouped context-aware translation, and write final SRT output. In MCP mode, translation is sampling-only and any sampling/injection failure returns an error.")]
-    public async Task<McpToolResult<WorkflowResult>> RunWorkflow(
-        [Description("Input media file path or subtitle file path.")]
+        return ExecuteWithResultAsync(
+            "extract",
+            async () =>
+            {
+                using var samplingScope = McpSamplingRuntimeContext.BeginServerScope(mcpServer);
+                return await _orchestrator.ExtractSubtitleAsync(input, output, prefer);
+            });
+    }
+
+    [McpServerTool(Name = "translate", Title = "Translate subtitle")]
+    [Description("Translate subtitle content to target language and write final SRT output. This tool performs translation only and does not run probe/search/download/extract/mux orchestration.")]
+    public async Task<McpToolResult<WorkflowResult>> Translate(
+        [Description("Input subtitle file path (*.srt).")]
         string input,
         [Description("Target subtitle language code, e.g. zh, en, ja.")]
         string lang,
@@ -102,24 +122,12 @@ internal sealed class SubtitleMcpTools
         int? bodySize = null,
         [Description("Optional override for LLM retry count. If null, environment/default settings are used.")]
         int? llmRetryCount = null,
-        [Description("Optional output media path for remuxing generated AI subtitle back into the source video as a new subtitle language track.")]
-        string? muxOutput = null,
-        [Description("Optional OpenSubtitles API key. If absent, workflow skips OpenSubtitles branch and continues local extraction fallback.")]
-        string? opensubtitlesApiKey = null,
-        [Description("Optional OpenSubtitles username for authenticated login token.")]
-        string? opensubtitlesUsername = null,
-        [Description("Optional OpenSubtitles password for authenticated login token.")]
-        string? opensubtitlesPassword = null,
-        [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
-        string? opensubtitlesEndpoint = null,
-        [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
-        string? opensubtitlesUserAgent = null,
-        [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and returns an error under sampling-only policy.")]
+        [Description("Injected MCP server instance used for official sampling requests. If injection fails, translate returns an error under sampling-only policy.")]
         McpServer mcpServer = null!)
     {
         if (mcpServer is null)
         {
-            const string errorMessage = "MCP server instance injection failed in RunWorkflow parameter. Under sampling-only policy, external fallback is disabled.";
+            const string errorMessage = "MCP server instance injection failed in Translate parameter. Under sampling-only policy, external fallback is disabled.";
             CliRuntimeLog.Error("workflow", errorMessage);
             return McpToolResult<WorkflowResult>.Failure(
                 "mcp_server_injection_failed",
@@ -128,23 +136,21 @@ internal sealed class SubtitleMcpTools
         }
         else
         {
-            CliRuntimeLog.Info("workflow", "MCP server instance injection succeeded for RunWorkflow parameter.");
+            CliRuntimeLog.Info("workflow", "MCP server instance injection succeeded for Translate parameter.");
         }
 
         return await ExecuteWithResultAsync(
-            "run_workflow",
+            "translate",
             async () =>
             {
                 using var samplingScope = McpSamplingRuntimeContext.BeginServerScope(mcpServer);
-                return await _orchestrator.RunWorkflowAsync(
+                return await _orchestrator.TranslateAsync(
                     input,
                     lang,
                     output,
                     cuesPerGroup,
                     bodySize,
                     llmRetryCount,
-                    muxOutput,
-                    BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: false),
                     null);
             });
     }

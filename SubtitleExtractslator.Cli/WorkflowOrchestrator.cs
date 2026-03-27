@@ -5,11 +5,12 @@ namespace SubtitleExtractslator.Cli;
 
 internal sealed class WorkflowOrchestrator
 {
-    private readonly SubtitleOperations _ops = new();
+    private readonly SubtitleOperations _ops;
     private readonly TranslationPipeline _translator;
 
     public WorkflowOrchestrator(ModeContext modeContext)
     {
+        _ops = new SubtitleOperations(modeContext);
         _translator = new TranslationPipeline(modeContext, new ExternalTranslationProvider(), new SamplingTranslationProvider());
     }
 
@@ -40,6 +41,30 @@ internal sealed class WorkflowOrchestrator
 
     public Task<ExtractionResult> ExtractSubtitleAsync(string input, string output, string preferredLanguage)
         => _ops.ExtractSubtitleAsync(input, output, preferredLanguage);
+
+    public async Task<WorkflowResult> TranslateAsync(
+        string input,
+        string targetLanguage,
+        string output,
+        int? cuesPerGroupOverride = null,
+        int? bodySizeOverride = null,
+        int? llmRetryCountOverride = null,
+        IReadOnlyDictionary<string, string>? envOverrides = null)
+    {
+        using var workflowScope = CliRuntimeLog.BeginScope("workflow", $"Start translate input={input} target={targetLanguage} output={output}");
+        using var responseHealthScope = ResponseSizeHealthMonitor.BeginTaskScope($"translate-{Guid.NewGuid():N}");
+        using var envScope = RuntimeEnvironmentOverrides.Begin(envOverrides);
+        using var historyScope = ErrorSnapshotWriter.BeginTranslateHistoryScope(output);
+        using var llmRetryScope = LlmRuntimeOverrides.BeginRetryCountScope(llmRetryCountOverride);
+
+        if (!Path.GetExtension(input).Equals(".srt", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("translate only accepts subtitle input (*.srt). Use other tools for probe/search/extract first.");
+        }
+
+        var groupResults = await TranslateSubtitleToOutputAsync(input, targetLanguage, output, cuesPerGroupOverride, bodySizeOverride);
+        return new WorkflowResult("completed", "translate-only", output, groupResults, null);
+    }
 
     public async Task<WorkflowResult> RunWorkflowAsync(
         string input,
@@ -115,6 +140,26 @@ internal sealed class WorkflowOrchestrator
             CliRuntimeLog.Info("workflow", $"Extraction completed. sourceLanguage={sourceLanguage} subtitlePath={subtitlePath}");
         }
 
+        var groupResults = await TranslateSubtitleToOutputAsync(subtitlePath, targetLanguage, output, cuesPerGroupOverride, bodySizeOverride);
+
+        string? muxedOutput = null;
+        if (!string.IsNullOrWhiteSpace(muxOutputPath))
+        {
+            CliRuntimeLog.Info("workflow", $"Mux output requested. inputMedia={input} subtitle={output} muxOutput={muxOutputPath}");
+            muxedOutput = await _ops.MuxSubtitleIntoVideoAsync(input, output, muxOutputPath, targetLanguage);
+            CliRuntimeLog.Info("workflow", $"Mux output written: {muxedOutput}");
+        }
+
+        return new WorkflowResult("completed", accepted ? "opensubtitles-adopted" : "local-extraction", output, groupResults, muxedOutput);
+    }
+
+    private async Task<List<GroupTranslationResult>> TranslateSubtitleToOutputAsync(
+        string subtitlePath,
+        string targetLanguage,
+        string output,
+        int? cuesPerGroupOverride,
+        int? bodySizeOverride)
+    {
         var cues = await _ops.LoadSrtAsync(subtitlePath);
         CliRuntimeLog.Info("workflow", $"SRT loaded. cues={cues.Count}");
         var cuesPerGroup = ResolveCuesPerGroup(cuesPerGroupOverride);
@@ -135,16 +180,7 @@ internal sealed class WorkflowOrchestrator
         CliRuntimeLog.Info("workflow", $"Merging groups completed. merged cues={merged.Count}");
         await _ops.SaveSrtAsync(output, merged);
         CliRuntimeLog.Info("workflow", $"Output written: {output}");
-
-        string? muxedOutput = null;
-        if (!string.IsNullOrWhiteSpace(muxOutputPath))
-        {
-            CliRuntimeLog.Info("workflow", $"Mux output requested. inputMedia={input} subtitle={output} muxOutput={muxOutputPath}");
-            muxedOutput = await _ops.MuxSubtitleIntoVideoAsync(input, output, muxOutputPath, targetLanguage);
-            CliRuntimeLog.Info("workflow", $"Mux output written: {muxedOutput}");
-        }
-
-        return new WorkflowResult("completed", accepted ? "opensubtitles-adopted" : "local-extraction", output, groupResults, muxedOutput);
+        return groupResults;
     }
 
     private static List<TranslationUnit> BuildTranslationUnits(List<SubtitleGroup> groups, int bodySize)

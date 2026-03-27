@@ -24,13 +24,13 @@ internal static class CliCommandRunner
                 options.Require("input"),
                 options.Require("out"),
                 options.Arguments.TryGetValue("prefer", out var prefer) ? prefer : "en"), JsonOptions.Pretty),
-            "run-workflow" => JsonSerializer.Serialize(await RunWorkflowWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
-            "run-workflow-batch" => JsonSerializer.Serialize(await RunWorkflowBatchWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
+            "translate" => JsonSerializer.Serialize(await RunTranslateWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
+            "translate-batch" => JsonSerializer.Serialize(await RunTranslateBatchWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
             _ => AppOptions.HelpText
         };
     }
 
-    private static async Task<WorkflowResult> RunWorkflowWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
+    private static async Task<WorkflowResult> RunTranslateWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
     {
         var retryOverride = options.OptionalInt("llm-retry-count");
         if (retryOverride is <= 0)
@@ -38,15 +38,13 @@ internal static class CliCommandRunner
             throw new InvalidOperationException("--llm-retry-count must be greater than 0.");
         }
 
-        return await orchestrator.RunWorkflowAsync(
+        return await orchestrator.TranslateAsync(
             options.Require("input"),
             options.Require("lang"),
             options.Require("output"),
             options.OptionalInt("cues-per-group"),
             options.OptionalInt("body-size"),
             retryOverride,
-            options.OptionalString("mux-output"),
-                ResolveOpenSubtitlesCredentials(options, requireApiKey: false),
             RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
     }
 
@@ -69,7 +67,7 @@ internal static class CliCommandRunner
             ResolveOpenSubtitlesCredentials(options, requireApiKey: true)!);
     }
 
-    private static async Task<BatchWorkflowResult> RunWorkflowBatchWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
+    private static async Task<BatchWorkflowResult> RunTranslateBatchWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
     {
         var inputListPath = options.Require("input-list");
         var targetLanguage = options.Require("lang");
@@ -99,15 +97,13 @@ internal static class CliCommandRunner
             var resolvedOutput = BuildBatchOutputPath(input, outputDir, outputSuffix, usedOutputs);
             try
             {
-                var workflow = await orchestrator.RunWorkflowAsync(
+                var workflow = await orchestrator.TranslateAsync(
                     input,
                     targetLanguage,
                     resolvedOutput,
                     options.OptionalInt("cues-per-group"),
                     options.OptionalInt("body-size"),
                     retryOverride,
-                    null,
-                    ResolveOpenSubtitlesCredentials(options, requireApiKey: false),
                     envOverrides);
 
                 results.Add(new BatchWorkflowItemResult(input, resolvedOutput, true, workflow.Status, workflow.Branch, null));

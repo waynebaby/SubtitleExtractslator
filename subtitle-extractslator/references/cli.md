@@ -28,12 +28,12 @@ Quick check:
 1. `--env "KEY=VALUE;KEY2=VALUE2"`: temporary environment overrides for current command.
 2. `--help`: print complete CLI command help.
 
-## Output Path Policy (Critical)
+## Output Path Notes
 
-1. Final subtitle output must be in the same folder as input video (or input subtitle) unless user explicitly requests another folder.
-2. For `run-workflow`, always pass explicit `--output` in input folder.
-3. If output name is not provided, use `<input_basename>.<lang>.srt` in input folder.
-4. Do not place final outputs in random/temp directories. Temp files are allowed only as intermediate artifacts.
+1. `translate` requires explicit `--output`.
+2. `translate-batch` requires explicit `--output-dir`.
+3. `translate-batch` defaults `--output-suffix` to `.<lang>.srt` when omitted.
+4. If you need deterministic paths, set explicit output/output-dir values in commands.
 
 ## CLI Commands
 
@@ -43,7 +43,7 @@ Platform command rule:
 1. Probe:
 - `<cli_bin> --mode cli probe --input "movie.mkv" --lang zh`
 2. OpenSubtitles search:
-- `<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --opensubtitles-api-key "<key>" [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
+- `<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00" --opensubtitles-api-key "<key>" [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
 3. OpenSubtitles download:
 - By ranked search candidate (default rank 1): `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>"`
 - By rank override: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>" --candidate-rank 2`
@@ -54,10 +54,23 @@ Platform command rule:
 - Real API access requires explicit `--opensubtitles-api-key` parameter and sends `Api-Key` and `User-Agent` headers.
 5. Extract:
 - `<cli_bin> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
-6. Full workflow:
-- `<cli_bin> --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" [--opensubtitles-api-key "<key>"] [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
-7. Batch workflow (CLI only):
-- `<cli_bin> --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+6. Bitmap subtitle branch (PGS/DVD):
+- If selected subtitle codec is bitmap (`hdmv_pgs_subtitle` or `dvd_subtitle`), extract now runs: SUP export -> built-in SUP decode to PNG + timeline -> OCR -> SRT.
+- The render-overlay screenshot path is disabled; PNG frames must come from SUP conversion.
+- Intermediate artifacts are written under temp root `Path.GetTempPath()/SubtitleExtractslator/pgs` (or `SUBTITLEEXTRACTSLATOR_TEMPDIR` override).
+- SUP-to-PNG decoding is built in (pure C# parser + ImageSharp). No external converter command is required.
+- OCR is built in C# and calls a local OpenAI-compatible chat completion endpoint directly (no script dependency).
+- OCR endpoint env: `LLM_ENDPOINT` (default `http://localhost:1234/v1/chat/completions`).
+- OCR model env: `LLM_MODEL` (default `qwen3.5-9b-uncensored-hauhaucs-aggressive`).
+- OCR model/endpoint requirement: must support multimodal image input (`image_url` in OpenAI-compatible chat completions payload).
+- OCR timeout env: `SUBTITLEEXTRACTSLATOR_PGS_OCR_TIMEOUT_SECONDS` (default `120`, clamp `5..600`).
+- OCR ignores `LLM_REASONING` and always uses fixed fallback order: `off` -> `low` -> unset.
+- Reasoning fallback order for OCR requests: `off` -> `low` -> unset.
+- `SUBTITLEEXTRACTSLATOR_PGS_OCR_MAX_CUES` controls OCR cue cap (default `160`, clamp `1..2000`).
+7. Translate (CLI only):
+- `<cli_bin> --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt" [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]`
+8. Translate batch (CLI only):
+- `<cli_bin> --mode cli translate-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
 
 ## Batch Input Rules
 

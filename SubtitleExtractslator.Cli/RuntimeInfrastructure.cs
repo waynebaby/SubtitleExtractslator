@@ -287,7 +287,7 @@ internal sealed class TranslationPipeline
             {
                 CliRuntimeLog.Warn(
                     "translate",
-                    "Mode=MCP but McpServer instance is unavailable (RunWorkflow parameter injection failed or missing). Sampling-only policy active; returning error.");
+                    "Mode=MCP but McpServer instance is unavailable (Translate parameter injection failed or missing). Sampling-only policy active; returning error.");
                 throw new InvalidOperationException(
                     "MCP translation requires sampling, but McpServer instance is unavailable. "
                     + "Under sampling-only policy, external fallback is disabled.");
@@ -596,7 +596,7 @@ internal sealed class SamplingTranslationProvider : ITranslationProvider
         var server = McpSamplingRuntimeContext.CurrentServer;
         if (server is null)
         {
-            CliRuntimeLog.Warn("sampling", "MCP sampling server context is unavailable (RunWorkflow McpServer parameter injection failed or missing). Sampling-only policy active; returning error.");
+            CliRuntimeLog.Warn("sampling", "MCP sampling server context is unavailable (Translate McpServer parameter injection failed or missing). Sampling-only policy active; returning error.");
             throw new InvalidOperationException(
                 "MCP sampling server context is unavailable. "
                 + "Under sampling-only policy, external fallback is disabled.");
@@ -2079,7 +2079,7 @@ internal static class RuntimePathPolicy
     {
         var fromEnv = Environment.GetEnvironmentVariable(TempDirEnvKey);
         var root = string.IsNullOrWhiteSpace(fromEnv)
-            ? Path.Combine(Directory.GetCurrentDirectory(), ".tempdir")
+            ? Path.Combine(Path.GetTempPath(), "SubtitleExtractslator")
             : fromEnv.Trim();
 
         Directory.CreateDirectory(root);

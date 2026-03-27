@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$OutputRoot = ".\.github\skills\subtitle-extractslator\assets\bin",
+    [string]$OutputRoot = ".\subtitle-extractslator\assets\bin",
     [string]$Configuration = "Release",
     [switch]$NoSelfContained
 )

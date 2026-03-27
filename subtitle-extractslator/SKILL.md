@@ -48,9 +48,7 @@ Read these reference files for operational details:
 3. `references/opensubtitles.md`:
 - OpenSubtitles explicit-parameter credential contract (CLI + MCP)
 - search/download fallback strategy, rate-limit handling, and parameter matrix
-4. `references/commands.md`:
-- complete command and environment variable matrix
-5. `references/troubleshooting.md`:
+4. `references/troubleshooting.md`:
 - failure patterns and diagnostics checklist
 
 ## Workflow Contract
@@ -84,35 +82,25 @@ ELSE continue.
 - search OpenSubtitles in any language
 - prefer English candidates first
 - then use the best available non-English candidate
-- OpenSubtitles dual-query and fallback strategy (CRITICAL, mandatory for every OpenSubtitles search):
-- every `opensubtitles_search` call must pass two query parameters together:
-  - primary query: current video title/base filename
-  - normalized query: normalized episode-style keyword from full path, for example `<series_or_title> s00e00`
-- fallback execution is internal-only: MCP/CLI C# code must run primary-first then normalized retry; skill layer must not split this into parallel or separate fallback jobs
-- if both queries return no candidate, report not found and continue local extraction fallback
-
-OpenSubtitles credential and download rule (CLI + MCP):
-1. OpenSubtitles real API calls must use explicit function/command parameters, not process environment variables.
-2. Required credential parameter name is `opensubtitlesApiKey` (CLI flag: `--opensubtitles-api-key`).
-3. Optional parameters: `opensubtitlesUsername`, `opensubtitlesPassword`, `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
-4. CLI download supports both direct `fileId` and ranked candidate selection (`candidateRank`, default `1`).
-5. MCP `opensubtitles_download` is download-only: it requires `fileId` from prior `opensubtitles_search` result and must not trigger internal search.
-6. CLI ranked download must reuse the same CRITICAL fallback-aware search strategy.
-7. If user refuses to provide required credential parameters, skip OpenSubtitles branch and continue local extraction fallback.
-8. Detailed parameter matrix and examples are maintained in `references/opensubtitles.md`.
-9. Skill-level orchestration is strictly linear: `opensubtitles_search` and `opensubtitles_download` must run one-by-one; parallel execution is forbidden.
-10. Post-download language branch (skill-level):
-- if downloaded OpenSubtitles subtitle language equals requested target language, keep deterministic output naming and finish without translation
-- if downloaded subtitle is non-target language, continue MCP grouped rolling-context translation to target language
-
-OpenSubtitles rate-limit handling (CRITICAL):
-1. If API response indicates rate limit (for example HTTP `429` or explicit `rate limit exceeded`), disable OpenSubtitles parallel requests immediately.
-2. After rate limit is detected, process OpenSubtitles requests strictly one-by-one (serial only).
-3. Insert delay between each request in serial mode before sending the next one.
-4. Retry per request up to 20 times when rate-limited, and increase the wait time on each trigger.
-5. Keep retry rhythm conservative; do not switch back to parallel mode in the same task/session.
-6. If rate limit continues after retries are exhausted, return rate-limit error and stop OpenSubtitles branch.
-7. Operational details and wording source of truth are maintained in `references/opensubtitles.md`.
+OpenSubtitles rules (CRITICAL):
+1. Every `opensubtitles_search` call must include both `searchQueryPrimary` and `searchQueryNormalized`.
+2. Skill-side orchestration must be strictly linear: `opensubtitles_search` -> `opensubtitles_download` only. No parallel fan-out.
+3. Fallback sequence is internal C# only and mandatory:
+- primary + target language
+- normalized + target language
+- primary + any language
+- normalized + any language
+4. Credentials are explicit parameters only. Required: `opensubtitlesApiKey`.
+5. `opensubtitles_download` is download-only and must use `fileId` from search candidate.
+6. Candidate `fileId` may be null; null `fileId` candidates are not valid for download-by-id.
+7. Post-download branch:
+- if downloaded subtitle already matches target language: finish (no translation)
+- otherwise: continue `translate`
+8. Rate limit (HTTP `429` or equivalent) handling:
+- switch to serial + delayed mode immediately
+- retry each request up to 20 times with increasing delay
+- stop OpenSubtitles branch when retries are exhausted
+9. Detailed input/output matrix is maintained in `references/opensubtitles.md`.
 
 4. Build timeline cue objects and split into groups.
 Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).
@@ -130,7 +118,7 @@ Preserve index, timestamps, line counts, and segmentation rhythm.
 
 1. MCP mode (preferred):
 Sampling only.
-When sampling fails (including missing MCP server instance injection during `run_workflow`), return error directly.
+When sampling fails (including missing MCP server instance injection during `translate`), return error directly.
 MCP sampling uses retry policy consistent with LLM retry settings (`LLM_RETRY_COUNT` / override parameter). When oversized responses are detected, the next retry injects a concise-reasoning warning to reduce overthinking output.
 2. Non-MCP mode (fallback):
 External provider only.
@@ -156,7 +144,7 @@ All custom external endpoint access is CLI route responsibility.
 
 1. Prefer deterministic behavior over creative rewriting.
 2. Keep translation natural and context aware, but preserve subtitle pacing.
-3. For command details and troubleshooting, read `references/commands.md` and `references/troubleshooting.md`.
+3. For command details and troubleshooting, read `references/cli.md` and `references/troubleshooting.md`.
 4. For literary or entertainment subtitles (jokes, sarcasm, taboo language, sexual humor, dark comedy), strongly prefer an uncensored model variant. Censored models are more likely to weaken punchlines, skip sensitive phrasing, or leave source fragments untranslated.
 5. In agent scenarios, prefer MCP mode with explicit plan steps. Reusing MCP sampling through the existing client session can reduce token spend and lower deployment/ops overhead compared with standing up separate external-only translation services.
 

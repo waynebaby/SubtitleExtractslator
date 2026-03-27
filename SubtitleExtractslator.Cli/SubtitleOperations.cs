@@ -1,14 +1,24 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ModelContextProtocol.Protocol;
 
 namespace SubtitleExtractslator.Cli;
 
 internal sealed class SubtitleOperations
 {
+    private static readonly HttpClient BitmapOcrHttp = new();
+    private readonly ModeContext _modeContext;
+
+    public SubtitleOperations(ModeContext modeContext)
+    {
+        _modeContext = modeContext;
+    }
+
     public async Task<ProbeResult> ProbeTracksAsync(string input, string targetLanguage)
     {
         CliRuntimeLog.Info("probe", $"Start probe. input={input} target={targetLanguage}");
@@ -16,7 +26,7 @@ internal sealed class SubtitleOperations
         if (Path.GetExtension(input).Equals(".srt", StringComparison.OrdinalIgnoreCase))
         {
             var inferred = InferLanguageFromFileName(input);
-            var srtTracks = new List<SubtitleTrack> { new(0, 0, inferred, "subtitle-file") };
+            var srtTracks = new List<SubtitleTrack> { new(0, 0, inferred, "subtitle-file", "srt") };
             var hasTargetFromSrt = inferred.Equals(targetLanguage, StringComparison.OrdinalIgnoreCase);
             CliRuntimeLog.Info("probe", $"Input is SRT. inferredLanguage={inferred} hasTarget={hasTargetFromSrt}");
             return new ProbeResult(input, targetLanguage, hasTargetFromSrt, srtTracks);
@@ -371,6 +381,12 @@ internal sealed class SubtitleOperations
         }
 
         var ffmpeg = ResolveExecutable("ffmpeg");
+        if (IsBitmapSubtitleCodec(selected.CodecName))
+        {
+            CliRuntimeLog.Info("extract", $"Selected bitmap subtitle track codec={selected.CodecName}. Enter PGS extraction + OCR branch.");
+            return await ExtractBitmapSubtitleWithOcrAsync(input, output, selected, preferredLanguage);
+        }
+
         var args = $"-nostdin -y -i {QuoteArg(input)} -map 0:s:{selected.SubtitleOrder} -f srt {QuoteArg(output)}";
         CliRuntimeLog.Info("extract", $"Selected subtitle track order={selected.SubtitleOrder} language={selected.Language}");
         CliRuntimeLog.Info("extract", $"Running ffmpeg: {QuoteArg(ffmpeg)} {args}");
@@ -468,7 +484,7 @@ internal sealed class SubtitleOperations
         await FfmpegBootstrap.EnsureAsync();
 
         var ffprobe = ResolveExecutable("ffprobe");
-        var args = $"-v error -select_streams s -show_entries stream=index:stream_tags=language,title -of json {QuoteArg(input)}";
+        var args = $"-v error -select_streams s -show_entries stream=index,codec_name:stream_tags=language,title -of json {QuoteArg(input)}";
         CliRuntimeLog.Info("ffprobe", $"Running ffprobe: {QuoteArg(ffprobe)} {args}");
         var output = await RunProcessAsync(ffprobe, args);
 
@@ -485,6 +501,9 @@ internal sealed class SubtitleOperations
             var index = item.TryGetProperty("index", out var idxEl) ? idxEl.GetInt32() : i;
             var language = "und";
             var title = "";
+            var codecName = item.TryGetProperty("codec_name", out var codecEl)
+                ? codecEl.GetString() ?? "unknown"
+                : "unknown";
 
             if (item.TryGetProperty("tags", out var tags))
             {
@@ -499,7 +518,7 @@ internal sealed class SubtitleOperations
                 }
             }
 
-            tracks.Add(new SubtitleTrack(index, i, language, title));
+            tracks.Add(new SubtitleTrack(index, i, language, title, codecName));
             i++;
         }
 
@@ -507,6 +526,441 @@ internal sealed class SubtitleOperations
 
         return tracks;
     }
+
+    private async Task<ExtractionResult> ExtractBitmapSubtitleWithOcrAsync(
+        string input,
+        string output,
+        SubtitleTrack selected,
+        string preferredLanguage)
+    {
+        var ffmpeg = ResolveExecutable("ffmpeg");
+
+        var artifactRoot = RuntimePathPolicy.GetIntermediateDirectory("pgs");
+        var jobId = $"{Path.GetFileNameWithoutExtension(input)}.{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.{Guid.NewGuid():N}";
+        var jobDir = Path.Combine(artifactRoot, SanitizePathSegment(jobId));
+        var pngDir = Path.Combine(jobDir, "png");
+        Directory.CreateDirectory(pngDir);
+
+        var supPath = Path.Combine(jobDir, "subtitle.sup");
+        var timelinePath = Path.Combine(jobDir, "timeline.json");
+        var manifestPath = Path.Combine(jobDir, "manifest.json");
+
+        var extractSupArgs = $"-nostdin -y -i {QuoteArg(input)} -map 0:s:{selected.SubtitleOrder} -c:s copy {QuoteArg(supPath)}";
+        CliRuntimeLog.Info("extract", $"Running ffmpeg SUP export: {QuoteArg(ffmpeg)} {extractSupArgs}");
+        await RunProcessAsync(ffmpeg, extractSupArgs);
+
+        var decoded = PgsSupDecoder.DecodeToPngFrames(supPath, pngDir);
+        var timeline = decoded
+            .Select((x, i) => new PgsTimelineEntry(i + 1, x.ImagePath, x.Start, x.End))
+            .ToList();
+
+        await File.WriteAllTextAsync(timelinePath, JsonSerializer.Serialize(timeline, JsonOptions.Pretty), Encoding.UTF8);
+        var manifest = new
+        {
+            input,
+            output,
+            selectedLanguage = selected.Language,
+            preferredLanguage,
+            subtitleOrder = selected.SubtitleOrder,
+            codecName = selected.CodecName,
+            supPath,
+            pngDirectory = pngDir,
+            timelinePath,
+            imageCount = decoded.Count,
+            cueCount = timeline.Count
+        };
+        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest, JsonOptions.Pretty), Encoding.UTF8);
+
+        CliRuntimeLog.Info("extract", $"PGS artifacts ready. sup={supPath} pngCount={decoded.Count} timelineCount={timeline.Count}");
+
+        var cues = await BuildOcrCuesAsync(timeline);
+        if (cues.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"PGS extraction completed but OCR produced no subtitle cues. Artifacts: {jobDir}");
+        }
+
+        await SaveSrtAsync(output, cues);
+        CliRuntimeLog.Info("extract", $"PGS OCR SRT created. cues={cues.Count} output={output}");
+
+        return new ExtractionResult(
+            input,
+            output,
+            selected.Language,
+            "pgs-extract-png-timeline-ocr",
+            jobDir,
+            manifestPath);
+    }
+
+    private async Task<List<SubtitleCue>> BuildOcrCuesAsync(List<PgsTimelineEntry> timeline)
+    {
+        if (timeline.Count == 0)
+        {
+            return new List<SubtitleCue>();
+        }
+
+        var ocrSettings = ResolveBitmapOcrSettings();
+        var maxCues = ResolveMaxPgsOcrCues();
+        var source = timeline.Take(maxCues).ToList();
+        if (timeline.Count > source.Count)
+        {
+            CliRuntimeLog.Warn("extract", $"PGS cue count capped for OCR. total={timeline.Count} cap={source.Count}");
+        }
+
+        var cues = new List<SubtitleCue>(source.Count);
+
+        foreach (var item in source)
+        {
+            var text = await RunBitmapOcrAsync(item.ImagePath, ocrSettings, _modeContext);
+
+            var cleaned = NormalizeOcrText(text);
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                continue;
+            }
+
+            cues.Add(new SubtitleCue(
+                cues.Count + 1,
+                item.Start,
+                item.End,
+                SplitCueLines(cleaned)));
+        }
+
+        return cues;
+    }
+
+    private static BitmapOcrSettings ResolveBitmapOcrSettings()
+    {
+        var endpoint = Environment.GetEnvironmentVariable("LLM_ENDPOINT");
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            endpoint = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_PGS_OCR_ENDPOINT");
+        }
+
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            endpoint = "http://localhost:1234/v1/chat/completions";
+        }
+
+        var model = Environment.GetEnvironmentVariable("LLM_MODEL");
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            model = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_PGS_OCR_MODEL");
+        }
+
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            model = "qwen3.5-9b-uncensored-hauhaucs-aggressive";
+        }
+
+        var timeoutRaw = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_PGS_OCR_TIMEOUT_SECONDS");
+        var timeoutSeconds = 120;
+        if (!string.IsNullOrWhiteSpace(timeoutRaw)
+            && int.TryParse(timeoutRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedTimeout)
+            && parsedTimeout > 0)
+        {
+            timeoutSeconds = Math.Clamp(parsedTimeout, 5, 600);
+        }
+
+        return new BitmapOcrSettings(endpoint.Trim(), model.Trim(), timeoutSeconds);
+    }
+
+    private async Task<string> RunBitmapOcrAsync(string imagePath, BitmapOcrSettings settings, ModeContext modeContext)
+    {
+        if (modeContext == ModeContext.Mcp)
+        {
+            return await RunBitmapOcrWithSamplingAsync(imagePath, settings.Model);
+        }
+
+        return await RunBitmapOcrWithHttpAsync(imagePath, settings);
+    }
+
+    private static async Task<string> RunBitmapOcrWithHttpAsync(string imagePath, BitmapOcrSettings settings)
+    {
+        var imageBytes = await File.ReadAllBytesAsync(imagePath);
+        var imageDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+        var configuredReasoning = Environment.GetEnvironmentVariable("LLM_REASONING");
+        if (!string.IsNullOrWhiteSpace(configuredReasoning))
+        {
+            CliRuntimeLog.Info(
+                "extract",
+                $"Bitmap OCR ignores LLM_REASONING={configuredReasoning}. Using fixed fallback: off -> low -> unset.");
+        }
+
+        var reasoningModes = new string?[] { "off", "low", null };
+        Exception? lastError = null;
+
+        foreach (var reasoningMode in reasoningModes)
+        {
+            try
+            {
+                CliRuntimeLog.Info(
+                    "extract",
+                    $"Bitmap OCR request. model={settings.Model} endpoint={settings.Endpoint} reasoning={(reasoningMode ?? "unset")}");
+                var payload = BuildBitmapOcrPayload(settings.Model, imageDataUri, reasoningMode);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(settings.TimeoutSeconds));
+                using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint)
+                {
+                    Content = new StringContent(payload, Encoding.UTF8, "application/json")
+                };
+
+                using var response = await BitmapOcrHttp.SendAsync(request, cts.Token);
+                var body = await response.Content.ReadAsStringAsync(cts.Token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (LooksLikeMultimodalNotSupported(body))
+                    {
+                        throw new InvalidOperationException(
+                            "Bitmap OCR requires a multimodal-capable model/endpoint. "
+                            + "Set LLM_ENDPOINT to an OpenAI-compatible chat-completions endpoint with image support, "
+                            + "and set LLM_MODEL to a vision-capable model.");
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Bitmap OCR HTTP error. status={(int)response.StatusCode} reasoning={(reasoningMode ?? "unset")} body={TruncateForLog(body, 600)}");
+                }
+
+                return ExtractBitmapOcrText(body);
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                if (reasoningMode is not null)
+                {
+                    CliRuntimeLog.Warn("extract", $"Bitmap OCR reasoning fallback. mode={reasoningMode} failed: {ex.Message}");
+                    continue;
+                }
+
+                throw new InvalidOperationException("Bitmap OCR failed after reasoning fallback attempts.", ex);
+            }
+        }
+
+        throw new InvalidOperationException("Bitmap OCR failed before any request was completed.", lastError);
+    }
+
+    private static async Task<string> RunBitmapOcrWithSamplingAsync(string imagePath, string model)
+    {
+        var server = McpSamplingRuntimeContext.CurrentServer;
+        if (server is null)
+        {
+            throw new InvalidOperationException(
+                "MCP bitmap OCR requires sampling server scope, but current MCP server is unavailable.");
+        }
+
+        var imageBytes = await File.ReadAllBytesAsync(imagePath);
+        var imageDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+        var prompt = "Extract subtitle text from this image data URI. Return text only.\n"
+            + imageDataUri;
+
+        var request = new CreateMessageRequestParams
+        {
+            MaxTokens = 512,
+            Temperature = 0,
+            Messages =
+            [
+                new SamplingMessage
+                {
+                    Role = Role.User,
+                    Content =
+                    [
+                        new TextContentBlock { Text = prompt }
+                    ]
+                }
+            ],
+            ModelPreferences = string.IsNullOrWhiteSpace(model)
+                ? null
+                : new ModelPreferences
+                {
+                    Hints =
+                    [
+                        new ModelHint { Name = model }
+                    ]
+                }
+        };
+
+        var sampled = await server.SampleAsync(request);
+        var sampledText = string.Join(
+            "\n",
+            sampled.Content
+                .OfType<TextContentBlock>()
+                .Select(x => x.Text)
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+        return sampledText;
+    }
+
+    private static string BuildBitmapOcrPayload(string model, string imageDataUri, string? reasoningMode)
+    {
+        var messageContent = new object[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["type"] = "text",
+                ["text"] = "Extract subtitle text from this image. Return text only."
+            },
+            new Dictionary<string, object?>
+            {
+                ["type"] = "image_url",
+                ["image_url"] = new Dictionary<string, object?>
+                {
+                    ["url"] = imageDataUri
+                }
+            }
+        };
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["model"] = model,
+            ["temperature"] = 0.0,
+            ["messages"] = new object[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["role"] = "user",
+                    ["content"] = messageContent
+                }
+            }
+        };
+
+        if (!string.IsNullOrWhiteSpace(reasoningMode))
+        {
+            payload["reasoning"] = reasoningMode;
+        }
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    private static string ExtractBitmapOcrText(string responseBody)
+    {
+        using var doc = JsonDocument.Parse(responseBody);
+        if (!doc.RootElement.TryGetProperty("choices", out var choices)
+            || choices.ValueKind != JsonValueKind.Array
+            || choices.GetArrayLength() == 0)
+        {
+            return string.Empty;
+        }
+
+        var choice = choices[0];
+        if (!choice.TryGetProperty("message", out var message)
+            || !message.TryGetProperty("content", out var content))
+        {
+            return string.Empty;
+        }
+
+        if (content.ValueKind == JsonValueKind.String)
+        {
+            return content.GetString() ?? string.Empty;
+        }
+
+        if (content.ValueKind == JsonValueKind.Array)
+        {
+            var builder = new StringBuilder();
+            foreach (var item in content.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Object
+                    && item.TryGetProperty("type", out var type)
+                    && type.GetString()?.Equals("text", StringComparison.OrdinalIgnoreCase) == true
+                    && item.TryGetProperty("text", out var text))
+                {
+                    if (builder.Length > 0)
+                    {
+                        builder.Append('\n');
+                    }
+
+                    builder.Append(text.GetString() ?? string.Empty);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        return string.Empty;
+    }
+
+    private static string TruncateForLog(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength] + "...";
+    }
+
+    private static bool LooksLikeMultimodalNotSupported(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
+
+        return body.Contains("image_url", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("multimodal", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("vision", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("unsupported", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("Unrecognized key", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed record BitmapOcrSettings(string Endpoint, string Model, int TimeoutSeconds);
+
+    private static int ResolveMaxPgsOcrCues()
+    {
+        var raw = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_PGS_OCR_MAX_CUES");
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return 160;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
+        {
+            return 160;
+        }
+
+        return Math.Clamp(parsed, 1, 2000);
+    }
+
+    private static bool IsBitmapSubtitleCodec(string? codecName)
+    {
+        if (string.IsNullOrWhiteSpace(codecName))
+        {
+            return false;
+        }
+
+        return codecName.Equals("hdmv_pgs_subtitle", StringComparison.OrdinalIgnoreCase)
+            || codecName.Equals("dvd_subtitle", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeOcrText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var text = value.Replace("\r", "\n", StringComparison.Ordinal);
+        text = Regex.Replace(text, "\\n{3,}", "\n\n");
+        text = Regex.Replace(text, "[ \t]{2,}", " ");
+        return text.Trim();
+    }
+
+    private static List<string> SplitCueLines(string text)
+    {
+        return text
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => x.Trim())
+            .Where(x => x.Length > 0)
+            .Take(3)
+            .DefaultIfEmpty(string.Empty)
+            .ToList();
+    }
+
+    private static string SanitizePathSegment(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = value.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray();
+        return new string(chars).Trim('-');
+    }
+
+    private sealed record PgsTimelineEntry(int Index, string ImagePath, TimeSpan Start, TimeSpan End);
 
     private static string InferLanguageFromFileName(string input)
     {

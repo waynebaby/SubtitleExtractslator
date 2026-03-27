@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 
@@ -12,6 +13,7 @@ internal sealed class OpenSubtitlesAccessor
     {
         Timeout = TimeSpan.FromSeconds(60)
     };
+    private const int SearchRateLimitMaxRetries = 20;
 
     private readonly OpenSubtitlesSettings _settings;
     private string? _token;
@@ -108,15 +110,19 @@ internal sealed class OpenSubtitlesAccessor
 
         await EnsureAuthAsync();
 
-        var link = candidate.DownloadUrl;
-        if (string.IsNullOrWhiteSpace(link))
+        string? link = null;
+        if (!string.IsNullOrWhiteSpace(candidate.FileId))
         {
-            if (string.IsNullOrWhiteSpace(candidate.FileId))
-            {
-                throw new InvalidOperationException("OpenSubtitles candidate has neither download URL nor file id.");
-            }
-
             link = await ResolveDownloadLinkAsync(candidate.FileId);
+        }
+        else if (!string.IsNullOrWhiteSpace(candidate.DownloadUrl))
+        {
+            // Fallback only when file_id is unavailable.
+            link = candidate.DownloadUrl;
+        }
+        else
+        {
+            throw new InvalidOperationException("OpenSubtitles candidate has neither file_id nor direct download URL.");
         }
 
         using var req = new HttpRequestMessage(HttpMethod.Get, link);
@@ -127,8 +133,9 @@ internal sealed class OpenSubtitlesAccessor
         if (!resp.IsSuccessStatusCode)
         {
             var body = bytes.Length == 0 ? string.Empty : System.Text.Encoding.UTF8.GetString(bytes);
+            var debug = BuildHttpDebugBlock("download-file", req, null, resp, body);
             throw new InvalidOperationException(
-                $"OpenSubtitles download failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
+                $"OpenSubtitles download failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
         }
 
         var dir = Path.GetDirectoryName(outputPath);
@@ -152,13 +159,15 @@ internal sealed class OpenSubtitlesAccessor
             return;
         }
 
+        var loginPayload = new
+        {
+            username = _settings.Username,
+            password = _settings.Password
+        };
+        var loginPayloadText = JsonSerializer.Serialize(loginPayload);
         using var req = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint + "/login")
         {
-            Content = JsonContent.Create(new
-            {
-                username = _settings.Username,
-                password = _settings.Password
-            })
+            Content = JsonContent.Create(loginPayload)
         };
         ApplyHeaders(req, includeAuth: false);
 
@@ -166,8 +175,9 @@ internal sealed class OpenSubtitlesAccessor
         var body = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
         {
+            var debug = BuildHttpDebugBlock("login", req, loginPayloadText, resp, body);
             throw new InvalidOperationException(
-                $"OpenSubtitles login failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
+                $"OpenSubtitles login failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
         }
 
         using var doc = JsonDocument.Parse(body);
@@ -180,9 +190,18 @@ internal sealed class OpenSubtitlesAccessor
 
     private async Task<string> ResolveDownloadLinkAsync(string fileId)
     {
+        if (string.IsNullOrWhiteSpace(_token))
+        {
+            throw new InvalidOperationException(
+                "OpenSubtitles /download requires Authorization bearer token. "
+                + "Provide opensubtitlesUsername and opensubtitlesPassword so login token can be created.");
+        }
+
+        var downloadPayload = new { file_id = fileId };
+        var downloadPayloadText = JsonSerializer.Serialize(downloadPayload);
         using var req = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint + "/download")
         {
-            Content = JsonContent.Create(new { file_id = fileId })
+            Content = JsonContent.Create(downloadPayload)
         };
         ApplyHeaders(req, includeAuth: true);
 
@@ -190,8 +209,9 @@ internal sealed class OpenSubtitlesAccessor
         var body = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
         {
+            var debug = BuildHttpDebugBlock("resolve-download-link", req, downloadPayloadText, resp, body);
             throw new InvalidOperationException(
-                $"OpenSubtitles download-link request failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
+                $"OpenSubtitles download-link request failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
         }
 
         using var doc = JsonDocument.Parse(body);
@@ -208,16 +228,7 @@ internal sealed class OpenSubtitlesAccessor
     private async Task<List<SubtitleCandidate>> SearchSingleAsync(string query, string? language, int maxResults)
     {
         var url = BuildSearchUrl(query, language);
-        using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        ApplyHeaders(req, includeAuth: true);
-
-        using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-        var body = await resp.Content.ReadAsStringAsync();
-        if (!resp.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(
-                $"OpenSubtitles search failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}");
-        }
+        var body = await SendSearchWithRateLimitRetryAsync(url);
 
         using var doc = JsonDocument.Parse(body);
         if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
@@ -257,6 +268,84 @@ internal sealed class OpenSubtitlesAccessor
         }
 
         return list;
+    }
+
+    private async Task<string> SendSearchWithRateLimitRetryAsync(string url)
+    {
+        for (var attempt = 1; attempt <= SearchRateLimitMaxRetries; attempt++)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            ApplyHeaders(req, includeAuth: true);
+
+            using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            var body = await resp.Content.ReadAsStringAsync();
+            if (resp.IsSuccessStatusCode)
+            {
+                return body;
+            }
+
+            var isRateLimited = IsRateLimited(resp, body);
+            if (!isRateLimited)
+            {
+                var debug = BuildHttpDebugBlock("search", req, null, resp, body);
+                throw new InvalidOperationException(
+                    $"OpenSubtitles search failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
+            }
+
+            if (attempt >= SearchRateLimitMaxRetries)
+            {
+                var debug = BuildHttpDebugBlock("search-rate-limited", req, null, resp, body);
+                throw new InvalidOperationException(
+                    $"OpenSubtitles search rate-limited after {SearchRateLimitMaxRetries} retries. Last response: {(int)resp.StatusCode} {resp.ReasonPhrase}. Body: {body}\n{debug}");
+            }
+
+            var delay = ComputeRateLimitDelay(attempt, resp);
+            CliRuntimeLog.Warn(
+                "opensubtitles",
+                $"Search rate-limited. attempt={attempt}/{SearchRateLimitMaxRetries} waitSeconds={delay.TotalSeconds:0} url={url}");
+            await Task.Delay(delay);
+        }
+
+        throw new InvalidOperationException("OpenSubtitles search failed due to unexpected retry loop termination.");
+    }
+
+    private static bool IsRateLimited(HttpResponseMessage response, string body)
+    {
+        if ((int)response.StatusCode == 429)
+        {
+            return true;
+        }
+
+        return body.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("too many requests", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("429", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static TimeSpan ComputeRateLimitDelay(int attempt, HttpResponseMessage response)
+    {
+        if (response.Headers.TryGetValues("Retry-After", out var values))
+        {
+            var retryAfter = values.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(retryAfter))
+            {
+                if (int.TryParse(retryAfter, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds) && seconds > 0)
+                {
+                    return TimeSpan.FromSeconds(Math.Min(seconds, 120));
+                }
+
+                if (DateTimeOffset.TryParse(retryAfter, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var when))
+                {
+                    var delta = when - DateTimeOffset.UtcNow;
+                    if (delta > TimeSpan.Zero)
+                    {
+                        return delta > TimeSpan.FromMinutes(2) ? TimeSpan.FromMinutes(2) : delta;
+                    }
+                }
+            }
+        }
+
+        var fallbackSeconds = Math.Min(60, 2 + (attempt * 2));
+        return TimeSpan.FromSeconds(fallbackSeconds);
     }
 
     private string BuildSearchUrl(string query, string? language)
@@ -408,6 +497,81 @@ internal sealed class OpenSubtitlesAccessor
         }
 
         values.Add(normalized);
+    }
+
+    private static string BuildHttpDebugBlock(
+        string operation,
+        HttpRequestMessage request,
+        string? requestBody,
+        HttpResponseMessage response,
+        string? responseBody)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("OPEN_SUB_HTTP_DEBUG_START");
+        sb.AppendLine($"operation: {operation}");
+        sb.AppendLine($"request.method: {request.Method}");
+        sb.AppendLine($"request.url: {request.RequestUri}");
+        sb.AppendLine("request.headers:");
+        AppendHeaders(sb, request.Headers, request.Content?.Headers);
+        sb.AppendLine("request.body:");
+        sb.AppendLine(SanitizeBody(requestBody));
+        sb.AppendLine($"response.status: {(int)response.StatusCode} {response.ReasonPhrase}");
+        sb.AppendLine("response.headers:");
+        AppendHeaders(sb, response.Headers, response.Content?.Headers);
+        sb.AppendLine("response.body:");
+        sb.AppendLine(SanitizeBody(responseBody));
+        sb.AppendLine("OPEN_SUB_HTTP_DEBUG_END");
+        return sb.ToString();
+    }
+
+    private static void AppendHeaders(StringBuilder sb, params HttpHeaders?[] headers)
+    {
+        foreach (var headerSet in headers)
+        {
+            if (headerSet is null)
+            {
+                continue;
+            }
+
+            foreach (var header in headerSet)
+            {
+                var combined = string.Join(", ", header.Value);
+                sb.AppendLine($"  {header.Key}: {SanitizeHeaderValue(header.Key, combined)}");
+            }
+        }
+    }
+
+    private static string SanitizeHeaderValue(string key, string value)
+    {
+        if (key.Equals("Api-Key", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("Proxy-Authorization", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("X-Api-Key", StringComparison.OrdinalIgnoreCase))
+        {
+            return "***REDACTED***";
+        }
+
+        return value;
+    }
+
+    private static string SanitizeBody(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return "(empty)";
+        }
+
+        var sanitized = body;
+        sanitized = Regex.Replace(sanitized, "(\"password\"\\s*:\\s*\")[^\"]*(\")", "$1***REDACTED***$2", RegexOptions.IgnoreCase);
+        sanitized = Regex.Replace(sanitized, "(\"api[_-]?key\"\\s*:\\s*\")[^\"]*(\")", "$1***REDACTED***$2", RegexOptions.IgnoreCase);
+
+        const int maxBodyLength = 8000;
+        if (sanitized.Length > maxBodyLength)
+        {
+            return sanitized[..maxBodyLength] + "\n...(truncated)...";
+        }
+
+        return sanitized;
     }
 
     private void ApplyHeaders(HttpRequestMessage request, bool includeAuth)

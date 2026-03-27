@@ -14,7 +14,7 @@ internal enum ModeContext
 
 internal sealed record SubtitleCue(int Index, TimeSpan Start, TimeSpan End, List<string> Lines);
 
-internal sealed record SubtitleTrack(int StreamIndex, int SubtitleOrder, string Language, string Title);
+internal sealed record SubtitleTrack(int StreamIndex, int SubtitleOrder, string Language, string Title, string CodecName);
 
 internal sealed record ProbeResult(string Input, string TargetLanguage, bool HasTargetLanguage, List<SubtitleTrack> Tracks);
 
@@ -49,7 +49,13 @@ internal sealed record OpenSubtitlesDownloadResult(
     string? FileId,
     string? CandidateName);
 
-internal sealed record ExtractionResult(string Input, string OutputPath, string SelectedLanguage, string Strategy);
+internal sealed record ExtractionResult(
+    string Input,
+    string OutputPath,
+    string SelectedLanguage,
+    string Strategy,
+    string? ArtifactDirectory = null,
+    string? ArtifactManifestPath = null);
 
 internal sealed record BatchWorkflowItemResult(
     string Input,
