@@ -232,7 +232,7 @@ jobs:
             $binaryPath = Join-Path (Join-Path $binRoot $rid) $binaryName
 
             if (-not (Test-Path $binaryPath)) {
-              throw "Expected binary not found for $rid: $binaryPath"
+              throw "Expected binary not found for ${rid}: $binaryPath"
             }
 
             $stagingSkillRoot = Join-Path $packageRoot "subtitle-extractslator-$rid"
