@@ -1,28 +1,64 @@
 # SubtitleExtractslator Skill Build and Installation
 
-This document follows Anthropic skill structure requirements and explains how to build the CLI into the skill folder.
+This document follows Anthropic skill structure requirements.
+
+Default distribution path is now GitHub Releases. Repository main branch should not carry compiled binaries.
 
 ## Skill Folder
 
 Skill root:
-- `.github/skills/subtitle-extractslator/`
+
+- `subtitle-extractslator/` inside the release zip package
 
 Required file:
-- `.github/skills/subtitle-extractslator/SKILL.md`
+
+- `subtitle-extractslator/SKILL.md`
 
 Optional resources used here:
-- `.github/skills/subtitle-extractslator/references/commands.md`
-- `.github/skills/subtitle-extractslator/references/troubleshooting.md`
-- `.github/skills/subtitle-extractslator/assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
+
+- `subtitle-extractslator/references/commands.md`
+- `subtitle-extractslator/references/troubleshooting.md`
+- `subtitle-extractslator/assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
 
 No README is placed inside the skill folder.
 
-## Build to Skill Output Path
+## Install from Releases (Recommended)
+
+1. Open repository Releases page and download `subtitle-extractslator-vX.Y.Z.zip`.
+2. Unzip and keep the folder name `subtitle-extractslator` unchanged.
+3. Verify binaries exist in:
+   - `subtitle-extractslator/assets/bin/win-x64/`
+   - `subtitle-extractslator/assets/bin/linux-x64/`
+   - `subtitle-extractslator/assets/bin/osx-arm64/`
+
+## Build Locally (Contributor Path)
+
+From repository root, build all runtime binaries into a staging skill folder:
+
+```powershell
+.\scripts\publish-skill-binaries.ps1 -OutputRoot ".\tmp\skill\subtitle-extractslator\assets\bin"
+```
+
+Then copy the skill source files into the same staging folder:
+
+```powershell
+New-Item -ItemType Directory -Path ".\tmp\skill\subtitle-extractslator\references" -Force | Out-Null
+Copy-Item ".\subtitle-extractslator\SKILL.md" ".\tmp\skill\subtitle-extractslator\SKILL.md" -Force
+Copy-Item ".\subtitle-extractslator\references\*" ".\tmp\skill\subtitle-extractslator\references" -Recurse -Force
+```
+
+Optional zip output:
+
+```powershell
+Compress-Archive -Path ".\tmp\skill\subtitle-extractslator" -DestinationPath ".\tmp\subtitle-extractslator-local.zip" -Force
+```
+
+## Direct dotnet publish examples
 
 From repository root:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\win-x64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\tmp\skill\subtitle-extractslator\assets\bin\win-x64
 ```
 
 ## Optional Additional Runtime Builds
@@ -30,18 +66,18 @@ dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c R
 Linux x64:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\linux-x64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true -o .\tmp\skill\subtitle-extractslator\assets\bin\linux-x64
 ```
 
 macOS arm64:
 
 ```powershell
-dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true -o .\.github\skills\subtitle-extractslator\assets\bin\osx-arm64
+dotnet publish .\SubtitleExtractslator.Cli\SubtitleExtractslator.Cli.csproj -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true -o .\tmp\skill\subtitle-extractslator\assets\bin\osx-arm64
 ```
 
-## Upload to Claude
+## Upload Skill Package
 
-1. Zip the skill folder `.github/skills/subtitle-extractslator`.
+1. Zip the skill folder `subtitle-extractslator`.
 2. Upload in Claude settings skills section.
 3. Enable the skill.
 

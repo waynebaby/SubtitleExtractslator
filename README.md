@@ -13,6 +13,13 @@ Runtime forms in this repository:
 
 It is built for end-to-end subtitle processing: detect existing tracks, search candidates, extract source subtitles, translate with context-aware batching, and emit final SRT output while preserving subtitle timing and structure.
 
+## Downloads
+
+<!-- release-links:start -->
+- Latest releases: [Releases](https://github.com/wayneclub/SubtitleExtractslator/releases)
+- Versioned package (v0.1.0): [subtitle-extractslator-v0.1.0.zip](https://github.com/wayneclub/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0.zip)
+<!-- release-links:end -->
+
 ## What The Skill Solves
 
 - Provides a reusable subtitle workflow skill contract for probe/search/extract/translate/merge.

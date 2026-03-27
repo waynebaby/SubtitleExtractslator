@@ -1,3 +1,10 @@
+[CmdletBinding()]
+param(
+    [string]$OutputRoot = ".\.github\skills\subtitle-extractslator\assets\bin",
+    [string]$Configuration = "Release",
+    [switch]$NoSelfContained
+)
+
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -9,10 +16,12 @@ try {
         throw "Project file not found: $projectPath"
     }
 
+    $selfContained = if ($NoSelfContained) { "false" } else { "true" }
+
     $targets = @(
-        @{ Rid = "win-x64"; OutputDir = ".\.github\skills\subtitle-extractslator\assets\bin\win-x64"; BinaryName = "SubtitleExtractslator.Cli.exe" },
-        @{ Rid = "linux-x64"; OutputDir = ".\.github\skills\subtitle-extractslator\assets\bin\linux-x64"; BinaryName = "SubtitleExtractslator.Cli" },
-        @{ Rid = "osx-arm64"; OutputDir = ".\.github\skills\subtitle-extractslator\assets\bin\osx-arm64"; BinaryName = "SubtitleExtractslator.Cli" }
+        @{ Rid = "win-x64"; OutputDir = (Join-Path $OutputRoot "win-x64"); BinaryName = "SubtitleExtractslator.Cli.exe" },
+        @{ Rid = "linux-x64"; OutputDir = (Join-Path $OutputRoot "linux-x64"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "osx-arm64"; OutputDir = (Join-Path $OutputRoot "osx-arm64"); BinaryName = "SubtitleExtractslator.Cli" }
     )
 
     $running = Get-Process -Name "SubtitleExtractslator.Cli" -ErrorAction SilentlyContinue
@@ -30,7 +39,7 @@ try {
 
         Write-Host "=== Publishing $rid -> $outputDir ==="
 
-        & dotnet publish $projectPath -c Release -r $rid -p:PublishSingleFile=true -p:SelfContained=true -p:EnableCompressionInSingleFile=true -o $outputDir
+        & dotnet publish $projectPath -c $Configuration -r $rid -p:PublishSingleFile=true -p:SelfContained=$selfContained -p:EnableCompressionInSingleFile=true -o $outputDir
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet publish failed for RID '$rid' with exit code $LASTEXITCODE"
         }

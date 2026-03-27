@@ -1,0 +1,258 @@
+name: Release Skill Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-skill-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip-release]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore SubtitleExtractslator.sln
+
+      - name: Build
+        run: dotnet build SubtitleExtractslator.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test SubtitleExtractslator.sln -c Release --no-build
+
+      - name: Resolve bump type from associated PR labels
+        id: bump
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            let bump = 'patch';
+            let prNumber = '';
+
+            if (context.eventName === 'push') {
+              const result = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: context.sha,
+              });
+
+              if (result.data.length > 0) {
+                const pr = result.data[0];
+                prNumber = String(pr.number);
+                const labels = pr.labels.map((l) => String(l.name).toLowerCase());
+
+                const hasAny = (candidates) => candidates.some((name) => labels.includes(name));
+                if (hasAny(['major', 'semver:major', 'release:major'])) {
+                  bump = 'major';
+                } else if (hasAny(['minor', 'semver:minor', 'release:minor'])) {
+                  bump = 'minor';
+                } else {
+                  bump = 'patch';
+                }
+              }
+            }
+
+            core.setOutput('bump', bump);
+            core.setOutput('pr_number', prNumber);
+
+      - name: Compute release version
+        id: version
+        shell: pwsh
+        run: |
+          git fetch --tags --force
+
+          $skillPath = "subtitle-extractslator/SKILL.md"
+          if (-not (Test-Path $skillPath)) {
+            throw "Skill file not found: $skillPath"
+          }
+
+          $skillRaw = Get-Content $skillPath -Raw
+          $skillVersionMatch = [regex]::Match($skillRaw, "(?m)^\s{2}version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$")
+          if (-not $skillVersionMatch.Success) {
+            throw "Unable to read metadata.version from $skillPath"
+          }
+
+          $skillVersion = $skillVersionMatch.Groups[1].Value
+          $latestTag = (git tag --list 'v*' --sort=-v:refname | Select-Object -First 1)
+          $bump = "${{ steps.bump.outputs.bump }}"
+
+          if ([string]::IsNullOrWhiteSpace($latestTag)) {
+            $nextVersion = $skillVersion
+          }
+          else {
+            $base = $latestTag.TrimStart('v')
+            $parts = $base.Split('.')
+            if ($parts.Count -ne 3) {
+              throw "Latest tag '$latestTag' is not a semver tag (vX.Y.Z)."
+            }
+
+            $major = [int]$parts[0]
+            $minor = [int]$parts[1]
+            $patch = [int]$parts[2]
+
+            switch ($bump) {
+              "major" {
+                $major += 1
+                $minor = 0
+                $patch = 0
+              }
+              "minor" {
+                $minor += 1
+                $patch = 0
+              }
+              default {
+                $patch += 1
+              }
+            }
+
+            $nextVersion = "$major.$minor.$patch"
+          }
+
+          $tag = "v$nextVersion"
+          $zipName = "subtitle-extractslator-$tag.zip"
+          $releaseAssetUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipName"
+          $releasesHome = "https://github.com/${{ github.repository }}/releases"
+
+          "version=$nextVersion" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+          "release_asset_url=$releaseAssetUrl" >> $env:GITHUB_OUTPUT
+          "releases_home=$releasesHome" >> $env:GITHUB_OUTPUT
+
+      - name: Update SKILL metadata.version and README release links
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $tag = "${{ steps.version.outputs.tag }}"
+          $zipName = "${{ steps.version.outputs.zip_name }}"
+          $assetUrl = "${{ steps.version.outputs.release_asset_url }}"
+          $releasesHome = "${{ steps.version.outputs.releases_home }}"
+
+          $skillPath = "subtitle-extractslator/SKILL.md"
+          $skillRaw = Get-Content $skillPath -Raw
+          $skillRaw = [regex]::Replace($skillRaw, "(?m)^(\s{2}version:\s*)([0-9]+\.[0-9]+\.[0-9]+)\s*$", ('$1' + $version))
+          Set-Content -Path $skillPath -Value $skillRaw -Encoding utf8
+
+          $readmeEnPath = "README.md"
+          $enBlock = @(
+            "<!-- release-links:start -->",
+            "- Latest releases: [Releases]($releasesHome)",
+            "- Versioned package ($tag): [subtitle-extractslator-$tag.zip]($assetUrl)",
+            "<!-- release-links:end -->"
+          ) -join "`n"
+          $enRaw = Get-Content $readmeEnPath -Raw
+          if ($enRaw -notmatch "<!-- release-links:start -->") {
+            throw "Missing release-links marker in $readmeEnPath"
+          }
+          $enRaw = [regex]::Replace($enRaw, "(?s)<!-- release-links:start -->.*?<!-- release-links:end -->", $enBlock)
+          Set-Content -Path $readmeEnPath -Value $enRaw -Encoding utf8
+
+          $readmeZhPath = "README.zh-CN.md"
+          $zhBlock = @(
+            "<!-- release-links:start -->",
+            "- Release 总入口：[Releases]($releasesHome)",
+            "- 当前固定版本包（$tag）：[subtitle-extractslator-$tag.zip]($assetUrl)",
+            "<!-- release-links:end -->"
+          ) -join "`n"
+          $zhRaw = Get-Content $readmeZhPath -Raw
+          if ($zhRaw -notmatch "<!-- release-links:start -->") {
+            throw "Missing release-links marker in $readmeZhPath"
+          }
+          $zhRaw = [regex]::Replace($zhRaw, "(?s)<!-- release-links:start -->.*?<!-- release-links:end -->", $zhBlock)
+          Set-Content -Path $readmeZhPath -Value $zhRaw -Encoding utf8
+
+      - name: Build binaries into staging skill package
+        shell: pwsh
+        run: |
+          $stagingSkillRoot = Join-Path $env:RUNNER_TEMP "skill-package/subtitle-extractslator"
+          $binRoot = Join-Path $stagingSkillRoot "assets/bin"
+
+          New-Item -ItemType Directory -Path $stagingSkillRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $stagingSkillRoot "references") -Force | Out-Null
+
+          Copy-Item "subtitle-extractslator/SKILL.md" (Join-Path $stagingSkillRoot "SKILL.md") -Force
+          Copy-Item "subtitle-extractslator/references/*" (Join-Path $stagingSkillRoot "references") -Recurse -Force
+
+          ./scripts/publish-skill-binaries.ps1 -OutputRoot $binRoot -Configuration Release
+
+      - name: Pack skill zip
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $zipName = "${{ steps.version.outputs.zip_name }}"
+          $stagingRoot = Join-Path $env:RUNNER_TEMP "skill-package"
+          $zipPath = Join-Path $env:RUNNER_TEMP $zipName
+
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+
+          Compress-Archive -Path (Join-Path $stagingRoot "subtitle-extractslator") -DestinationPath $zipPath -Force
+
+      - name: Commit version and README updates
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add subtitle-extractslator/SKILL.md README.md README.zh-CN.md
+
+          if (-not (git diff --cached --quiet)) {
+            git commit -m "chore(release): update metadata and release links for $tag [skip-release]"
+            git push
+          }
+
+      - name: Ensure release tag exists
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+
+          git fetch --tags --force
+
+          $existsLocally = $false
+          try {
+            git rev-parse --verify "refs/tags/$tag" *> $null
+            if ($LASTEXITCODE -eq 0) {
+              $existsLocally = $true
+            }
+          }
+          catch {
+            $existsLocally = $false
+          }
+
+          if (-not $existsLocally) {
+            git tag $tag
+            git push origin $tag
+          }
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: SubtitleExtractslator ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          prerelease: false
+          files: |
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name }}

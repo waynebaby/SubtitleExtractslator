@@ -130,31 +130,47 @@ MCP note:
 
 ## Workflow Contract
 
-Follow this exact order:
+Follow this exact decision tree (do not reorder):
 
 0. MCP setup prompt first.
 Ask user whether to configure MCP for current workspace now.
 If yes, create or update `./.vscode/mcp.json`; on Windows use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
-1. Confirm user target: input file and target language.
-Confirm/derive deterministic final output path in the input file folder before execution.
-If not provided, set output to `<input_basename>.<lang>.srt` in the same folder.
+
+1. Confirm user target:
+- input file
+- target language
+- deterministic output path
+Output path rule: if user did not provide output filename, use `<input_basename>.<lang>.srt` in the same folder as input.
+
 2. Probe internal subtitle tracks.
-If target language exists, report and stop.
-3. Query OpenSubtitles candidates.
-If user mention not using open subtitles or no candidates, continue next.
-In current runtime, OpenSubtitles is discovery-first (search only); subtitle download/adoption is not a stable default path, so continue with local extraction unless explicitly extended.
-4. Extract local subtitle.
-Prefer English track.
-If English not present, pick deterministic nearest-language fallback.
-5. Build timeline cue objects and split into groups.
+IF target language already exists in embedded tracks:
+- report and stop.
+ELSE continue.
+
+3. Select source subtitle material in this strict order:
+1. Embedded subtitle tracks from input video:
+- prefer `en/eng`
+- if no `en/eng`, use another available embedded subtitle language
+2. IF no embedded subtitle tracks exist:
+- search local input folder and all subfolders for `*.srt`
+- prefer English file when available, otherwise use another available language file
+3. IF still no local subtitle material:
+- search OpenSubtitles in any language
+- prefer English candidates first
+- then use the best available non-English candidate
+
+4. Build timeline cue objects and split into groups.
 Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).
 Then merge group bodies by translation body size (`bodySize`, default 20, overridable by CLI/env).
-6. Rolling context update.
+
+5. Rolling context update.
 For each group, generate scene summary and update historical core knowledge state.
-7. Translate each group using scene summary plus historical knowledge plus group timeline objects.
+
+6. Translate each group using scene summary plus historical knowledge plus group timeline objects.
 Preserve index, timestamps, line counts, and segmentation rhythm.
-8. Merge all translated groups into final SRT.
+
+7. Merge all translated groups into final SRT.
 
 ## Mode-Aware Translation Source Policy
 
@@ -171,8 +187,9 @@ All custom external endpoint access is CLI route responsibility.
 1. Never modify timestamps or cue ordering.
 2. Never merge or split cues unless explicit user request overrides default policy.
 3. If structure validation fails, report error and stop instead of emitting broken output.
-4. In CLI, if OpenSubtitles candidate exists, ask user before adoption.
-5. In MCP, runtime continues deterministic local extraction path by default.
+4. Embedded subtitle source selection is deterministic: `en/eng` first, otherwise first available language.
+5. When no embedded subtitle exists, local folder/subfolder subtitle search is attempted before OpenSubtitles.
+6. OpenSubtitles fallback uses language preference `en/eng` first, then other available languages.
 
 ## Operational Notes
 

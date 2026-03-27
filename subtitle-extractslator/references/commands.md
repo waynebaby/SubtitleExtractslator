@@ -54,8 +54,9 @@ Expected behavior:
 Expected behavior:
 
 1. Probe
-1. OpenSubtitles search
-1. Fallback extraction
+1. Embedded subtitle extraction (prefer `en/eng`, else another embedded language)
+1. If no embedded subtitles: search local folder/subfolders for `*.srt` (prefer `en/eng`)
+1. If still none: OpenSubtitles search in any language (prefer `en/eng`)
 1. Grouping
 1. Rolling summary
 1. Translation

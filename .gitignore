@@ -2,7 +2,7 @@
 obj/
 .vs/
 .vscode/
-.github/
+.github/skills/
 *.user
 *.suo
 *.cache
@@ -12,3 +12,4 @@ artifacts/
 tmp/
 TestSubtitles/
 */bin/
+subtitle-extractslator/assets/bin/

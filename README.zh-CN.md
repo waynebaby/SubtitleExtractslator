@@ -12,6 +12,13 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 它覆盖从字幕探测到最终 SRT 输出的完整链路：探测已有字幕、检索候选、提取源字幕、按上下文分组翻译、合并并输出结果，同时尽量保持时间轴和结构稳定。
 
+## 下载
+
+<!-- release-links:start -->
+- Release 总入口：[Releases](https://github.com/wayneclub/SubtitleExtractslator/releases)
+- 当前固定版本包（v0.1.0）：[subtitle-extractslator-v0.1.0.zip](https://github.com/wayneclub/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0.zip)
+<!-- release-links:end -->
+
 ## 这个 Skill 解决什么问题
 
 - 提供可复用的字幕工作流 skill 约定（probe/search/extract/translate/merge）。
