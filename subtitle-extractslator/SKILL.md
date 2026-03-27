@@ -25,35 +25,6 @@ Primary goals:
 3. Use grouped rolling context for better semantic consistency.
 4. Keep skill behavior consistent across agent (MCP) and script (CLI) execution paths.
 
-## MCP-First Setup
-
-Default policy (important):
-1. Prefer MCP mode first. CLI mode is fallback.
-2. MCP mode supports official sampling (`sampling/createMessage`) when client capabilities are available.
-3. MCP translation path is sampling-only. If sampling fails (including missing MCP server injection), return error directly.
-4. Custom external endpoint access (for example `LLM_ENDPOINT` and related auth/key config) belongs to CLI route only.
-5. Before running probe/search/extract/workflow, first ask user whether to set up MCP in current workspace.
-6. If user agrees, create or update workspace MCP config at `./.vscode/mcp.json`.
-7. On Windows, set `servers.subtitle-extractslator.command` to an absolute executable path (do not use relative `./.github/...` in MCP config).
-8. If `./.vscode/mcp.json` already exists, merge/add `subtitle-extractslator` server entry instead of overwriting unrelated servers.
-9. If user declines, continue with CLI commands and explicitly state MCP setup was skipped.
-
-Recommended Windows workspace MCP config example:
-```json
-{
-  "servers": {
-    "subtitle-extractslator": {
-      "type": "stdio",
-      "command": "E:\\code\\g\\SubtitleExtractslator\\.github\\skills\\subtitle-extractslator\\assets\\bin\\win-x64\\SubtitleExtractslator.Cli.exe",
-      "args": [
-        "--mode",
-        "mcp"
-      ]
-    }
-  }
-}
-```
-
 ## Trigger Guidance
 
 Use this skill when user asks to:
@@ -62,71 +33,21 @@ Use this skill when user asks to:
 3. Translate subtitles while preserving SRT timing and segmentation rhythm.
 4. Produce a final SRT file from a media file or existing subtitle file.
 
-## Runtime Paths
+## Reference Map
 
-Execution path rule (important):
-1. Paths below are deterministic and relative to the skill root folder.
-2. Do not scan the whole disk to locate the binary.
-3. If current working directory is repository root, prepend `./.github/skills/subtitle-extractslator/`.
-4. Always quote file paths that contain spaces (for example `--input "Z:\\My Folder\\movie.mp4"`). This provides best cross-shell compatibility.
-
-Platform binary paths inside this skill:
-1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
-2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli`
-3. macOS (Apple Silicon): `./assets/bin/osx-arm64/SubtitleExtractslator.Cli`
-
-Quick check (`--help`):
-1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --help`
-2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
-3. macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
-
-CLI global options:
-1. `--env "KEY=VALUE;KEY2=VALUE2"`: temporary environment overrides for current command.
-2. `--help`: print complete CLI command help.
-
-Output path policy (critical):
-1. Final subtitle output must be written to the same folder as the input video (or input subtitle) unless user explicitly requests another folder.
-2. For `run-workflow`, always pass explicit `--output` path in that input folder.
-3. If user does not provide output filename, default to `<input_basename>.<lang>.srt` in input folder.
-4. Do not place final outputs in random or temporary directories. Temporary files are allowed only for internal intermediate steps.
-
-CLI mode examples (Windows / Linux / macOS):
-1. Probe:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
-- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-2. Search OpenSubtitles candidates:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
-- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
-- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
-3. Full workflow:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
-- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
-- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
-4. Batch workflow (CLI only):
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
-- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli run-workflow-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"`
-- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli run-workflow-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"`
-
-Batch input list rules:
-1. UTF-8 text file.
-2. One input path per line.
-3. Empty lines and lines starting with `#` are ignored.
-4. Output naming defaults to `.<lang>.srt` when `--output-suffix` is not provided.
-
-MCP tool names:
-1. probe
-2. opensubtitles_search
-3. extract
-4. run_workflow
-
-MCP tool return contract:
-1. All MCP tools return a structured object with `ok`, `data`, and `error`.
-2. Success: `ok=true`, `data` contains the tool payload.
-3. Failure: `ok=false`, `error` contains `code`, `message`, optional `snapshotPath`, and `timeUtc`.
-
-MCP note:
-1. `run_workflow_batch` is intentionally not exposed in MCP mode because long-running batch calls are prone to timeout in common MCP clients.
+Read these reference files for operational details:
+1. `references/cli.md`:
+- runtime paths and binaries
+- CLI command examples and batch mode
+- output path policy
+2. `references/mcp.md`:
+- MCP-first setup and `mcp.json` rules
+- exposed tools and return contract
+- MCP runtime notes and constraints
+3. `references/commands.md`:
+- complete command and environment variable matrix
+4. `references/troubleshooting.md`:
+- failure patterns and diagnostics checklist
 
 ## Workflow Contract
 
