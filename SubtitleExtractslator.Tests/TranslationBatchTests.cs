@@ -84,11 +84,34 @@ public sealed class TranslationBatchTests
         Assert.True(File.Exists(outputPath));
     }
 
-    private static string GetInputDirectory() =>
-        Path.Combine(GetRepositoryRoot(), "TestSubtitles", "InputFiles");
+    private static string GetInputDirectory()
+    {
+        var repoRoot = GetRepositoryRoot();
+        var candidates = new[]
+        {
+            Path.Combine(repoRoot, "TestSubtitles", "InputFiles"),
+            Path.Combine(repoRoot, "samples")
+        };
 
-    private static string GetOutputDirectory() =>
-        Path.Combine(GetRepositoryRoot(), "TestSubtitles", "OutputFiles");
+        foreach (var candidate in candidates)
+        {
+            if (Directory.Exists(candidate)
+                && Directory.EnumerateFiles(candidate, "*.srt", SearchOption.TopDirectoryOnly).Any())
+            {
+                return candidate;
+            }
+        }
+
+        throw new DirectoryNotFoundException(
+            $"No input subtitle directory with .srt files found. Checked: {string.Join(", ", candidates)}");
+    }
+
+    private static string GetOutputDirectory()
+    {
+        var outputDir = Path.Combine(GetRepositoryRoot(), "artifacts", "test-output", "translation-batch");
+        Directory.CreateDirectory(outputDir);
+        return outputDir;
+    }
 
     private static string GetRepositoryRoot()
     {
