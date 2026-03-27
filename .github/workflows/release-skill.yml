@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
   pull-requests: read
@@ -21,12 +24,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
 
@@ -213,6 +217,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
+          $branch = "${{ github.ref_name }}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -221,7 +226,7 @@ jobs:
 
           if (-not (git diff --cached --quiet)) {
             git commit -m "chore(release): update metadata and release links for $tag [skip-release]"
-            git push
+            git push origin "HEAD:$branch"
           }
 
       - name: Ensure release tag exists
@@ -230,6 +235,17 @@ jobs:
           $tag = "${{ steps.version.outputs.tag }}"
 
           git fetch --tags --force
+
+          $existsRemote = $false
+          $remote = git ls-remote --tags origin "refs/tags/$tag"
+          if (-not [string]::IsNullOrWhiteSpace($remote)) {
+            $existsRemote = $true
+          }
+
+          if ($existsRemote) {
+            Write-Host "Tag $tag already exists on origin. Skipping tag creation."
+            exit 0
+          }
 
           $existsLocally = $false
           try {
