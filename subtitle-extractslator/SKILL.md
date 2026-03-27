@@ -5,7 +5,7 @@ compatibility: Designed for agent environments (GitHub Copilot, Claude Code, Ope
 license: MIT
 metadata:
   author: waynebaby
-  version: 0.1.4
+  version: 0.1.5
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN
@@ -147,6 +147,7 @@ All custom external endpoint access is CLI route responsibility.
 3. For command details and troubleshooting, read `references/cli.md` and `references/troubleshooting.md`.
 4. For literary or entertainment subtitles (jokes, sarcasm, taboo language, sexual humor, dark comedy), strongly prefer an uncensored model variant. Censored models are more likely to weaken punchlines, skip sensitive phrasing, or leave source fragments untranslated.
 5. In agent scenarios, prefer MCP mode with explicit plan steps. Reusing MCP sampling through the existing client session can reduce token spend and lower deployment/ops overhead compared with standing up separate external-only translation services.
+
 
 
 
