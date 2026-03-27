@@ -46,11 +46,20 @@ internal sealed class SubtitleMcpTools
         string? opensubtitlesUserAgent = null)
         => ExecuteWithResultAsync(
             "opensubtitles_search",
-            () => _orchestrator.SearchOpenSubtitlesAsync(
-                input,
-                lang,
-            new OpenSubtitlesSearchQueries(searchQueryPrimary, searchQueryNormalized),
-                BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!));
+            async () =>
+            {
+                var result = await _orchestrator.SearchOpenSubtitlesAsync(
+                    input,
+                    lang,
+                    new OpenSubtitlesSearchQueries(searchQueryPrimary, searchQueryNormalized),
+                    BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!);
+
+                // Keep MCP payload compact; download tool uses fileId, not transient downloadUrl.
+                var compactCandidates = result.Candidates
+                    .Select(x => x with { DownloadUrl = null })
+                    .ToList();
+                return result with { Candidates = compactCandidates };
+            });
 
     [McpServerTool(Name = "opensubtitles_download", Title = "Download OpenSubtitles candidate")]
     [Description("Download subtitle from OpenSubtitles by fileId returned from a prior opensubtitles_search result.")]
@@ -103,7 +112,14 @@ internal sealed class SubtitleMcpTools
             async () =>
             {
                 using var samplingScope = McpSamplingRuntimeContext.BeginServerScope(mcpServer);
-                return await _orchestrator.ExtractSubtitleAsync(input, output, prefer);
+                var result = await _orchestrator.ExtractSubtitleAsync(input, output, prefer);
+
+                // Keep MCP payload compact; artifact details are internal diagnostics.
+                return result with
+                {
+                    ArtifactDirectory = null,
+                    ArtifactManifestPath = null
+                };
             });
     }
 
@@ -144,7 +160,7 @@ internal sealed class SubtitleMcpTools
             async () =>
             {
                 using var samplingScope = McpSamplingRuntimeContext.BeginServerScope(mcpServer);
-                return await _orchestrator.TranslateAsync(
+                var result = await _orchestrator.TranslateAsync(
                     input,
                     lang,
                     output,
@@ -152,6 +168,9 @@ internal sealed class SubtitleMcpTools
                     bodySize,
                     llmRetryCount,
                     null);
+
+                // Keep MCP payload small: translation details are already persisted to output file.
+                return result with { Groups = new List<GroupTranslationResult>() };
             });
     }
 
