@@ -16,15 +16,15 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-win-x64.zip)
-- Windows ARM64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-win-arm64.zip)
-- Linux x64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-linux-x64.zip)
-- Linux musl x64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-linux-musl-x64.zip)
-- Linux ARM64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-linux-arm64.zip)
-- Linux musl ARM64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-linux-musl-arm64.zip)
-- Linux ARM 包（v0.1.2）：[subtitle-extractslator-v0.1.2-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-linux-arm.zip)
-- macOS ARM64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-osx-arm64.zip)
-- macOS x64 包（v0.1.2）：[subtitle-extractslator-v0.1.2-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.2/subtitle-extractslator-v0.1.2-osx-x64.zip)
+- Windows x64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-win-x64.zip)
+- Windows ARM64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-win-arm64.zip)
+- Linux x64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-linux-x64.zip)
+- Linux musl x64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-linux-musl-x64.zip)
+- Linux ARM64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-linux-arm64.zip)
+- Linux musl ARM64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-linux-musl-arm64.zip)
+- Linux ARM 包（v0.1.3）：[subtitle-extractslator-v0.1.3-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-linux-arm.zip)
+- macOS ARM64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-osx-arm64.zip)
+- macOS x64 包（v0.1.3）：[subtitle-extractslator-v0.1.3-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.3/subtitle-extractslator-v0.1.3-osx-x64.zip)
 <!-- release-links:end -->
 
 ## 这个 Skill 解决什么问题
@@ -136,6 +136,7 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingl
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 
 
 
