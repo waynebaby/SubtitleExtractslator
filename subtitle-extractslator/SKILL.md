@@ -84,6 +84,12 @@ CLI global options:
 1. `--env "KEY=VALUE;KEY2=VALUE2"`: temporary environment overrides for current command.
 2. `--help`: print complete CLI command help.
 
+Output path policy (critical):
+1. Final subtitle output must be written to the same folder as the input video (or input subtitle) unless user explicitly requests another folder.
+2. For `run-workflow`, always pass explicit `--output` path in that input folder.
+3. If user does not provide output filename, default to `<input_basename>.<lang>.srt` in input folder.
+4. Do not place final outputs in random or temporary directories. Temporary files are allowed only for internal intermediate steps.
+
 CLI mode examples (Windows / Linux / macOS):
 1. Probe:
 - Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
@@ -131,6 +137,8 @@ Ask user whether to configure MCP for current workspace now.
 If yes, create or update `./.vscode/mcp.json`; on Windows use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
 1. Confirm user target: input file and target language.
+Confirm/derive deterministic final output path in the input file folder before execution.
+If not provided, set output to `<input_basename>.<lang>.srt` in the same folder.
 2. Probe internal subtitle tracks.
 If target language exists, report and stop.
 3. Query OpenSubtitles candidates.
