@@ -17,9 +17,9 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 <!-- release-links:start -->
 - Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows package (v0.1.0): [subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
-- Linux package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
-- macOS package (v0.1.0): [subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- Windows package (v0.1.1): [subtitle-extractslator-v0.1.1-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-win-x64.zip)
+- Linux package (v0.1.1): [subtitle-extractslator-v0.1.1-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-linux-x64.zip)
+- macOS package (v0.1.1): [subtitle-extractslator-v0.1.1-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-osx-arm64.zip)
 <!-- release-links:end -->
 
 ## What The Skill Solves
@@ -132,4 +132,5 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingl
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 

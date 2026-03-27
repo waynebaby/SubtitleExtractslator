@@ -16,9 +16,9 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows 包（v0.1.0）：[subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
-- Linux 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
-- macOS 包（v0.1.0）：[subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- Windows 包（v0.1.1）：[subtitle-extractslator-v0.1.1-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-win-x64.zip)
+- Linux 包（v0.1.1）：[subtitle-extractslator-v0.1.1-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-linux-x64.zip)
+- macOS 包（v0.1.1）：[subtitle-extractslator-v0.1.1-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.1/subtitle-extractslator-v0.1.1-osx-arm64.zip)
 <!-- release-links:end -->
 
 ## 这个 Skill 解决什么问题
@@ -130,4 +130,5 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingl
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 
