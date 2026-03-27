@@ -607,13 +607,18 @@ internal sealed class SubtitleOperations
             CliRuntimeLog.Warn("extract", $"PGS cue count capped for OCR. total={timeline.Count} cap={source.Count}");
         }
 
+        var parallelism = ResolveGlobalLlmParallelism();
+        CliRuntimeLog.Info("extract", $"PGS OCR parallelism={parallelism}");
+
+        var texts = new string?[source.Count];
+        using var limiter = new SemaphoreSlim(parallelism);
+        var tasks = source.Select((item, index) => ProcessOcrAtIndexAsync(item, index)).ToList();
+        await Task.WhenAll(tasks);
+
         var cues = new List<SubtitleCue>(source.Count);
-
-        foreach (var item in source)
+        for (var i = 0; i < source.Count; i++)
         {
-            var text = await RunBitmapOcrAsync(item.ImagePath, ocrSettings, _modeContext);
-
-            var cleaned = NormalizeOcrText(text);
+            var cleaned = NormalizeOcrText(texts[i] ?? string.Empty);
             if (string.IsNullOrWhiteSpace(cleaned))
             {
                 continue;
@@ -621,12 +626,41 @@ internal sealed class SubtitleOperations
 
             cues.Add(new SubtitleCue(
                 cues.Count + 1,
-                item.Start,
-                item.End,
+                source[i].Start,
+                source[i].End,
                 SplitCueLines(cleaned)));
         }
 
         return cues;
+
+        async Task ProcessOcrAtIndexAsync(PgsTimelineEntry item, int index)
+        {
+            await limiter.WaitAsync();
+            try
+            {
+                texts[index] = await RunBitmapOcrAsync(item.ImagePath, ocrSettings, _modeContext);
+            }
+            finally
+            {
+                limiter.Release();
+            }
+        }
+    }
+
+    private static int ResolveGlobalLlmParallelism()
+    {
+        var raw = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_TRANSLATION_PARALLELISM");
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return 4;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return 4;
+        }
+
+        return Math.Clamp(parsed, 1, 32);
     }
 
     private static BitmapOcrSettings ResolveBitmapOcrSettings()
