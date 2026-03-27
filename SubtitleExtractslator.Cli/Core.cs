@@ -714,7 +714,7 @@ internal sealed class SubtitleOperations
         }
 
         var ffmpeg = ResolveExecutable("ffmpeg");
-        var args = $"-y -i {QuoteArg(input)} -map 0:s:{selected.SubtitleOrder} -f srt {QuoteArg(output)}";
+        var args = $"-nostdin -y -i {QuoteArg(input)} -map 0:s:{selected.SubtitleOrder} -f srt {QuoteArg(output)}";
         CliRuntimeLog.Info("extract", $"Selected subtitle track order={selected.SubtitleOrder} language={selected.Language}");
         CliRuntimeLog.Info("extract", $"Running ffmpeg: {QuoteArg(ffmpeg)} {args}");
         await RunProcessAsync(ffmpeg, args);
@@ -758,7 +758,7 @@ internal sealed class SubtitleOperations
         var subtitleCodec = ResolveSubtitleCodecForContainer(outputMedia);
         var ffmpeg = ResolveExecutable("ffmpeg");
 
-        var args = $"-y -i {QuoteArg(inputMedia)} -i {QuoteArg(subtitlePath)} -map 0 -map 1:0 -c copy -c:s {subtitleCodec} -metadata:s:s:{newSubtitleIndex} language={normalizedLanguage} -metadata:s:s:{newSubtitleIndex} title={QuoteArg($"AI {normalizedLanguage} subtitle")} {QuoteArg(outputMedia)}";
+        var args = $"-nostdin -y -i {QuoteArg(inputMedia)} -i {QuoteArg(subtitlePath)} -map 0 -map 1:0 -c copy -c:s {subtitleCodec} -metadata:s:s:{newSubtitleIndex} language={normalizedLanguage} -metadata:s:s:{newSubtitleIndex} title={QuoteArg($"AI {normalizedLanguage} subtitle")} {QuoteArg(outputMedia)}";
         CliRuntimeLog.Info("mux", $"Running ffmpeg mux: {QuoteArg(ffmpeg)} {args}");
         await RunProcessAsync(ffmpeg, args);
         return outputMedia;
@@ -811,6 +811,7 @@ internal sealed class SubtitleOperations
         await FfmpegBootstrap.EnsureAsync();
 
         var ffprobe = ResolveExecutable("ffprobe");
+        // Some ffprobe builds (for example recent gyan builds) do not accept -nostdin.
         var args = $"-v error -select_streams s -show_entries stream=index:stream_tags=language,title -of json {QuoteArg(input)}";
         CliRuntimeLog.Info("ffprobe", $"Running ffprobe: {QuoteArg(ffprobe)} {args}");
         var output = await RunProcessAsync(ffprobe, args);
@@ -912,6 +913,7 @@ internal sealed class SubtitleOperations
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            RedirectStandardInput = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
@@ -920,6 +922,7 @@ internal sealed class SubtitleOperations
         try
         {
             process.Start();
+            process.StandardInput.Close();
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 2 || ex.NativeErrorCode == 3)
         {
