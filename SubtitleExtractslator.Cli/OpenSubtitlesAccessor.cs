@@ -21,32 +21,31 @@ internal sealed class OpenSubtitlesAccessor
         _settings = settings;
     }
 
-    public static OpenSubtitlesAccessor? CreateFromEnvironment()
+    public static OpenSubtitlesAccessor? Create(OpenSubtitlesCredentials? credentials)
     {
-        var apiKey = Environment.GetEnvironmentVariable("OPENSUBTITLES_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (credentials is null || string.IsNullOrWhiteSpace(credentials.ApiKey))
         {
             return null;
         }
 
-        var endpoint = Environment.GetEnvironmentVariable("OPENSUBTITLES_ENDPOINT")?.Trim();
+        var endpoint = credentials.Endpoint?.Trim();
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             endpoint = "https://api.opensubtitles.com/api/v1";
         }
 
-        var userAgent = Environment.GetEnvironmentVariable("OPENSUBTITLES_USER_AGENT")?.Trim();
+        var userAgent = credentials.UserAgent?.Trim();
         if (string.IsNullOrWhiteSpace(userAgent))
         {
             userAgent = "SubtitleExtractslator/0.1";
         }
 
-        var username = Environment.GetEnvironmentVariable("OPENSUBTITLES_USERNAME");
-        var password = Environment.GetEnvironmentVariable("OPENSUBTITLES_PASSWORD");
+        var username = credentials.Username;
+        var password = credentials.Password;
 
         return new OpenSubtitlesAccessor(new OpenSubtitlesSettings(
             endpoint.TrimEnd('/'),
-            apiKey,
+            credentials.ApiKey,
             userAgent,
             username,
             password));
@@ -489,6 +488,7 @@ internal sealed class OpenSubtitlesAccessor
 
         return null;
     }
+
 }
 
 internal sealed record OpenSubtitlesSettings(

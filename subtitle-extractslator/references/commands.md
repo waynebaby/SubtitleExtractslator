@@ -21,39 +21,16 @@ Global CLI options:
 1. `--env "KEY=VALUE;KEY2=VALUE2"` applies per-command temporary environment overrides.
 1. `--help` prints complete CLI help text.
 
+Platform invocation rule:
+
+1. Pick the matching binary from Binary Matrix and refer to it as `<cli_bin>`.
+2. Use the same command shape across platforms by replacing only `<cli_bin>`.
+
 ### Probe subtitles
 
-Windows example:
+Template:
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
-
-Linux x64 example:
-
-`./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-Linux musl x64 example:
-
-`./assets/bin/linux-musl-x64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-Linux ARM64 example:
-
-`./assets/bin/linux-arm64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-Linux musl ARM64 example:
-
-`./assets/bin/linux-musl-arm64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-Linux ARM (32-bit) example:
-
-`./assets/bin/linux-arm/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-macOS ARM64 example:
-
-`./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
-
-macOS x64 example:
-
-`./assets/bin/osx-x64/SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh`
+`<cli_bin> --mode cli probe --input "movie.mkv" --lang zh`
 
 Expected result:
 
@@ -61,19 +38,33 @@ Expected result:
 
 ### OpenSubtitles search
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
+`<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --opensubtitles-api-key "<key>"`
 
 Expected result:
 
 - JSON candidate list.
-- Real API search is used when `OPENSUBTITLES_API_KEY` is configured.
+- Real API search is used when `--opensubtitles-api-key` is provided.
 - Mock candidates are returned only when `OPENSUBTITLES_MOCK` is set.
-- If real API credentials are missing, ask user for credential input before retrying real search.
-- Use temporary `--env` overrides for credential answers in CLI runs (do not persist secrets by default).
+- Optional OpenSubtitles parameters: `--opensubtitles-username`, `--opensubtitles-password`, `--opensubtitles-endpoint`, `--opensubtitles-user-agent`.
+
+### OpenSubtitles download
+
+`<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>"`
+
+Additional options:
+
+- `--candidate-rank <n>`: download by ranked search result (default `1`)
+- `--file-id <id>`: direct download by OpenSubtitles file id (skips search)
+
+Expected behavior:
+
+- Ranked download uses mandatory fallback search strategy: base filename first, then normalized full-path query like `<series_or_title> s00e00`.
+- Real download requires `--opensubtitles-api-key`.
+- HTTP integration sends `Api-Key` and `User-Agent` headers.
 
 ### Extract subtitle
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
+`<cli_bin> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
 
 Expected behavior:
 
@@ -82,7 +73,7 @@ Expected behavior:
 
 ### Full workflow
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
+`<cli_bin> --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" [--opensubtitles-api-key "<key>"] [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
 
 Expected behavior:
 
@@ -97,7 +88,7 @@ Expected behavior:
 
 ### Batch workflow (CLI only)
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+`<cli_bin> --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
 
 Input list file rules:
 
@@ -115,23 +106,13 @@ Expected behavior:
 
 Start server:
 
-`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode mcp`
-
-Other platform start examples:
-
-1. Windows ARM64: `./assets/bin/win-arm64/SubtitleExtractslator.Cli.exe --mode mcp`
-1. Linux x64: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode mcp`
-1. Linux musl x64: `./assets/bin/linux-musl-x64/SubtitleExtractslator.Cli --mode mcp`
-1. Linux ARM64: `./assets/bin/linux-arm64/SubtitleExtractslator.Cli --mode mcp`
-1. Linux musl ARM64: `./assets/bin/linux-musl-arm64/SubtitleExtractslator.Cli --mode mcp`
-1. Linux ARM: `./assets/bin/linux-arm/SubtitleExtractslator.Cli --mode mcp`
-1. macOS ARM64: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode mcp`
-1. macOS x64: `./assets/bin/osx-x64/SubtitleExtractslator.Cli --mode mcp`
+`<cli_bin> --mode mcp`
 
 Exposed tools:
 
 1. `probe`
 1. `opensubtitles_search`
+1. `opensubtitles_download`
 1. `extract`
 1. `run_workflow`
 
@@ -150,6 +131,7 @@ Tool return contract:
 Notes:
 
 1. Batch workflow is intentionally not exposed in MCP mode to reduce timeout-related failures in MCP clients.
+2. MCP `opensubtitles_download` is download-only and must use `fileId` from a prior `opensubtitles_search` result.
 
 ## Environment Variables
 
@@ -157,19 +139,11 @@ Notes:
 
 - Any non-empty value enables mock candidate results.
 
-1. OpenSubtitles real API settings
+1. OpenSubtitles credential rule
 
-- `OPENSUBTITLES_API_KEY` (required for real search)
-- `OPENSUBTITLES_USERNAME` (optional, used with password for login token)
-- `OPENSUBTITLES_PASSWORD` (optional)
-- `OPENSUBTITLES_ENDPOINT` (optional, default `https://api.opensubtitles.com/api/v1`)
-- `OPENSUBTITLES_USER_AGENT` (optional, default `SubtitleExtractslator/0.1`)
-
-Credential interaction guidance:
-
-- When `OPENSUBTITLES_API_KEY` is absent and user requests OpenSubtitles path, ask for key first.
-- Then ask whether to provide username/password for better download reliability.
-- Inject user answers as temporary env overrides for the current command/session.
+- OpenSubtitles credentials are explicit command/tool parameters, not environment variables.
+- Required: `opensubtitlesApiKey` (CLI: `--opensubtitles-api-key`).
+- Optional: `opensubtitlesUsername`, `opensubtitlesPassword`, `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
 
 1. LLM translation settings
 

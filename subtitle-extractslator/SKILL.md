@@ -1,7 +1,7 @@
 ---
 name: subtitle-extractslator
 description: Probe media subtitle tracks, search OpenSubtitles candidates, extract fallback subtitles, and run grouped context-aware translation while preserving SRT timing and structure. Use when user asks to find subtitle language, reuse existing subtitle tracks, check OpenSubtitles, or produce translated subtitle files with stable rhythm and timeline.
-compatibility: Designed for Claude Code environments with local executable access and FFmpeg available.
+compatibility: Designed for agent environments (GitHub Copilot, Claude Code, OpenClaw, Codex) with local executable access and FFmpeg available.
 license: MIT
 metadata:
   author: waynebaby
@@ -45,9 +45,12 @@ Read these reference files for operational details:
 - MCP-first setup and `mcp.json` rules
 - exposed tools and return contract
 - MCP runtime notes and constraints
-3. `references/commands.md`:
+3. `references/opensubtitles.md`:
+- OpenSubtitles explicit-parameter credential contract (CLI + MCP)
+- search/download fallback strategy, rate-limit handling, and parameter matrix
+4. `references/commands.md`:
 - complete command and environment variable matrix
-4. `references/troubleshooting.md`:
+5. `references/troubleshooting.md`:
 - failure patterns and diagnostics checklist
 
 ## Workflow Contract
@@ -56,7 +59,7 @@ Follow this exact decision tree (do not reorder):
 
 0. MCP setup prompt first.
 Ask user whether to configure MCP for current workspace now.
-If yes, create or update `./.vscode/mcp.json`; on Windows use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
+If yes, create or update the MCP config file for the current agent client (for example, GitHub Copilot commonly uses `./.vscode/mcp.json`; Claude Code/OpenClaw/Codex use their own MCP config locations); on all platforms use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
 
 1. Confirm user target:
@@ -81,24 +84,32 @@ ELSE continue.
 - search OpenSubtitles in any language
 - prefer English candidates first
 - then use the best available non-English candidate
-- OpenSubtitles query fallback strategy (required):
-- first try search with the video title/base filename
-- if no candidate is found, retry with normalized episode-style keyword generated from full input path, for example: `<series_or_title> s00e00`
-- if still no candidate, report not found and continue local extraction fallback
+- OpenSubtitles dual-query and fallback strategy (CRITICAL, mandatory for every OpenSubtitles search):
+- every `opensubtitles_search` call must pass two query parameters together:
+  - primary query: current video title/base filename
+  - normalized query: normalized episode-style keyword from full path, for example `<series_or_title> s00e00`
+- fallback execution is internal-only: MCP/CLI C# code must run primary-first then normalized retry; skill layer must not split this into parallel or separate fallback jobs
+- if both queries return no candidate, report not found and continue local extraction fallback
 
-OpenSubtitles credential interaction rule (must execute before real OpenSubtitles call):
-1. If `OPENSUBTITLES_API_KEY` is missing in current context/environment, ask user for it.
-2. Ask whether user also wants authenticated download reliability via username/password.
-3. If user provides username, then ask password in the next prompt.
-4. Do not persist secrets into repository files by default.
-5. Apply provided values as temporary runtime env overrides for current command/workflow.
-6. If user refuses to provide credentials, skip OpenSubtitles branch and continue local extraction fallback.
+OpenSubtitles credential and download rule (CLI + MCP):
+1. OpenSubtitles real API calls must use explicit function/command parameters, not process environment variables.
+2. Required credential parameter name is `opensubtitlesApiKey` (CLI flag: `--opensubtitles-api-key`).
+3. Optional parameters: `opensubtitlesUsername`, `opensubtitlesPassword`, `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
+4. CLI download supports both direct `fileId` and ranked candidate selection (`candidateRank`, default `1`).
+5. MCP `opensubtitles_download` is download-only: it requires `fileId` from prior `opensubtitles_search` result and must not trigger internal search.
+6. CLI ranked download must reuse the same CRITICAL fallback-aware search strategy.
+7. If user refuses to provide required credential parameters, skip OpenSubtitles branch and continue local extraction fallback.
+8. Detailed parameter matrix and examples are maintained in `references/opensubtitles.md`.
+9. Skill-level orchestration is strictly linear: `opensubtitles_search` and `opensubtitles_download` must run one-by-one; parallel execution is forbidden.
 
-Credential Q&A prompts (required wording style):
-1. `Please provide OpenSubtitles API key (OPENSUBTITLES_API_KEY) for this run.`
-2. `Do you want to provide OpenSubtitles username/password for authenticated download as well?`
-3. `Please provide OpenSubtitles username (OPENSUBTITLES_USERNAME).`
-4. `Please provide OpenSubtitles password (OPENSUBTITLES_PASSWORD).`
+OpenSubtitles rate-limit handling (CRITICAL):
+1. If API response indicates rate limit (for example HTTP `429` or explicit `rate limit exceeded`), disable OpenSubtitles parallel requests immediately.
+2. After rate limit is detected, process OpenSubtitles requests strictly one-by-one (serial only).
+3. Insert delay between each request in serial mode before sending the next one.
+4. Retry per request up to 20 times when rate-limited, and increase the wait time on each trigger.
+5. Keep retry rhythm conservative; do not switch back to parallel mode in the same task/session.
+6. If rate limit continues after retries are exhausted, return rate-limit error and stop OpenSubtitles branch.
+7. Operational details and wording source of truth are maintained in `references/opensubtitles.md`.
 
 4. Build timeline cue objects and split into groups.
 Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).
@@ -130,6 +141,13 @@ All custom external endpoint access is CLI route responsibility.
 4. Embedded subtitle source selection is deterministic: `en/eng` first, otherwise first available language.
 5. When no embedded subtitle exists, local folder/subfolder subtitle search is attempted before OpenSubtitles.
 6. OpenSubtitles fallback uses language preference `en/eng` first, then other available languages.
+7. OpenSubtitles fallback query strategy is mandatory for every OpenSubtitles search call and must not be skipped.
+8. OpenSubtitles download by ranked candidate must call the same mandatory fallback-aware search path before selecting candidate rank.
+9. OpenSubtitles credentials must be passed as explicit parameters; environment-variable-only credential path is not allowed.
+10. After any OpenSubtitles rate-limit signal, OpenSubtitles calls must run in serial delayed mode; parallel burst is forbidden.
+11. Every OpenSubtitles search request must include both primary and normalized query parameters.
+12. Fallback order must be executed inside MCP/CLI C# implementation, not by skill-side parallel fan-out.
+13. Skill must orchestrate OpenSubtitles `search` -> `download` in strict serial order; no parallel calls.
 
 ## Operational Notes
 

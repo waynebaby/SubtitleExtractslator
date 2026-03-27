@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SubtitleExtractslator.Cli;
 
@@ -27,7 +28,11 @@ internal sealed class SubtitleOperations
         return new ProbeResult(input, targetLanguage, hasTarget, tracks);
     }
 
-    public Task<OpenSubtitlesResult> SearchOpenSubtitlesAsync(string input, string targetLanguage)
+    public Task<OpenSubtitlesResult> SearchOpenSubtitlesAsync(
+        string input,
+        string targetLanguage,
+        OpenSubtitlesSearchQueries queries,
+        OpenSubtitlesCredentials? credentials)
     {
         CliRuntimeLog.Info("opensubtitles", $"Searching candidates. input={input} target={targetLanguage}");
         var mock = Environment.GetEnvironmentVariable("OPENSUBTITLES_MOCK");
@@ -43,28 +48,28 @@ internal sealed class SubtitleOperations
             return Task.FromResult(new OpenSubtitlesResult(input, targetLanguage, candidates));
         }
 
-        var accessor = OpenSubtitlesAccessor.CreateFromEnvironment();
+        var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
-            CliRuntimeLog.Info("opensubtitles", "No OpenSubtitles API key configured. Returning empty candidate list.");
+            CliRuntimeLog.Info("opensubtitles", "No OpenSubtitles API key provided by function parameter. Returning empty candidate list.");
             return Task.FromResult(new OpenSubtitlesResult(input, targetLanguage, new List<SubtitleCandidate>()));
         }
 
-        return SearchOpenSubtitlesWithAccessorAsync(input, targetLanguage, accessor);
+        return SearchOpenSubtitlesWithAccessorAsync(input, targetLanguage, queries, accessor);
     }
 
-    public async Task<string> DownloadOpenSubtitleAsync(SubtitleCandidate candidate, string outputPath)
+    public async Task<string> DownloadOpenSubtitleAsync(SubtitleCandidate candidate, string outputPath, OpenSubtitlesCredentials? credentials)
     {
         if (candidate.Source.Equals("mock-source", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Mock OpenSubtitles candidate cannot be adopted as a real subtitle file.");
         }
 
-        var accessor = OpenSubtitlesAccessor.CreateFromEnvironment();
+        var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
             throw new InvalidOperationException(
-                "OpenSubtitles candidate adoption requires OPENSUBTITLES_API_KEY (and optionally OPENSUBTITLES_USERNAME/OPENSUBTITLES_PASSWORD).");
+                "OpenSubtitles candidate adoption requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
         }
 
         CliRuntimeLog.Info("opensubtitles", $"Downloading candidate. fileId={candidate.FileId ?? "n/a"} name={candidate.Name}");
@@ -73,23 +78,262 @@ internal sealed class SubtitleOperations
         return outputPath;
     }
 
+    public async Task<OpenSubtitlesDownloadResult> DownloadOpenSubtitleAsync(
+        string input,
+        string targetLanguage,
+        string outputPath,
+        int candidateRank,
+        string? fileId,
+        OpenSubtitlesCredentials? credentials)
+    {
+        if (candidateRank <= 0)
+        {
+            throw new InvalidOperationException("OpenSubtitles candidate rank must be greater than 0.");
+        }
+
+        EnsureInputPathExists(input);
+        var accessor = OpenSubtitlesAccessor.Create(credentials);
+        if (accessor is null)
+        {
+            throw new InvalidOperationException(
+            "OpenSubtitles download requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
+        }
+
+        SubtitleCandidate candidate;
+        string strategy;
+        if (!string.IsNullOrWhiteSpace(fileId))
+        {
+            strategy = "direct-file-id";
+            candidate = new SubtitleCandidate(
+                1,
+                NormalizeLanguageToken(targetLanguage),
+                0,
+                $"opensubtitles-file-{fileId}",
+                "opensubtitles",
+                null,
+                fileId.Trim());
+        }
+        else
+        {
+            strategy = "search-rank";
+            var searchQueries = BuildSearchQueriesFromInput(input);
+            var search = await SearchOpenSubtitlesWithAccessorAsync(input, targetLanguage, searchQueries, accessor);
+            if (search.Candidates.Count == 0)
+            {
+                throw new InvalidOperationException("OpenSubtitles search returned no candidates to download.");
+            }
+
+            candidate = search.Candidates
+                .OrderBy(x => x.Rank)
+                .Skip(candidateRank - 1)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException($"OpenSubtitles candidate rank {candidateRank} is out of range. candidates={search.Candidates.Count}.");
+        }
+
+        var downloaded = await DownloadOpenSubtitleAsync(candidate, outputPath, credentials);
+        return new OpenSubtitlesDownloadResult(
+            input,
+            targetLanguage,
+            downloaded,
+            strategy,
+            candidateRank,
+            candidate.FileId,
+            candidate.Name);
+    }
+
+    public async Task<OpenSubtitlesDownloadResult> DownloadOpenSubtitleByFileIdAsync(
+        string fileId,
+        string outputPath,
+        OpenSubtitlesCredentials? credentials)
+    {
+        if (string.IsNullOrWhiteSpace(fileId))
+        {
+            throw new InvalidOperationException("OpenSubtitles download requires a non-empty fileId from a previous search result.");
+        }
+
+        var accessor = OpenSubtitlesAccessor.Create(credentials);
+        if (accessor is null)
+        {
+            throw new InvalidOperationException(
+                "OpenSubtitles download requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
+        }
+
+        var normalizedFileId = fileId.Trim();
+        var candidate = new SubtitleCandidate(
+            1,
+            "unknown",
+            0,
+            $"opensubtitles-file-{normalizedFileId}",
+            "opensubtitles",
+            null,
+            normalizedFileId);
+
+        var downloaded = await DownloadOpenSubtitleAsync(candidate, outputPath, credentials);
+        return new OpenSubtitlesDownloadResult(
+            string.Empty,
+            "unknown",
+            downloaded,
+            "direct-file-id",
+            1,
+            normalizedFileId,
+            candidate.Name);
+    }
+
     private static async Task<OpenSubtitlesResult> SearchOpenSubtitlesWithAccessorAsync(
         string input,
         string targetLanguage,
+        OpenSubtitlesSearchQueries queries,
         OpenSubtitlesAccessor accessor)
     {
         try
         {
-            var query = Path.GetFileNameWithoutExtension(input);
-            var candidates = await accessor.SearchAsync(query, targetLanguage, maxResults: 5);
-            CliRuntimeLog.Info("opensubtitles", $"Real search completed. candidateCount={candidates.Count}");
-            return new OpenSubtitlesResult(input, targetLanguage, candidates);
+            ValidateSearchQueries(queries);
+            var primaryQuery = queries.SearchQueryPrimary.Trim();
+            var primaryCandidates = await SearchCandidatesAsync(accessor, primaryQuery, targetLanguage, "primary-base-filename");
+            if (primaryCandidates.Count > 0)
+            {
+                return new OpenSubtitlesResult(input, targetLanguage, primaryCandidates);
+            }
+
+            var fallbackQuery = queries.SearchQueryNormalized.Trim();
+            if (string.IsNullOrWhiteSpace(fallbackQuery)
+                || fallbackQuery.Equals(primaryQuery, StringComparison.OrdinalIgnoreCase))
+            {
+                CliRuntimeLog.Info("opensubtitles", "Fallback query is empty or duplicate. Returning empty candidate list.");
+                return new OpenSubtitlesResult(input, targetLanguage, new List<SubtitleCandidate>());
+            }
+
+            var fallbackCandidates = await SearchCandidatesAsync(accessor, fallbackQuery, targetLanguage, "fallback-fullpath-episode-style");
+            return new OpenSubtitlesResult(input, targetLanguage, fallbackCandidates);
         }
         catch (Exception ex)
         {
             CliRuntimeLog.Warn("opensubtitles", $"Real search failed. Returning empty candidate list. reason={ex.Message}");
             return new OpenSubtitlesResult(input, targetLanguage, new List<SubtitleCandidate>());
         }
+    }
+
+    public static OpenSubtitlesSearchQueries BuildSearchQueriesFromInput(string input)
+    {
+        var primaryQuery = BuildPrimaryOpenSubtitlesQuery(input);
+        var normalizedQuery = BuildEpisodeStyleFallbackQuery(input);
+        return new OpenSubtitlesSearchQueries(primaryQuery, normalizedQuery);
+    }
+
+    private static void ValidateSearchQueries(OpenSubtitlesSearchQueries queries)
+    {
+        if (string.IsNullOrWhiteSpace(queries.SearchQueryPrimary))
+        {
+            throw new InvalidOperationException("OpenSubtitles search requires non-empty searchQueryPrimary.");
+        }
+
+        if (string.IsNullOrWhiteSpace(queries.SearchQueryNormalized))
+        {
+            throw new InvalidOperationException("OpenSubtitles search requires non-empty searchQueryNormalized.");
+        }
+    }
+
+    private static async Task<List<SubtitleCandidate>> SearchCandidatesAsync(
+        OpenSubtitlesAccessor accessor,
+        string query,
+        string targetLanguage,
+        string stage)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} skipped because query is empty.");
+            return new List<SubtitleCandidate>();
+        }
+
+        CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} query={query}");
+        var candidates = await accessor.SearchAsync(query, targetLanguage, maxResults: 5);
+        CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} completed. candidateCount={candidates.Count}");
+        return candidates;
+    }
+
+    private static string BuildPrimaryOpenSubtitlesQuery(string input)
+        => NormalizeSearchToken(Path.GetFileNameWithoutExtension(input));
+
+    private static string BuildEpisodeStyleFallbackQuery(string input)
+    {
+        var fileNameToken = NormalizeSearchToken(Path.GetFileNameWithoutExtension(input));
+        var parentToken = NormalizeSearchToken(Path.GetFileName(Path.GetDirectoryName(input) ?? string.Empty));
+
+        var seriesOrTitle = fileNameToken;
+        if (ContainsEpisodeMarker(fileNameToken) && !string.IsNullOrWhiteSpace(parentToken))
+        {
+            seriesOrTitle = parentToken;
+        }
+
+        if (string.IsNullOrWhiteSpace(seriesOrTitle))
+        {
+            seriesOrTitle = parentToken;
+        }
+
+        if (string.IsNullOrWhiteSpace(seriesOrTitle))
+        {
+            seriesOrTitle = "unknown";
+        }
+
+        var (season, episode) = TryParseSeasonEpisode(input);
+        return $"{seriesOrTitle} s{season:00}e{episode:00}";
+    }
+
+    private static (int Season, int Episode) TryParseSeasonEpisode(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return (0, 0);
+        }
+
+        var direct = Regex.Match(text, @"\bs(?<season>\d{1,2})[\s._-]*e(?<episode>\d{1,2})\b", RegexOptions.IgnoreCase);
+        if (direct.Success
+            && int.TryParse(direct.Groups["season"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var season)
+            && int.TryParse(direct.Groups["episode"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var episode))
+        {
+            return (Math.Clamp(season, 0, 99), Math.Clamp(episode, 0, 99));
+        }
+
+        var compact = Regex.Match(text, @"\b(?<season>\d{1,2})x(?<episode>\d{1,2})\b", RegexOptions.IgnoreCase);
+        if (compact.Success
+            && int.TryParse(compact.Groups["season"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out season)
+            && int.TryParse(compact.Groups["episode"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out episode))
+        {
+            return (Math.Clamp(season, 0, 99), Math.Clamp(episode, 0, 99));
+        }
+
+        return (0, 0);
+    }
+
+    private static bool ContainsEpisodeMarker(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return Regex.IsMatch(value, @"\bs\d{1,2}[\s._-]*e\d{1,2}\b", RegexOptions.IgnoreCase)
+            || Regex.IsMatch(value, @"\b\d{1,2}x\d{1,2}\b", RegexOptions.IgnoreCase);
+    }
+
+    private static string NormalizeSearchToken(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim();
+        normalized = Regex.Replace(normalized, @"[._-]+", " ");
+        normalized = Regex.Replace(normalized, @"\bs\d{1,2}[\s._-]*e\d{1,2}\b", string.Empty, RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"\b\d{1,2}x\d{1,2}\b", string.Empty, RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(
+            normalized,
+            @"\b(480p|576p|720p|1080p|2160p|x264|x265|h\.?264|h\.?265|webrip|web[- ]?dl|bluray|brrip|hdrip|amzn|nf|hmax|ddp\d(\.\d)?|aac\d(\.\d)?)\b",
+            string.Empty,
+            RegexOptions.IgnoreCase);
+        normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+        return normalized.ToLowerInvariant();
     }
 
     public async Task<ExtractionResult> ExtractSubtitleAsync(string input, string output, string preferredLanguage)

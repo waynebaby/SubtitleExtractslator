@@ -29,8 +29,52 @@ internal sealed class SubtitleMcpTools
         [Description("Input media file path or subtitle file path used to infer search context.")]
         string input,
         [Description("Target subtitle language code to search for, e.g. zh, en, ja.")]
-        string lang)
-        => ExecuteWithResultAsync("opensubtitles_search", () => _orchestrator.SearchOpenSubtitlesAsync(input, lang));
+        string lang,
+        [Description("Primary search query, usually current video title/base filename.")]
+        string searchQueryPrimary,
+        [Description("Normalized fallback search query, e.g. <series_or_title> s00e00.")]
+        string searchQueryNormalized,
+        [Description("OpenSubtitles API key used for search requests.")]
+        string opensubtitlesApiKey,
+        [Description("Optional OpenSubtitles username for authenticated login token.")]
+        string? opensubtitlesUsername = null,
+        [Description("Optional OpenSubtitles password for authenticated login token.")]
+        string? opensubtitlesPassword = null,
+        [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
+        string? opensubtitlesEndpoint = null,
+        [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
+        string? opensubtitlesUserAgent = null)
+        => ExecuteWithResultAsync(
+            "opensubtitles_search",
+            () => _orchestrator.SearchOpenSubtitlesAsync(
+                input,
+                lang,
+            new OpenSubtitlesSearchQueries(searchQueryPrimary, searchQueryNormalized),
+                BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!));
+
+    [McpServerTool(Name = "opensubtitles_download", Title = "Download OpenSubtitles candidate")]
+    [Description("Download subtitle from OpenSubtitles by fileId returned from a prior opensubtitles_search result.")]
+    public Task<McpToolResult<OpenSubtitlesDownloadResult>> OpenSubtitlesDownload(
+        [Description("OpenSubtitles file_id returned by opensubtitles_search candidate entry.")]
+        string fileId,
+        [Description("Output subtitle file path.")]
+        string output,
+        [Description("OpenSubtitles API key used for download requests.")]
+        string opensubtitlesApiKey,
+        [Description("Optional OpenSubtitles username for authenticated login token.")]
+        string? opensubtitlesUsername = null,
+        [Description("Optional OpenSubtitles password for authenticated login token.")]
+        string? opensubtitlesPassword = null,
+        [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
+        string? opensubtitlesEndpoint = null,
+        [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
+        string? opensubtitlesUserAgent = null)
+        => ExecuteWithResultAsync(
+            "opensubtitles_download",
+            () => _orchestrator.DownloadOpenSubtitleByFileIdAsync(
+                fileId,
+                output,
+                BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!));
 
     [McpServerTool(Name = "extract", Title = "Extract subtitle")]
     [Description("Extract subtitle file from input media using preferred language with deterministic fallback.")]
@@ -60,6 +104,16 @@ internal sealed class SubtitleMcpTools
         int? llmRetryCount = null,
         [Description("Optional output media path for remuxing generated AI subtitle back into the source video as a new subtitle language track.")]
         string? muxOutput = null,
+        [Description("Optional OpenSubtitles API key. If absent, workflow skips OpenSubtitles branch and continues local extraction fallback.")]
+        string? opensubtitlesApiKey = null,
+        [Description("Optional OpenSubtitles username for authenticated login token.")]
+        string? opensubtitlesUsername = null,
+        [Description("Optional OpenSubtitles password for authenticated login token.")]
+        string? opensubtitlesPassword = null,
+        [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
+        string? opensubtitlesEndpoint = null,
+        [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
+        string? opensubtitlesUserAgent = null,
         [Description("Injected MCP server instance used for official sampling requests. If injection fails, workflow logs the reason and returns an error under sampling-only policy.")]
         McpServer mcpServer = null!)
     {
@@ -90,8 +144,38 @@ internal sealed class SubtitleMcpTools
                     bodySize,
                     llmRetryCount,
                     muxOutput,
+                    BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: false),
                     null);
             });
+    }
+
+    private static OpenSubtitlesCredentials? BuildOpenSubtitlesCredentials(
+        string? apiKey,
+        string? username,
+        string? password,
+        string? endpoint,
+        string? userAgent,
+        bool requireApiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            if (requireApiKey)
+            {
+                throw new InvalidOperationException("Missing required parameter: opensubtitlesApiKey");
+            }
+
+            if (string.IsNullOrWhiteSpace(username)
+                && string.IsNullOrWhiteSpace(password)
+                && string.IsNullOrWhiteSpace(endpoint)
+                && string.IsNullOrWhiteSpace(userAgent))
+            {
+                return null;
+            }
+
+            throw new InvalidOperationException("opensubtitlesApiKey is required when any OpenSubtitles credential/config parameter is provided.");
+        }
+
+        return new OpenSubtitlesCredentials(apiKey, username, password, endpoint, userAgent);
     }
 
     private static async Task<McpToolResult<T>> ExecuteWithResultAsync<T>(string toolName, Func<Task<T>> action)

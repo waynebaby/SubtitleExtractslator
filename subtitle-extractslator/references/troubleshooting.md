@@ -23,14 +23,14 @@ Actions:
 
 Current implementation behavior:
 1. If no candidate is available, workflow falls back to local extraction.
-2. Real API search requires `OPENSUBTITLES_API_KEY`.
-3. Candidate adoption/download is more reliable when `OPENSUBTITLES_USERNAME` + `OPENSUBTITLES_PASSWORD` are also configured.
+2. Real API search requires explicit `opensubtitlesApiKey` parameter (CLI: `--opensubtitles-api-key`).
+3. Candidate adoption/download is more reliable when `opensubtitlesUsername` + `opensubtitlesPassword` are also provided.
 4. For offline testing, set `OPENSUBTITLES_MOCK=1`.
 
 Credential missing handling:
-1. If user explicitly chooses OpenSubtitles path and key is missing, ask for `OPENSUBTITLES_API_KEY`.
-2. Ask whether to add `OPENSUBTITLES_USERNAME` and `OPENSUBTITLES_PASSWORD` for authenticated download.
-3. Apply answers as temporary runtime env values for current run.
+1. If user explicitly chooses OpenSubtitles path and key parameter is missing, ask for `opensubtitlesApiKey`.
+2. Ask whether to add `opensubtitlesUsername` and `opensubtitlesPassword` for authenticated download.
+3. Pass answers as explicit command/tool parameters for current run.
 4. If user declines credential input, skip OpenSubtitles and continue local extraction fallback.
 
 ## Output structure changed unexpectedly

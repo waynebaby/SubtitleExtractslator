@@ -5,7 +5,7 @@
 Execution path rules:
 1. Paths are deterministic and relative to skill root.
 2. Do not scan the whole disk to locate binaries.
-3. If current directory is repository root, prepend `./.github/skills/subtitle-extractslator/`.
+3. If current directory is repository root, prepend your agent workspace skill path: `./.github/skills/subtitle-extractslator/` or `./.claude/skills/subtitle-extractslator/`.
 4. Quote paths with spaces.
 
 Platform binaries:
@@ -20,15 +20,8 @@ Platform binaries:
 9. macOS x64 (Intel): `./assets/bin/osx-x64/SubtitleExtractslator.Cli`
 
 Quick check:
-1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --help`
-2. Windows ARM64: `./assets/bin/win-arm64/SubtitleExtractslator.Cli.exe --help`
-3. Linux x64: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
-4. Linux musl x64: `./assets/bin/linux-musl-x64/SubtitleExtractslator.Cli --help`
-5. Linux ARM64: `./assets/bin/linux-arm64/SubtitleExtractslator.Cli --help`
-6. Linux musl ARM64: `./assets/bin/linux-musl-arm64/SubtitleExtractslator.Cli --help`
-7. Linux ARM: `./assets/bin/linux-arm/SubtitleExtractslator.Cli --help`
-8. macOS ARM64: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
-9. macOS x64: `./assets/bin/osx-x64/SubtitleExtractslator.Cli --help`
+1. Pick the matching binary from Platform binaries and refer to it as `<cli_bin>`.
+2. Run: `<cli_bin> --help`
 
 ## Global Options
 
@@ -44,16 +37,27 @@ Quick check:
 
 ## CLI Commands
 
+Platform command rule:
+1. Replace all examples below with your selected `<cli_bin>`.
+
 1. Probe:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
+- `<cli_bin> --mode cli probe --input "movie.mkv" --lang zh`
 2. OpenSubtitles search:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli opensubtitles-search --input "movie.mkv" --lang zh`
-3. Extract:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
-4. Full workflow:
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
-5. Batch workflow (CLI only):
-- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+- `<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --opensubtitles-api-key "<key>" [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
+3. OpenSubtitles download:
+- By ranked search candidate (default rank 1): `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>"`
+- By rank override: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>" --candidate-rank 2`
+- By direct file id: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>" --file-id 1234567`
+4. Download notes:
+- Ranked download reuses mandatory OpenSubtitles fallback search strategy (base filename first, then `<series_or_title> s00e00` from normalized full path).
+- Direct file-id download skips search.
+- Real API access requires explicit `--opensubtitles-api-key` parameter and sends `Api-Key` and `User-Agent` headers.
+5. Extract:
+- `<cli_bin> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
+6. Full workflow:
+- `<cli_bin> --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" [--opensubtitles-api-key "<key>"] [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
+7. Batch workflow (CLI only):
+- `<cli_bin> --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
 
 ## Batch Input Rules
 
