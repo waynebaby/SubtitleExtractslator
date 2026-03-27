@@ -101,6 +101,9 @@ OpenSubtitles credential and download rule (CLI + MCP):
 7. If user refuses to provide required credential parameters, skip OpenSubtitles branch and continue local extraction fallback.
 8. Detailed parameter matrix and examples are maintained in `references/opensubtitles.md`.
 9. Skill-level orchestration is strictly linear: `opensubtitles_search` and `opensubtitles_download` must run one-by-one; parallel execution is forbidden.
+10. Post-download language branch (skill-level):
+- if downloaded OpenSubtitles subtitle language equals requested target language, keep deterministic output naming and finish without translation
+- if downloaded subtitle is non-target language, continue MCP grouped rolling-context translation to target language
 
 OpenSubtitles rate-limit handling (CRITICAL):
 1. If API response indicates rate limit (for example HTTP `429` or explicit `rate limit exceeded`), disable OpenSubtitles parallel requests immediately.

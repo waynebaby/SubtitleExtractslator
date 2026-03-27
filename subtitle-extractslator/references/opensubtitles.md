@@ -21,9 +21,11 @@ For every OpenSubtitles search entry (standalone search, workflow-internal searc
 1. The search request must provide two query parameters together:
 - primary query: current video title/base filename
 - normalized query: normalized episode-style query from full path, for example `<series_or_title> s00e00`
-2. Fallback order is executed internally by MCP/CLI C# implementation:
-- run primary query first
-- if no candidates, retry with normalized query
+2. Fallback order is executed internally by MCP/CLI C# implementation in strict sequence:
+- primary query with target language
+- normalized query with target language
+- primary query with any language
+- normalized query with any language
 3. Skill layer must not split fallback into parallel jobs.
 4. If both queries still return no candidates, return not found and continue fallback branch.
 
@@ -43,6 +45,9 @@ For every OpenSubtitles search entry (standalone search, workflow-internal searc
 1. Skill-level OpenSubtitles calls are strictly linear.
 2. `opensubtitles_search` and `opensubtitles_download` must run one-by-one in sequence.
 3. Parallel search/download fan-out is forbidden, even before rate-limit is observed.
+4. After `opensubtitles_download`:
+- if downloaded subtitle already matches target language, finish with deterministic output naming (no translation)
+- if downloaded subtitle is non-target language, continue grouped rolling-context translation to target language
 
 ## Rate-Limit Handling (Critical)
 

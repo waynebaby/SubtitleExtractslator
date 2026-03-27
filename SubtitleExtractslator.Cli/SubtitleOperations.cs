@@ -189,22 +189,35 @@ internal sealed class SubtitleOperations
         {
             ValidateSearchQueries(queries);
             var primaryQuery = queries.SearchQueryPrimary.Trim();
-            var primaryCandidates = await SearchCandidatesAsync(accessor, primaryQuery, targetLanguage, "primary-base-filename");
-            if (primaryCandidates.Count > 0)
+            var normalizedQuery = queries.SearchQueryNormalized.Trim();
+
+            var primaryTargetCandidates = await SearchCandidatesAsync(accessor, primaryQuery, targetLanguage, "primary-target-language");
+            if (primaryTargetCandidates.Count > 0)
             {
-                return new OpenSubtitlesResult(input, targetLanguage, primaryCandidates);
+                return new OpenSubtitlesResult(input, targetLanguage, primaryTargetCandidates);
             }
 
-            var fallbackQuery = queries.SearchQueryNormalized.Trim();
-            if (string.IsNullOrWhiteSpace(fallbackQuery)
-                || fallbackQuery.Equals(primaryQuery, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(normalizedQuery)
+                || normalizedQuery.Equals(primaryQuery, StringComparison.OrdinalIgnoreCase))
             {
                 CliRuntimeLog.Info("opensubtitles", "Fallback query is empty or duplicate. Returning empty candidate list.");
                 return new OpenSubtitlesResult(input, targetLanguage, new List<SubtitleCandidate>());
             }
 
-            var fallbackCandidates = await SearchCandidatesAsync(accessor, fallbackQuery, targetLanguage, "fallback-fullpath-episode-style");
-            return new OpenSubtitlesResult(input, targetLanguage, fallbackCandidates);
+            var normalizedTargetCandidates = await SearchCandidatesAsync(accessor, normalizedQuery, targetLanguage, "normalized-target-language");
+            if (normalizedTargetCandidates.Count > 0)
+            {
+                return new OpenSubtitlesResult(input, targetLanguage, normalizedTargetCandidates);
+            }
+
+            var primaryAnyLanguageCandidates = await SearchCandidatesAsync(accessor, primaryQuery, null, "primary-any-language");
+            if (primaryAnyLanguageCandidates.Count > 0)
+            {
+                return new OpenSubtitlesResult(input, targetLanguage, primaryAnyLanguageCandidates);
+            }
+
+            var normalizedAnyLanguageCandidates = await SearchCandidatesAsync(accessor, normalizedQuery, null, "normalized-any-language");
+            return new OpenSubtitlesResult(input, targetLanguage, normalizedAnyLanguageCandidates);
         }
         catch (Exception ex)
         {
@@ -236,7 +249,7 @@ internal sealed class SubtitleOperations
     private static async Task<List<SubtitleCandidate>> SearchCandidatesAsync(
         OpenSubtitlesAccessor accessor,
         string query,
-        string targetLanguage,
+        string? targetLanguage,
         string stage)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -245,8 +258,9 @@ internal sealed class SubtitleOperations
             return new List<SubtitleCandidate>();
         }
 
-        CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} query={query}");
-        var candidates = await accessor.SearchAsync(query, targetLanguage, maxResults: 5);
+        var languageLabel = string.IsNullOrWhiteSpace(targetLanguage) ? "any" : targetLanguage;
+        CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} query={query} lang={languageLabel}");
+        var candidates = await accessor.SearchAsync(query, targetLanguage ?? "und", maxResults: 5);
         CliRuntimeLog.Info("opensubtitles", $"Search stage={stage} completed. candidateCount={candidates.Count}");
         return candidates;
     }
