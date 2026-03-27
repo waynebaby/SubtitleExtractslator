@@ -6,11 +6,14 @@ Single-file outputs are published per RID under `assets/bin/`:
 
 1. `win-x64/SubtitleExtractslator.Cli.exe`
 1. `linux-x64/SubtitleExtractslator.Cli`
-1. `linux-arm64/SubtitleExtractslator.Cli`
-1. `osx-x64/SubtitleExtractslator.Cli`
 1. `osx-arm64/SubtitleExtractslator.Cli`
 
 ## CLI Commands
+
+Global CLI options:
+
+1. `--env "KEY=VALUE;KEY2=VALUE2"` applies per-command temporary environment overrides.
+1. `--help` prints complete CLI help text.
 
 ### Probe subtitles
 
@@ -87,6 +90,18 @@ Exposed tools:
 1. `extract`
 1. `run_workflow`
 
+Tool return contract:
+
+1. MCP tools return a structured object:
+  - `ok`: boolean
+  - `data`: tool payload when successful
+  - `error`: error object when failed
+2. Error object fields:
+  - `code`
+  - `message`
+  - `snapshotPath` (nullable)
+  - `timeUtc`
+
 Notes:
 
 1. Batch workflow is intentionally not exposed in MCP mode to reduce timeout-related failures in MCP clients.
@@ -101,7 +116,7 @@ Notes:
 
 - Default behavior (when no settings provided):
   - Endpoint: `http://localhost:1234/api/v1/chat`
-  - Model: `gemma-3-27b-it`
+  - Model: `qwen3.5-9b-uncensored-hauhaucs-aggressive`
   - Request format: `{ model, system_prompt, input }`
 - Optional overrides:
   - `LLM_ENDPOINT`
@@ -110,5 +125,16 @@ Notes:
   - `LLM_API_TYPE` (`openai` or `claude`)
   - `LLM_AUTH_TYPE` (`none`, `key`, `azure-rbac`)
   - `LLM_API_KEY` (or `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`)
+  - `LLM_MAX_TOKENS`
+  - `LLM_REASONING` (`off`, `low`, `medium`, `high`, `on`)
+  - `LLM_RETRY_COUNT`
   - `LLM_AZURE_SCOPE` (default: `https://cognitiveservices.azure.com/.default`)
   - `LLM_ANTHROPIC_VERSION` (default: `2023-06-01`)
+
+1. Runtime logging knobs
+
+- `SUBTITLEEXTRACTSLATOR_CLI_LOG` (`true`/`false`)
+- `SUBTITLEEXTRACTSLATOR_MCP_LOG` (`true`/`false`)
+- `SUBTITLEEXTRACTSLATOR_TRANSLATION_PARALLELISM` (default `4`)
+- `SUBTITLEEXTRACTSLATOR_CUES_PER_GROUP` (default `5`)
+- `SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE` (default `20`)

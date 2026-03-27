@@ -80,6 +80,10 @@ Quick check (`--help`):
 2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
 3. macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
 
+CLI global options:
+1. `--env "KEY=VALUE;KEY2=VALUE2"`: temporary environment overrides for current command.
+2. `--help`: print complete CLI command help.
+
 CLI mode examples (Windows / Linux / macOS):
 1. Probe:
 - Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli probe --input "movie.mkv" --lang zh`
@@ -110,6 +114,11 @@ MCP tool names:
 3. extract
 4. run_workflow
 
+MCP tool return contract:
+1. All MCP tools return a structured object with `ok`, `data`, and `error`.
+2. Success: `ok=true`, `data` contains the tool payload.
+3. Failure: `ok=false`, `error` contains `code`, `message`, optional `snapshotPath`, and `timeUtc`.
+
 MCP note:
 1. `run_workflow_batch` is intentionally not exposed in MCP mode because long-running batch calls are prone to timeout in common MCP clients.
 
@@ -126,13 +135,13 @@ If no, continue in CLI mode.
 If target language exists, report and stop.
 3. Query OpenSubtitles candidates.
 If user mention not using open subtitles or no candidates, continue next.
-If candidates exist,  adopt the most popular candidate. download, rename to output path.
+In current runtime, OpenSubtitles is discovery-first (search only); subtitle download/adoption is not a stable default path, so continue with local extraction unless explicitly extended.
 4. Extract local subtitle.
 Prefer English track.
 If English not present, pick deterministic nearest-language fallback.
 5. Build timeline cue objects and split into groups.
-Rule A: if current stack is non-empty and no dialogue for one minute, start new group.
-Rule B: if group exceeds 100 cues, start new group.
+Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).
+Then merge group bodies by translation body size (`bodySize`, default 20, overridable by CLI/env).
 6. Rolling context update.
 For each group, generate scene summary and update historical core knowledge state.
 7. Translate each group using scene summary plus historical knowledge plus group timeline objects.
@@ -154,7 +163,8 @@ All custom external endpoint access is CLI route responsibility.
 1. Never modify timestamps or cue ordering.
 2. Never merge or split cues unless explicit user request overrides default policy.
 3. If structure validation fails, report error and stop instead of emitting broken output.
-4. If OpenSubtitles candidate exists, always ask user before adoption.
+4. In CLI, if OpenSubtitles candidate exists, ask user before adoption.
+5. In MCP, runtime continues deterministic local extraction path by default.
 
 ## Operational Notes
 

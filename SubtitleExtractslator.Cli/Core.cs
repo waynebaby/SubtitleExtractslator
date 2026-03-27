@@ -38,15 +38,20 @@ internal sealed record AppOptions(
 SubtitleExtractslator CLI
 
 Usage:
-    SubtitleExtractslator.Cli --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
-  SubtitleExtractslator.Cli --mode mcp
+        SubtitleExtractslator.Cli --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
+        SubtitleExtractslator.Cli --mode mcp
+        SubtitleExtractslator.Cli --help
 
 Commands:
   probe --input <mediaFile> --lang <targetLang>
   opensubtitles-search --input <mediaFile> --lang <targetLang>
   extract --input <mediaFile> --out <subtitleFile> [--prefer en]
     run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>] [--mux-output <mediaFile>]
-        run-workflow-batch --input-list <paths.txt> --lang <targetLang> --output-dir <folder> [--output-suffix <suffix>] [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
+    run-workflow-batch --input-list <paths.txt> --lang <targetLang> --output-dir <folder> [--output-suffix <suffix>] [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
+
+Global CLI options:
+        --env "KEY=VALUE;KEY2=VALUE2"  temporary per-command environment override
+        --help                          print this help text
 
 Notes:
     In MCP mode, translation source policy is: sampling only. Any sampling failure returns an error.

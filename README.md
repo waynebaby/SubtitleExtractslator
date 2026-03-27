@@ -76,6 +76,10 @@ Batch input file format (`--input-list`):
 
 Batch mode is CLI-only. MCP mode intentionally does not provide batch workflow due to common timeout constraints in MCP clients.
 
+CLI common options:
+- `--env "KEY=VALUE;KEY2=VALUE2"` injects temporary environment overrides for the current command only.
+- `--help` prints complete command help.
+
 ## MCP stdio mode
 
 ```powershell
@@ -90,6 +94,12 @@ The MCP server supports:
 - `opensubtitles_search`
 - `extract`
 - `run_workflow`
+
+MCP tool return contract:
+
+- Tools return a structured object with `ok`, `data`, and `error`.
+- On success: `ok=true`, `data` contains tool result.
+- On failure: `ok=false`, `error` includes `code`, `message`, optional `snapshotPath`, and `timeUtc`.
 
 ## Translation providers
 

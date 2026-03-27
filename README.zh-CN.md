@@ -75,6 +75,10 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow-batch 
 
 批量模式仅在 CLI 提供。MCP 模式不提供批量工作流，以避免 MCP 客户端常见的超时问题。
 
+CLI 通用参数：
+- `--env "KEY=VALUE;KEY2=VALUE2"`：仅对当前命令注入临时环境变量覆盖。
+- `--help`：打印完整命令帮助。
+
 ## MCP stdio 模式
 
 ```powershell
@@ -88,6 +92,12 @@ MCP tools：
 - `opensubtitles_search`
 - `extract`
 - `run_workflow`
+
+MCP 工具返回约定：
+
+- 工具返回结构化对象：`ok`、`data`、`error`。
+- 成功时：`ok=true`，`data` 为工具结果。
+- 失败时：`ok=false`，`error` 包含 `code`、`message`、可选 `snapshotPath`、`timeUtc`。
 
 ## 翻译提供者说明
 

@@ -44,3 +44,26 @@ Normal behavior:
 1. MCP server waits for incoming stdio frames.
 2. No human-readable prompt is expected after startup.
 3. Use MCP client to call tools and inspect responses.
+
+## MCP tool call failed
+
+Expected behavior:
+1. Tool returns structured payload with `ok=false` instead of unhandled process crash.
+2. Error details are in `error.code`, `error.message`, optional `error.snapshotPath`, and `error.timeUtc`.
+
+Actions:
+1. Read `error.message` first.
+2. If `snapshotPath` exists, inspect that file for detailed stack/context.
+3. Retry with a known-good local path and minimal arguments.
+
+## Batch workflow command issues
+
+Checks:
+1. Batch command is CLI-only (`run-workflow-batch` is not exposed in MCP mode).
+2. `--input-list` file is UTF-8 and has one path per line.
+3. Empty lines and lines starting with `#` are ignored.
+
+Actions:
+1. Run `--help` and verify command shape.
+2. Test one failing path with single `run-workflow` command.
+3. Confirm output folder is writable.
