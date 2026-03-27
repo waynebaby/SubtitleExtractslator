@@ -1,6 +1,7 @@
 ﻿using SubtitleExtractslator.Cli;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 
 var options = AppOptions.Parse(args);
@@ -20,11 +21,27 @@ if (!string.IsNullOrWhiteSpace(logEnv)
 	cliLogsEnabled = envEnabled;
 }
 
-CliRuntimeLog.Configure(options.Mode == AppMode.Cli && cliLogsEnabled);
+var mcpLogsEnabled = true;
+var mcpLogEnv = Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_MCP_LOG");
+if (!string.IsNullOrWhiteSpace(mcpLogEnv)
+	&& bool.TryParse(mcpLogEnv, out var mcpEnvEnabled))
+{
+	mcpLogsEnabled = mcpEnvEnabled;
+}
+
+CliRuntimeLog.Configure(options.Mode switch
+{
+	AppMode.Cli => cliLogsEnabled,
+	AppMode.Mcp => mcpLogsEnabled,
+	_ => false
+});
 
 if (options.Mode == AppMode.Mcp)
 {
+	CliRuntimeLog.Info("mcp", "Connection state: Starting (server bootstrap)");
 	var hostBuilder = Host.CreateApplicationBuilder(args);
+	hostBuilder.Logging.ClearProviders();
+	hostBuilder.Logging.SetMinimumLevel(LogLevel.None);
 	hostBuilder.Services.AddSingleton(new WorkflowOrchestrator(ModeContext.Mcp));
 	hostBuilder.Services
 		.AddMcpServer()
@@ -32,6 +49,7 @@ if (options.Mode == AppMode.Mcp)
 		.WithTools<SubtitleMcpTools>();
 
 	using var host = hostBuilder.Build();
+	CliRuntimeLog.Info("mcp", "Connection state: Starting (stdio transport ready)");
 	await host.RunAsync();
 	return;
 }

@@ -93,12 +93,25 @@ CLI mode examples (Windows / Linux / macOS):
 - Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
 - Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
 - macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"`
+4. Batch workflow (CLI only):
+- Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+- Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --mode cli run-workflow-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"`
+- macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --mode cli run-workflow-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"`
+
+Batch input list rules:
+1. UTF-8 text file.
+2. One input path per line.
+3. Empty lines and lines starting with `#` are ignored.
+4. Output naming defaults to `.<lang>.srt` when `--output-suffix` is not provided.
 
 MCP tool names:
 1. probe
 2. opensubtitles_search
 3. extract
 4. run_workflow
+
+MCP note:
+1. `run_workflow_batch` is intentionally not exposed in MCP mode because long-running batch calls are prone to timeout in common MCP clients.
 
 ## Workflow Contract
 

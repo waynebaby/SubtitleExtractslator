@@ -58,6 +58,22 @@ Expected behavior:
 1. Translation
 1. Merge and output
 
+### Batch workflow (CLI only)
+
+`./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+
+Input list file rules:
+
+1. UTF-8 text file.
+1. One path per line.
+1. Empty lines and lines starting with `#` are ignored.
+
+Expected behavior:
+
+1. Process each listed input sequentially with `run-workflow`.
+1. Generate output paths under `--output-dir` using source file name + `--output-suffix`.
+1. Return summary JSON with per-item success/failure details.
+
 ## MCP Mode
 
 Start server:
@@ -70,6 +86,10 @@ Exposed tools:
 1. `opensubtitles_search`
 1. `extract`
 1. `run_workflow`
+
+Notes:
+
+1. Batch workflow is intentionally not exposed in MCP mode to reduce timeout-related failures in MCP clients.
 
 ## Environment Variables
 

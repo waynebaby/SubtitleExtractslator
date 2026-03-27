@@ -65,7 +65,16 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "mo
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" --mux-output "movie.with-ai-zh.mkv"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"
 ```
+
+Batch input file format (`--input-list`):
+- UTF-8 text file.
+- One media/subtitle path per line.
+- Empty lines and lines starting with `#` are ignored.
+
+Batch mode is CLI-only. MCP mode intentionally does not provide batch workflow due to common timeout constraints in MCP clients.
 
 ## MCP stdio mode
 

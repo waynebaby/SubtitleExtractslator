@@ -46,6 +46,7 @@ Commands:
   opensubtitles-search --input <mediaFile> --lang <targetLang>
   extract --input <mediaFile> --out <subtitleFile> [--prefer en]
     run-workflow --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>] [--mux-output <mediaFile>]
+        run-workflow-batch --input-list <paths.txt> --lang <targetLang> --output-dir <folder> [--output-suffix <suffix>] [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
 
 Notes:
     In MCP mode, translation source policy is: sampling only. Any sampling failure returns an error.
@@ -57,6 +58,10 @@ Notes:
         --body-size (or env SUBTITLEEXTRACTSLATOR_TRANSLATION_BODY_SIZE), default 20
     LLM knobs:
         --llm-retry-count (or env LLM_RETRY_COUNT), default 3
+    Batch notes:
+        --input-list must be a UTF-8 text file with one absolute/relative input path per line.
+        Empty lines and lines starting with # are ignored.
+        --output-suffix default: .<lang>.srt (for example .zh.srt)
 """;
 
     public static AppOptions Parse(string[] args)
@@ -66,9 +71,11 @@ Notes:
         var multiTokenOptionKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "input",
+            "input-list",
             "output",
             "out",
-            "mux-output"
+            "mux-output",
+            "output-dir"
         };
 
         for (var i = 0; i < args.Length; i++)
@@ -129,6 +136,7 @@ internal static class CliCommandRunner
                 options.Require("out"),
                 options.Arguments.TryGetValue("prefer", out var prefer) ? prefer : "en"), JsonOptions.Pretty),
             "run-workflow" => JsonSerializer.Serialize(await RunWorkflowWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
+            "run-workflow-batch" => JsonSerializer.Serialize(await RunWorkflowBatchWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
             _ => AppOptions.HelpText
         };
     }
@@ -150,6 +158,113 @@ internal static class CliCommandRunner
             retryOverride,
             options.OptionalString("mux-output"),
             RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
+    }
+
+    private static async Task<BatchWorkflowResult> RunWorkflowBatchWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
+    {
+        var inputListPath = options.Require("input-list");
+        var targetLanguage = options.Require("lang");
+        var outputDir = options.Require("output-dir");
+        var outputSuffix = options.OptionalString("output-suffix") ?? $".{targetLanguage}.srt";
+
+        if (string.IsNullOrWhiteSpace(outputSuffix))
+        {
+            throw new InvalidOperationException("--output-suffix cannot be empty.");
+        }
+
+        var retryOverride = options.OptionalInt("llm-retry-count");
+        if (retryOverride is <= 0)
+        {
+            throw new InvalidOperationException("--llm-retry-count must be greater than 0.");
+        }
+
+        var envOverrides = RuntimeEnvironmentOverrides.Parse(options.OptionalString("env"));
+        var inputs = ReadBatchInputPaths(inputListPath);
+        Directory.CreateDirectory(outputDir);
+
+        var results = new List<BatchWorkflowItemResult>(inputs.Count);
+        var usedOutputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var input in inputs)
+        {
+            var resolvedOutput = BuildBatchOutputPath(input, outputDir, outputSuffix, usedOutputs);
+            try
+            {
+                var workflow = await orchestrator.RunWorkflowAsync(
+                    input,
+                    targetLanguage,
+                    resolvedOutput,
+                    options.OptionalInt("cues-per-group"),
+                    options.OptionalInt("body-size"),
+                    retryOverride,
+                    null,
+                    envOverrides);
+
+                results.Add(new BatchWorkflowItemResult(input, resolvedOutput, true, workflow.Status, workflow.Branch, null));
+            }
+            catch (Exception ex)
+            {
+                results.Add(new BatchWorkflowItemResult(input, resolvedOutput, false, null, null, ex.Message));
+            }
+        }
+
+        return new BatchWorkflowResult(
+            inputListPath,
+            targetLanguage,
+            outputDir,
+            outputSuffix,
+            results.Count,
+            results.Count(x => x.Success),
+            results.Count(x => !x.Success),
+            results);
+    }
+
+    private static List<string> ReadBatchInputPaths(string listPath)
+    {
+        if (!File.Exists(listPath))
+        {
+            throw new InvalidOperationException($"Input list file not found: {listPath}");
+        }
+
+        var lines = File.ReadAllLines(listPath, Encoding.UTF8);
+        var inputs = lines
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#", StringComparison.Ordinal))
+            .ToList();
+
+        if (inputs.Count == 0)
+        {
+            throw new InvalidOperationException("Input list file contains no valid paths.");
+        }
+
+        return inputs;
+    }
+
+    private static string BuildBatchOutputPath(string inputPath, string outputDir, string outputSuffix, HashSet<string> usedOutputs)
+    {
+        var fileNameBase = Path.GetFileNameWithoutExtension(inputPath);
+        if (string.IsNullOrWhiteSpace(fileNameBase))
+        {
+            fileNameBase = "subtitle";
+        }
+
+        var candidate = Path.Combine(outputDir, fileNameBase + outputSuffix);
+        if (usedOutputs.Add(candidate))
+        {
+            return candidate;
+        }
+
+        var index = 2;
+        while (true)
+        {
+            var deduped = Path.Combine(outputDir, $"{fileNameBase}.{index}{outputSuffix}");
+            if (usedOutputs.Add(deduped))
+            {
+                return deduped;
+            }
+
+            index++;
+        }
     }
 
     private static string Require(this AppOptions options, string key)
@@ -537,6 +652,7 @@ internal sealed class SubtitleOperations
     public async Task<ProbeResult> ProbeTracksAsync(string input, string targetLanguage)
     {
         CliRuntimeLog.Info("probe", $"Start probe. input={input} target={targetLanguage}");
+        EnsureInputPathExists(input);
         if (Path.GetExtension(input).Equals(".srt", StringComparison.OrdinalIgnoreCase))
         {
             var inferred = InferLanguageFromFileName(input);
@@ -575,6 +691,7 @@ internal sealed class SubtitleOperations
     public async Task<ExtractionResult> ExtractSubtitleAsync(string input, string output, string preferredLanguage)
     {
         CliRuntimeLog.Info("extract", $"Start extract. input={input} output={output} preferred={preferredLanguage}");
+        EnsureInputPathExists(input);
         if (Path.GetExtension(input).Equals(".srt", StringComparison.OrdinalIgnoreCase))
         {
             File.Copy(input, output, overwrite: true);
@@ -743,6 +860,26 @@ internal sealed class SubtitleOperations
         }
 
         return "und";
+    }
+
+    private static void EnsureInputPathExists(string input)
+    {
+        if (File.Exists(input))
+        {
+            return;
+        }
+
+        var mappedDriveHint = string.Empty;
+        var root = Path.GetPathRoot(input);
+        if (!string.IsNullOrWhiteSpace(root)
+            && root.Length >= 2
+            && root[1] == ':'
+            && char.ToUpperInvariant(root[0]) != 'C')
+        {
+            mappedDriveHint = " If this path is a mapped drive (for example Z:), try using the UNC path (\\\\server\\share\\...) or remap the drive in the current user session.";
+        }
+
+        throw new InvalidOperationException($"Input file not found: {input}.{mappedDriveHint}");
     }
 
     private static string ResolveExecutable(string name)
@@ -1934,6 +2071,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         sb.AppendLine("7) Think silently in this order before output: (a) first create a brief holistic paraphrase of the whole MAIN GROUP in your mind, (b) then refine line-by-line details and references, (c) preserve jokes/puns/religion/sexual/pop-culture effects, (d) align each output line to its input index.");
         sb.AppendLine("8) Context is provided in XML sections. Use <previous_context> and <following_context> only for guidance. Translate only the indexed lines inside <main_section>.");
         sb.AppendLine("9) Output translated result only. Never echo source text. Never output bilingual comparison pairs such as 'source -> translation', 'source => translation', or 'source : translation'.");
+        sb.AppendLine("10) Preserve inline special formatting whenever possible (for example HTML/XML tags). Keep tag structure and attributes unchanged; translate only inner text. Example: [99]\t<font face=\"Serif\" size=\"18\">The point is I choose you.</font>");
         if (includeRetryOversizeHint)
         {
             sb.AppendLine("IMPORTANT RETRY NOTE: The previous attempt may have failed due to overly long reasoning. Keep your reasoning concise and do not let your thoughts sprawl.");
@@ -2883,6 +3021,24 @@ internal sealed record SubtitleCandidate(int Rank, string Language, double Score
 internal sealed record OpenSubtitlesResult(string Input, string TargetLanguage, List<SubtitleCandidate> Candidates);
 
 internal sealed record ExtractionResult(string Input, string OutputPath, string SelectedLanguage, string Strategy);
+
+internal sealed record BatchWorkflowItemResult(
+    string Input,
+    string OutputPath,
+    bool Success,
+    string? Status,
+    string? Branch,
+    string? Error);
+
+internal sealed record BatchWorkflowResult(
+    string InputListPath,
+    string TargetLanguage,
+    string OutputDir,
+    string OutputSuffix,
+    int Total,
+    int Succeeded,
+    int Failed,
+    List<BatchWorkflowItemResult> Items);
 
 internal sealed record SubtitleGroup(int GroupIndex, List<SubtitleCue> Cues);
 

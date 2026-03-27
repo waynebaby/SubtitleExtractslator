@@ -64,7 +64,16 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "mo
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt"
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow --input "movie.mkv" --lang zh --output "movie.zh.srt" --mux-output "movie.with-ai-zh.mkv"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli run-workflow-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"
 ```
+
+批量输入文件格式（`--input-list`）：
+- UTF-8 文本文件。
+- 每行一个媒体/字幕文件路径。
+- 空行和以 `#` 开头的行会被忽略。
+
+批量模式仅在 CLI 提供。MCP 模式不提供批量工作流，以避免 MCP 客户端常见的超时问题。
 
 ## MCP stdio 模式
 
