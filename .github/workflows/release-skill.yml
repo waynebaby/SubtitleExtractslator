@@ -91,7 +91,7 @@ jobs:
           }
 
           $skillRaw = Get-Content $skillPath -Raw
-          $skillVersionMatch = [regex]::Match($skillRaw, "(?m)^\s{2}version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$")
+          $skillVersionMatch = [regex]::Match($skillRaw, "(?m)^\s*version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$")
           if (-not $skillVersionMatch.Success) {
             throw "Unable to read metadata.version from $skillPath"
           }
@@ -166,7 +166,7 @@ jobs:
 
           $skillPath = "subtitle-extractslator/SKILL.md"
           $skillRaw = Get-Content $skillPath -Raw
-          $skillRaw = [regex]::Replace($skillRaw, "(?m)^(\s{2}version:\s*)([0-9]+\.[0-9]+\.[0-9]+)\s*$", ('$1' + $version))
+          $skillRaw = [regex]::Replace($skillRaw, "(?m)^(\s*version:\s*)([0-9]+\.[0-9]+\.[0-9]+)\s*$", ('${1}' + $version))
           Set-Content -Path $skillPath -Value $skillRaw -Encoding utf8
 
           $readmeEnPath = "README.md"

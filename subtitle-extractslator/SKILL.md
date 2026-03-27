@@ -5,7 +5,7 @@ compatibility: Designed for Claude Code environments with local executable acces
 license: MIT
 metadata:
   author: waynebaby
-$10.1.0
+  version: 0.1.0
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN
