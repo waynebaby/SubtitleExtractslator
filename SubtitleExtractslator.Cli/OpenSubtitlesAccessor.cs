@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net.Mime;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -16,11 +17,14 @@ internal sealed class OpenSubtitlesAccessor
     private const int SearchRateLimitMaxRetries = 20;
 
     private readonly OpenSubtitlesSettings _settings;
+    private string _activeEndpoint;
     private string? _token;
+    private bool _loginRejected;
 
     private OpenSubtitlesAccessor(OpenSubtitlesSettings settings)
     {
         _settings = settings;
+        _activeEndpoint = settings.Endpoint;
     }
 
     public static OpenSubtitlesAccessor? Create(OpenSubtitlesCredentials? credentials)
@@ -154,6 +158,13 @@ internal sealed class OpenSubtitlesAccessor
             return;
         }
 
+        if (_loginRejected)
+        {
+            throw new InvalidOperationException(
+                "OpenSubtitles login was rejected (401 Unauthorized). "
+                + "Stop retrying with the same credentials and provide valid opensubtitlesUsername/opensubtitlesPassword.");
+        }
+
         if (string.IsNullOrWhiteSpace(_settings.Username) || string.IsNullOrWhiteSpace(_settings.Password))
         {
             return;
@@ -165,7 +176,7 @@ internal sealed class OpenSubtitlesAccessor
             password = _settings.Password
         };
         var loginPayloadText = JsonSerializer.Serialize(loginPayload);
-        using var req = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint + "/login")
+        using var req = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri("/login"))
         {
             Content = JsonContent.Create(loginPayload)
         };
@@ -175,6 +186,11 @@ internal sealed class OpenSubtitlesAccessor
         var body = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
         {
+            if ((int)resp.StatusCode == 401)
+            {
+                _loginRejected = true;
+            }
+
             var debug = BuildHttpDebugBlock("login", req, loginPayloadText, resp, body);
             throw new InvalidOperationException(
                 $"OpenSubtitles login failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
@@ -185,6 +201,26 @@ internal sealed class OpenSubtitlesAccessor
             && tokenEl.ValueKind == JsonValueKind.String)
         {
             _token = tokenEl.GetString();
+        }
+
+        if (string.IsNullOrWhiteSpace(_token))
+        {
+            var debug = BuildHttpDebugBlock("login-missing-token", req, loginPayloadText, resp, body);
+            throw new InvalidOperationException(
+                "OpenSubtitles login succeeded but token was missing in response.\n" + debug);
+        }
+
+        // OpenSubtitles requires subsequent requests to follow returned base_url host.
+        if (doc.RootElement.TryGetProperty("base_url", out var baseUrlEl)
+            && baseUrlEl.ValueKind == JsonValueKind.String)
+        {
+            var baseUrl = baseUrlEl.GetString();
+            var endpoint = ResolveEndpointFromBaseUrl(baseUrl);
+            if (!string.IsNullOrWhiteSpace(endpoint))
+            {
+                _activeEndpoint = endpoint;
+                CliRuntimeLog.Info("opensubtitles", $"Login resolved base_url={baseUrl}. Active endpoint switched to {_activeEndpoint}");
+            }
         }
     }
 
@@ -199,7 +235,7 @@ internal sealed class OpenSubtitlesAccessor
 
         var downloadPayload = new { file_id = fileId };
         var downloadPayloadText = JsonSerializer.Serialize(downloadPayload);
-        using var req = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint + "/download")
+        using var req = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri("/download"))
         {
             Content = JsonContent.Create(downloadPayload)
         };
@@ -351,7 +387,7 @@ internal sealed class OpenSubtitlesAccessor
     private string BuildSearchUrl(string query, string? language)
     {
         var normalizedQuery = Uri.EscapeDataString(query);
-        var url = _settings.Endpoint
+        var url = _activeEndpoint
             + "/subtitles?query=" + normalizedQuery
             + "&order_by=download_count&order_direction=desc";
 
@@ -574,14 +610,61 @@ internal sealed class OpenSubtitlesAccessor
         return sanitized;
     }
 
+    private string BuildEndpointUri(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return _activeEndpoint;
+        }
+
+        if (path.StartsWith("/", StringComparison.Ordinal))
+        {
+            return _activeEndpoint + path;
+        }
+
+        return _activeEndpoint + "/" + path;
+    }
+
+    private static string? ResolveEndpointFromBaseUrl(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return null;
+        }
+
+        var host = baseUrl.Trim();
+        if (host.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Uri.TryCreate(host, UriKind.Absolute, out var absolute)
+                && !string.IsNullOrWhiteSpace(absolute.Host))
+            {
+                host = absolute.Host;
+            }
+        }
+
+        // API login returns host name (api.opensubtitles.com or vip-api.opensubtitles.com).
+        return $"https://{host}/api/v1";
+    }
+
     private void ApplyHeaders(HttpRequestMessage request, bool includeAuth)
     {
         request.Headers.TryAddWithoutValidation("Api-Key", _settings.ApiKey);
+        request.Headers.Accept.Clear();
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
         request.Headers.UserAgent.Clear();
         request.Headers.UserAgent.Add(ProductInfoHeaderValue.Parse(_settings.UserAgent));
 
-        if (includeAuth && !string.IsNullOrWhiteSpace(_token))
+        if (includeAuth)
         {
+            if (string.IsNullOrWhiteSpace(_token))
+            {
+                throw new InvalidOperationException(
+                    "Missing OpenSubtitles Authorization token. "
+                    + "Protected endpoint requires both Api-Key and Authorization headers. "
+                    + "Provide opensubtitlesUsername and opensubtitlesPassword to obtain login token.");
+            }
+
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
         }
     }
