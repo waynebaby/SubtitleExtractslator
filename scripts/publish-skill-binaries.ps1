@@ -20,8 +20,14 @@ try {
 
     $targets = @(
         @{ Rid = "win-x64"; OutputDir = (Join-Path $OutputRoot "win-x64"); BinaryName = "SubtitleExtractslator.Cli.exe" },
+        @{ Rid = "win-arm64"; OutputDir = (Join-Path $OutputRoot "win-arm64"); BinaryName = "SubtitleExtractslator.Cli.exe" },
         @{ Rid = "linux-x64"; OutputDir = (Join-Path $OutputRoot "linux-x64"); BinaryName = "SubtitleExtractslator.Cli" },
-        @{ Rid = "osx-arm64"; OutputDir = (Join-Path $OutputRoot "osx-arm64"); BinaryName = "SubtitleExtractslator.Cli" }
+        @{ Rid = "linux-musl-x64"; OutputDir = (Join-Path $OutputRoot "linux-musl-x64"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "linux-arm64"; OutputDir = (Join-Path $OutputRoot "linux-arm64"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "linux-musl-arm64"; OutputDir = (Join-Path $OutputRoot "linux-musl-arm64"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "linux-arm"; OutputDir = (Join-Path $OutputRoot "linux-arm"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "osx-arm64"; OutputDir = (Join-Path $OutputRoot "osx-arm64"); BinaryName = "SubtitleExtractslator.Cli" },
+        @{ Rid = "osx-x64"; OutputDir = (Join-Path $OutputRoot "osx-x64"); BinaryName = "SubtitleExtractslator.Cli" }
     )
 
     $running = Get-Process -Name "SubtitleExtractslator.Cli" -ErrorAction SilentlyContinue

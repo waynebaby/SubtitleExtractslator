@@ -133,22 +133,46 @@ jobs:
           }
 
           $tag = "v$nextVersion"
-          $zipNameWin = "subtitle-extractslator-$tag-win-x64.zip"
-          $zipNameLinux = "subtitle-extractslator-$tag-linux-x64.zip"
-          $zipNameOsx = "subtitle-extractslator-$tag-osx-arm64.zip"
-          $releaseAssetUrlWin = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameWin"
-          $releaseAssetUrlLinux = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinux"
-          $releaseAssetUrlOsx = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameOsx"
+          $zipNameWinX64 = "subtitle-extractslator-$tag-win-x64.zip"
+          $zipNameWinArm64 = "subtitle-extractslator-$tag-win-arm64.zip"
+          $zipNameLinuxX64 = "subtitle-extractslator-$tag-linux-x64.zip"
+          $zipNameLinuxMuslX64 = "subtitle-extractslator-$tag-linux-musl-x64.zip"
+          $zipNameLinuxArm64 = "subtitle-extractslator-$tag-linux-arm64.zip"
+          $zipNameLinuxMuslArm64 = "subtitle-extractslator-$tag-linux-musl-arm64.zip"
+          $zipNameLinuxArm = "subtitle-extractslator-$tag-linux-arm.zip"
+          $zipNameOsxArm64 = "subtitle-extractslator-$tag-osx-arm64.zip"
+          $zipNameOsxX64 = "subtitle-extractslator-$tag-osx-x64.zip"
+          $releaseAssetUrlWinX64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameWinX64"
+          $releaseAssetUrlWinArm64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameWinArm64"
+          $releaseAssetUrlLinuxX64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinuxX64"
+          $releaseAssetUrlLinuxMuslX64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinuxMuslX64"
+          $releaseAssetUrlLinuxArm64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinuxArm64"
+          $releaseAssetUrlLinuxMuslArm64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinuxMuslArm64"
+          $releaseAssetUrlLinuxArm = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameLinuxArm"
+          $releaseAssetUrlOsxArm64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameOsxArm64"
+          $releaseAssetUrlOsxX64 = "https://github.com/${{ github.repository }}/releases/download/$tag/$zipNameOsxX64"
           $releasesHome = "https://github.com/${{ github.repository }}/releases"
 
           "version=$nextVersion" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
-          "zip_name_win=$zipNameWin" >> $env:GITHUB_OUTPUT
-          "zip_name_linux=$zipNameLinux" >> $env:GITHUB_OUTPUT
-          "zip_name_osx=$zipNameOsx" >> $env:GITHUB_OUTPUT
-          "release_asset_url_win=$releaseAssetUrlWin" >> $env:GITHUB_OUTPUT
-          "release_asset_url_linux=$releaseAssetUrlLinux" >> $env:GITHUB_OUTPUT
-          "release_asset_url_osx=$releaseAssetUrlOsx" >> $env:GITHUB_OUTPUT
+          "zip_name_win_x64=$zipNameWinX64" >> $env:GITHUB_OUTPUT
+          "zip_name_win_arm64=$zipNameWinArm64" >> $env:GITHUB_OUTPUT
+          "zip_name_linux_x64=$zipNameLinuxX64" >> $env:GITHUB_OUTPUT
+          "zip_name_linux_musl_x64=$zipNameLinuxMuslX64" >> $env:GITHUB_OUTPUT
+          "zip_name_linux_arm64=$zipNameLinuxArm64" >> $env:GITHUB_OUTPUT
+          "zip_name_linux_musl_arm64=$zipNameLinuxMuslArm64" >> $env:GITHUB_OUTPUT
+          "zip_name_linux_arm=$zipNameLinuxArm" >> $env:GITHUB_OUTPUT
+          "zip_name_osx_arm64=$zipNameOsxArm64" >> $env:GITHUB_OUTPUT
+          "zip_name_osx_x64=$zipNameOsxX64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_win_x64=$releaseAssetUrlWinX64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_win_arm64=$releaseAssetUrlWinArm64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_linux_x64=$releaseAssetUrlLinuxX64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_linux_musl_x64=$releaseAssetUrlLinuxMuslX64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_linux_arm64=$releaseAssetUrlLinuxArm64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_linux_musl_arm64=$releaseAssetUrlLinuxMuslArm64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_linux_arm=$releaseAssetUrlLinuxArm" >> $env:GITHUB_OUTPUT
+          "release_asset_url_osx_arm64=$releaseAssetUrlOsxArm64" >> $env:GITHUB_OUTPUT
+          "release_asset_url_osx_x64=$releaseAssetUrlOsxX64" >> $env:GITHUB_OUTPUT
           "releases_home=$releasesHome" >> $env:GITHUB_OUTPUT
 
       - name: Update SKILL metadata.version and README release links
@@ -156,12 +180,24 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $tag = "${{ steps.version.outputs.tag }}"
-          $zipNameWin = "${{ steps.version.outputs.zip_name_win }}"
-          $zipNameLinux = "${{ steps.version.outputs.zip_name_linux }}"
-          $zipNameOsx = "${{ steps.version.outputs.zip_name_osx }}"
-          $assetUrlWin = "${{ steps.version.outputs.release_asset_url_win }}"
-          $assetUrlLinux = "${{ steps.version.outputs.release_asset_url_linux }}"
-          $assetUrlOsx = "${{ steps.version.outputs.release_asset_url_osx }}"
+          $zipNameWinX64 = "${{ steps.version.outputs.zip_name_win_x64 }}"
+          $zipNameWinArm64 = "${{ steps.version.outputs.zip_name_win_arm64 }}"
+          $zipNameLinuxX64 = "${{ steps.version.outputs.zip_name_linux_x64 }}"
+          $zipNameLinuxMuslX64 = "${{ steps.version.outputs.zip_name_linux_musl_x64 }}"
+          $zipNameLinuxArm64 = "${{ steps.version.outputs.zip_name_linux_arm64 }}"
+          $zipNameLinuxMuslArm64 = "${{ steps.version.outputs.zip_name_linux_musl_arm64 }}"
+          $zipNameLinuxArm = "${{ steps.version.outputs.zip_name_linux_arm }}"
+          $zipNameOsxArm64 = "${{ steps.version.outputs.zip_name_osx_arm64 }}"
+          $zipNameOsxX64 = "${{ steps.version.outputs.zip_name_osx_x64 }}"
+          $assetUrlWinX64 = "${{ steps.version.outputs.release_asset_url_win_x64 }}"
+          $assetUrlWinArm64 = "${{ steps.version.outputs.release_asset_url_win_arm64 }}"
+          $assetUrlLinuxX64 = "${{ steps.version.outputs.release_asset_url_linux_x64 }}"
+          $assetUrlLinuxMuslX64 = "${{ steps.version.outputs.release_asset_url_linux_musl_x64 }}"
+          $assetUrlLinuxArm64 = "${{ steps.version.outputs.release_asset_url_linux_arm64 }}"
+          $assetUrlLinuxMuslArm64 = "${{ steps.version.outputs.release_asset_url_linux_musl_arm64 }}"
+          $assetUrlLinuxArm = "${{ steps.version.outputs.release_asset_url_linux_arm }}"
+          $assetUrlOsxArm64 = "${{ steps.version.outputs.release_asset_url_osx_arm64 }}"
+          $assetUrlOsxX64 = "${{ steps.version.outputs.release_asset_url_osx_x64 }}"
           $releasesHome = "${{ steps.version.outputs.releases_home }}"
 
           $skillPath = "subtitle-extractslator/SKILL.md"
@@ -173,9 +209,15 @@ jobs:
           $enBlock = @(
             "<!-- release-links:start -->",
             "- Latest releases: [Releases]($releasesHome)",
-            "- Windows package ($tag): [$zipNameWin]($assetUrlWin)",
-            "- Linux package ($tag): [$zipNameLinux]($assetUrlLinux)",
-            "- macOS package ($tag): [$zipNameOsx]($assetUrlOsx)",
+            "- Windows x64 package ($tag): [$zipNameWinX64]($assetUrlWinX64)",
+            "- Windows ARM64 package ($tag): [$zipNameWinArm64]($assetUrlWinArm64)",
+            "- Linux x64 package ($tag): [$zipNameLinuxX64]($assetUrlLinuxX64)",
+            "- Linux musl x64 package ($tag): [$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
+            "- Linux ARM64 package ($tag): [$zipNameLinuxArm64]($assetUrlLinuxArm64)",
+            "- Linux musl ARM64 package ($tag): [$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
+            "- Linux ARM package ($tag): [$zipNameLinuxArm]($assetUrlLinuxArm)",
+            "- macOS ARM64 package ($tag): [$zipNameOsxArm64]($assetUrlOsxArm64)",
+            "- macOS x64 package ($tag): [$zipNameOsxX64]($assetUrlOsxX64)",
             "<!-- release-links:end -->"
           ) -join "`n"
           $enRaw = Get-Content $readmeEnPath -Raw
@@ -189,9 +231,15 @@ jobs:
           $zhBlock = @(
             "<!-- release-links:start -->",
             "- Release 总入口：[Releases]($releasesHome)",
-            "- Windows 包（$tag）：[$zipNameWin]($assetUrlWin)",
-            "- Linux 包（$tag）：[$zipNameLinux]($assetUrlLinux)",
-            "- macOS 包（$tag）：[$zipNameOsx]($assetUrlOsx)",
+            "- Windows x64 包（$tag）：[$zipNameWinX64]($assetUrlWinX64)",
+            "- Windows ARM64 包（$tag）：[$zipNameWinArm64]($assetUrlWinArm64)",
+            "- Linux x64 包（$tag）：[$zipNameLinuxX64]($assetUrlLinuxX64)",
+            "- Linux musl x64 包（$tag）：[$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
+            "- Linux ARM64 包（$tag）：[$zipNameLinuxArm64]($assetUrlLinuxArm64)",
+            "- Linux musl ARM64 包（$tag）：[$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
+            "- Linux ARM 包（$tag）：[$zipNameLinuxArm]($assetUrlLinuxArm)",
+            "- macOS ARM64 包（$tag）：[$zipNameOsxArm64]($assetUrlOsxArm64)",
+            "- macOS x64 包（$tag）：[$zipNameOsxX64]($assetUrlOsxX64)",
             "<!-- release-links:end -->"
           ) -join "`n"
           $zhRaw = Get-Content $readmeZhPath -Raw
@@ -213,16 +261,28 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
-          $zipNameWin = "${{ steps.version.outputs.zip_name_win }}"
-          $zipNameLinux = "${{ steps.version.outputs.zip_name_linux }}"
-          $zipNameOsx = "${{ steps.version.outputs.zip_name_osx }}"
+          $zipNameWinX64 = "${{ steps.version.outputs.zip_name_win_x64 }}"
+          $zipNameWinArm64 = "${{ steps.version.outputs.zip_name_win_arm64 }}"
+          $zipNameLinuxX64 = "${{ steps.version.outputs.zip_name_linux_x64 }}"
+          $zipNameLinuxMuslX64 = "${{ steps.version.outputs.zip_name_linux_musl_x64 }}"
+          $zipNameLinuxArm64 = "${{ steps.version.outputs.zip_name_linux_arm64 }}"
+          $zipNameLinuxMuslArm64 = "${{ steps.version.outputs.zip_name_linux_musl_arm64 }}"
+          $zipNameLinuxArm = "${{ steps.version.outputs.zip_name_linux_arm }}"
+          $zipNameOsxArm64 = "${{ steps.version.outputs.zip_name_osx_arm64 }}"
+          $zipNameOsxX64 = "${{ steps.version.outputs.zip_name_osx_x64 }}"
           $binRoot = Join-Path $env:RUNNER_TEMP "skill-bin-all"
           $packageRoot = Join-Path $env:RUNNER_TEMP "skill-package"
 
           $targets = @(
-            @{ Rid = "win-x64"; Binary = "SubtitleExtractslator.Cli.exe"; Zip = $zipNameWin },
-            @{ Rid = "linux-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinux },
-            @{ Rid = "osx-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameOsx }
+            @{ Rid = "win-x64"; Binary = "SubtitleExtractslator.Cli.exe"; Zip = $zipNameWinX64 },
+            @{ Rid = "win-arm64"; Binary = "SubtitleExtractslator.Cli.exe"; Zip = $zipNameWinArm64 },
+            @{ Rid = "linux-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxX64 },
+            @{ Rid = "linux-musl-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxMuslX64 },
+            @{ Rid = "linux-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxArm64 },
+            @{ Rid = "linux-musl-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxMuslArm64 },
+            @{ Rid = "linux-arm"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxArm },
+            @{ Rid = "osx-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameOsxArm64 },
+            @{ Rid = "osx-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameOsxX64 }
           )
 
           foreach ($target in $targets) {
@@ -317,6 +377,12 @@ jobs:
           generate_release_notes: true
           prerelease: false
           files: |
-            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_win }}
-            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux }}
-            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_osx }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_win_x64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_win_arm64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux_x64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux_musl_x64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux_arm64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux_musl_arm64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_linux_arm }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_osx_arm64 }}
+            ${{ runner.temp }}/${{ steps.version.outputs.zip_name_osx_x64 }}

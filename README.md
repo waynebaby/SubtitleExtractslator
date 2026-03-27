@@ -17,9 +17,15 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 <!-- release-links:start -->
 - Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows package (v0.1.0): [subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
-- Linux package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
-- macOS package (v0.1.0): [subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- Windows x64 package (v0.1.0): [subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
+- Windows ARM64 package (v0.1.0): [subtitle-extractslator-v0.1.0-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-arm64.zip)
+- Linux x64 package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
+- Linux musl x64 package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-musl-x64.zip)
+- Linux ARM64 package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-arm64.zip)
+- Linux musl ARM64 package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-musl-arm64.zip)
+- Linux ARM package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-arm.zip)
+- macOS ARM64 package (v0.1.0): [subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- macOS x64 package (v0.1.0): [subtitle-extractslator-v0.1.0-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-x64.zip)
 <!-- release-links:end -->
 
 ## What The Skill Solves
@@ -37,7 +43,7 @@ Execution modes:
 
 Workflow steps:
 1. Probe media subtitle tracks for target language.
-2. Query OpenSubtitles candidates (mocked unless configured).
+2. Query OpenSubtitles candidates (real API when configured; mock fallback optional).
 3. Extract local subtitle (prefer English, fallback nearest available).
 4. Group cues by timeline rules.
 5. Build rolling scene summary and historical context.
@@ -120,8 +126,9 @@ MCP tool return contract:
 
 ## OpenSubtitles
 
-- Current implementation includes a mock branch controlled by `OPENSUBTITLES_MOCK`.
-- Real API integration should be added in a dedicated provider module with auth and rate-limit handling.
+- Real API accessor is available when `OPENSUBTITLES_API_KEY` is configured.
+- Optional auth (recommended for download quota): `OPENSUBTITLES_USERNAME` + `OPENSUBTITLES_PASSWORD`.
+- Optional mock branch remains available via `OPENSUBTITLES_MOCK=1` for offline testing.
 
 ## Publish single-file examples
 

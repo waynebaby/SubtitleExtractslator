@@ -38,6 +38,7 @@ Use this skill when user asks to:
 Read these reference files for operational details:
 1. `references/cli.md`:
 - runtime paths and binaries
+- supported platform package matrix (win-x64/win-arm64/linux-x64/linux-musl-x64/linux-arm64/linux-musl-arm64/linux-arm/osx-arm64/osx-x64)
 - CLI command examples and batch mode
 - output path policy
 2. `references/mcp.md`:
@@ -80,6 +81,20 @@ ELSE continue.
 - search OpenSubtitles in any language
 - prefer English candidates first
 - then use the best available non-English candidate
+
+OpenSubtitles credential interaction rule (must execute before real OpenSubtitles call):
+1. If `OPENSUBTITLES_API_KEY` is missing in current context/environment, ask user for it.
+2. Ask whether user also wants authenticated download reliability via username/password.
+3. If user provides username, then ask password in the next prompt.
+4. Do not persist secrets into repository files by default.
+5. Apply provided values as temporary runtime env overrides for current command/workflow.
+6. If user refuses to provide credentials, skip OpenSubtitles branch and continue local extraction fallback.
+
+Credential Q&A prompts (required wording style):
+1. `Please provide OpenSubtitles API key (OPENSUBTITLES_API_KEY) for this run.`
+2. `Do you want to provide OpenSubtitles username/password for authenticated download as well?`
+3. `Please provide OpenSubtitles username (OPENSUBTITLES_USERNAME).`
+4. `Please provide OpenSubtitles password (OPENSUBTITLES_PASSWORD).`
 
 4. Build timeline cue objects and split into groups.
 Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).

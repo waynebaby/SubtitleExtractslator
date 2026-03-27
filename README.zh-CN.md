@@ -16,9 +16,15 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows 包（v0.1.0）：[subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
-- Linux 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
-- macOS 包（v0.1.0）：[subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- Windows x64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
+- Windows ARM64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-arm64.zip)
+- Linux x64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
+- Linux musl x64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-musl-x64.zip)
+- Linux ARM64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-arm64.zip)
+- Linux musl ARM64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-musl-arm64.zip)
+- Linux ARM 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-arm.zip)
+- macOS ARM64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
+- macOS x64 包（v0.1.0）：[subtitle-extractslator-v0.1.0-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-x64.zip)
 <!-- release-links:end -->
 
 ## 这个 Skill 解决什么问题
@@ -36,7 +42,7 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 工作流步骤：
 1. 探测媒体文件中的字幕轨道。
-2. 查询 OpenSubtitles 候选（未配置时可走 mock）。
+2. 查询 OpenSubtitles 候选（配置后走真实 API，未配置可走 mock）。
 3. 本地提取字幕（优先英文，失败时做确定性回退）。
 4. 按时间线规则分组 cues。
 5. 构建滚动场景摘要与历史上下文。
@@ -118,7 +124,9 @@ MCP 工具返回约定：
 
 ## OpenSubtitles
 
-- 当前实现包含 `OPENSUBTITLES_MOCK` 控制的 mock 分支。
+- 配置 `OPENSUBTITLES_API_KEY` 后可使用真实 OpenSubtitles 访问器。
+- 建议同时配置 `OPENSUBTITLES_USERNAME` 与 `OPENSUBTITLES_PASSWORD` 以支持下载配额与会话。
+- 仍保留 `OPENSUBTITLES_MOCK=1` 的离线测试分支。
 - 真实 API 集成建议拆分到独立 provider 模块，并补充鉴权与限流处理。
 
 ## 单文件发布示例

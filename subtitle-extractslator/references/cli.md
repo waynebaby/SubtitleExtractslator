@@ -10,13 +10,25 @@ Execution path rules:
 
 Platform binaries:
 1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe`
-2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli`
-3. macOS (Apple Silicon): `./assets/bin/osx-arm64/SubtitleExtractslator.Cli`
+2. Windows ARM64: `./assets/bin/win-arm64/SubtitleExtractslator.Cli.exe`
+3. Linux x64: `./assets/bin/linux-x64/SubtitleExtractslator.Cli`
+4. Linux musl x64 (Alpine): `./assets/bin/linux-musl-x64/SubtitleExtractslator.Cli`
+5. Linux ARM64: `./assets/bin/linux-arm64/SubtitleExtractslator.Cli`
+6. Linux musl ARM64 (Alpine): `./assets/bin/linux-musl-arm64/SubtitleExtractslator.Cli`
+7. Linux ARM (32-bit): `./assets/bin/linux-arm/SubtitleExtractslator.Cli`
+8. macOS ARM64 (Apple Silicon): `./assets/bin/osx-arm64/SubtitleExtractslator.Cli`
+9. macOS x64 (Intel): `./assets/bin/osx-x64/SubtitleExtractslator.Cli`
 
 Quick check:
 1. Windows: `./assets/bin/win-x64/SubtitleExtractslator.Cli.exe --help`
-2. Linux: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
-3. macOS: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
+2. Windows ARM64: `./assets/bin/win-arm64/SubtitleExtractslator.Cli.exe --help`
+3. Linux x64: `./assets/bin/linux-x64/SubtitleExtractslator.Cli --help`
+4. Linux musl x64: `./assets/bin/linux-musl-x64/SubtitleExtractslator.Cli --help`
+5. Linux ARM64: `./assets/bin/linux-arm64/SubtitleExtractslator.Cli --help`
+6. Linux musl ARM64: `./assets/bin/linux-musl-arm64/SubtitleExtractslator.Cli --help`
+7. Linux ARM: `./assets/bin/linux-arm/SubtitleExtractslator.Cli --help`
+8. macOS ARM64: `./assets/bin/osx-arm64/SubtitleExtractslator.Cli --help`
+9. macOS x64: `./assets/bin/osx-x64/SubtitleExtractslator.Cli --help`
 
 ## Global Options
 
