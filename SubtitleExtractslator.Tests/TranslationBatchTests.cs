@@ -39,10 +39,23 @@ public sealed class TranslationBatchTests
         var groups = GroupingEngine.Group(sourceCues);
         Assert.NotEmpty(groups);
 
+        var useRealProvider = string.Equals(
+            Environment.GetEnvironmentVariable("SUBTITLEEXTRACTSLATOR_TEST_USE_REAL_LLM"),
+            "1",
+            StringComparison.Ordinal);
+
+        ITranslationProvider externalProvider = useRealProvider
+            ? new ExternalTranslationProvider()
+            : new FakeTranslationProvider();
+
+        ITranslationProvider samplingProvider = useRealProvider
+            ? new SamplingTranslationProvider()
+            : new FakeTranslationProvider();
+
         var translator = new TranslationPipeline(
             ModeContext.Cli,
-            new ExternalTranslationProvider(),
-            new SamplingTranslationProvider());
+            externalProvider,
+            samplingProvider);
 
         var translatedGroups = new List<GroupTranslationResult>();
 
@@ -195,5 +208,31 @@ public sealed class TranslationBatchTests
             || (c >= '\uFE30' && c <= '\uFE6F')
             || (c >= '\uFF01' && c <= '\uFF60')
             || (c >= '\uFFE0' && c <= '\uFFE6');
+    }
+
+    private sealed class FakeTranslationProvider : ITranslationProvider
+    {
+        public Task<IReadOnlyList<string>> TranslateIndexedAsync(
+            IReadOnlyList<string> lines,
+            string targetLanguage,
+            string contextParaphrase,
+            string contextHint)
+        {
+            var output = lines
+                .Select((line, i) => $"测试{i + 1} {line}")
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<string>>(output);
+        }
+
+        public Task<IReadOnlyList<string>> TranslateAsync(
+            IReadOnlyList<string> lines,
+            string targetLanguage,
+            string paraphraseSummary,
+            string previousCycleParaphrase,
+            string paraphraseHistory)
+        {
+            return TranslateIndexedAsync(lines, targetLanguage, paraphraseSummary, "legacy");
+        }
     }
 }
