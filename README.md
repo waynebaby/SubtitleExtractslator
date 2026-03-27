@@ -17,7 +17,9 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 <!-- release-links:start -->
 - Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Versioned package (v0.1.0): [subtitle-extractslator-v0.1.0.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0.zip)
+- Windows package (v0.1.0): [subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
+- Linux package (v0.1.0): [subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
+- macOS package (v0.1.0): [subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
 <!-- release-links:end -->
 
 ## What The Skill Solves

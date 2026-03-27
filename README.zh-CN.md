@@ -16,7 +16,9 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- 当前固定版本包（v0.1.0）：[subtitle-extractslator-v0.1.0.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0.zip)
+- Windows 包（v0.1.0）：[subtitle-extractslator-v0.1.0-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-win-x64.zip)
+- Linux 包（v0.1.0）：[subtitle-extractslator-v0.1.0-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-linux-x64.zip)
+- macOS 包（v0.1.0）：[subtitle-extractslator-v0.1.0-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.0/subtitle-extractslator-v0.1.0-osx-arm64.zip)
 <!-- release-links:end -->
 
 ## 这个 Skill 解决什么问题
