@@ -8,6 +8,10 @@ This file is skill-facing runtime contract only.
 2. MCP translation path is sampling-only.
 3. If sampling fails (including missing server injection), return error directly.
 4. External/custom endpoint access (for example `LLM_ENDPOINT`) is CLI route only.
+5. MCP tools must be invoked by the AI agent manually one-by-one in strict sequence (not human hand-operated steps).
+6. For all MCP steps, do not execute tool calls through scripts/batch wrappers.
+7. Subagent fanout is allowed if it runs through the agent path and preserves MCP sampling context.
+8. Subagent fanout does not remove tool-level serial constraints (for example OpenSubtitles `search -> download`).
 
 ## MCP Setup Contract
 
@@ -104,3 +108,4 @@ Timing-check parameter contract:
 3. Use MCP client tool responses for status and errors.
 4. OpenSubtitles credentials are resolved from `subtitle auth login` cache via per-call `subtitle auth aquire` semantics.
 5. In MCP mode, do not commit secrets into repository files.
+6. In MCP mode, keep orchestration agent-driven; allow subagent fanout but avoid script-driven tool loops.

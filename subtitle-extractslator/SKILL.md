@@ -54,6 +54,13 @@ Read these reference files for operational details:
 
 Follow this exact decision tree (do not reorder):
 
+MCP invocation discipline (CRITICAL):
+1. In MCP mode, tools must be invoked by the AI agent manually one-by-one in strict sequence (not human hand-operated steps).
+2. For all MCP steps, do not use scripts or batched wrappers to drive tool calls.
+3. Subagent fanout is allowed when it runs through the agent path and can use MCP sampling context.
+4. Subagent fanout does not override tool-level serial constraints (for example OpenSubtitles `search -> download` remains strict serial).
+5. Reason: script-driven/non-agent calls can bypass agent sampling context and break MCP sampling behavior.
+
 0. MCP setup prompt first.
 Ask user whether to configure MCP for current workspace now.
 If yes, create or update the MCP config file for the current agent client (for example, GitHub Copilot commonly uses `./.vscode/mcp.json`; Claude Code/OpenClaw/Codex use their own MCP config locations); on all platforms use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
