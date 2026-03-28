@@ -15,8 +15,13 @@ SubtitleExtractslator.Cli --help
 
 Commands:
 probe --input <mediaFile> --lang <targetLang>
-opensubtitles-search --input <mediaFile> --lang <targetLang> --search-query-primary <query> --search-query-normalized <query> --opensubtitles-api-key <key> [--opensubtitles-username <user>] [--opensubtitles-password <pass>] [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
-opensubtitles-download --input <mediaFile> --lang <targetLang> --output <subtitleFile> --opensubtitles-api-key <key> [--candidate-rank <n> | --file-id <id>] [--opensubtitles-username <user>] [--opensubtitles-password <pass>] [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
+subtitle-timing-check --input <mediaFile> --subtitle <subtitleFile.srt>
+opensubtitles-search --input <mediaFile> --lang <targetLang> --search-query-primary <query> --search-query-normalized <query> [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
+opensubtitles-download --input <mediaFile> --lang <targetLang> --output <subtitleFile> [--candidate-rank <n> | --file-id <id>] [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
+subtitle auth login --api-key <key> --username <user> --password <pass> [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
+subtitle auth aquire
+subtitle auth status
+subtitle auth clear
 extract --input <mediaFile> --out <subtitleFile> [--prefer en]
 translate --input <subtitleFile.srt> --lang <targetLang> --output <subtitleFile>
     [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]
@@ -41,6 +46,7 @@ MCP exposes tool `translate` (translation-only; not a CLI command).
             "input-list",
             "output",
             "out",
+            "subtitle",
             "mux-output",
             "output-dir",
             "opensubtitles-user-agent"
@@ -75,6 +81,15 @@ MCP exposes tool `translate` (translation-only; not a CLI command).
         if (positional.Count > 0)
         {
             map["command"] = positional[0];
+            if (positional.Count > 1)
+            {
+                map["command-2"] = positional[1];
+            }
+
+            if (positional.Count > 2)
+            {
+                map["command-3"] = positional[2];
+            }
         }
 
         var mode = map.TryGetValue("mode", out var modeValue) && modeValue.Equals("mcp", StringComparison.OrdinalIgnoreCase)

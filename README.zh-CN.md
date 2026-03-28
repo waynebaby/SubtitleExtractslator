@@ -72,7 +72,9 @@ dotnet build SubtitleExtractslator.sln
 ```powershell
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "movie.mkv" --lang zh
 
-dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00" --opensubtitles-api-key "<key>"
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli subtitle-timing-check --input "movie.mkv" --subtitle "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00"
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
 
@@ -102,7 +104,9 @@ MCP 传输与工具注册使用官方 `ModelContextProtocol` NuGet 包（`AddMcp
 
 MCP tools：
 - `probe`
+- `subtitle_timing_check`
 - `opensubtitles_search`
+- `opensubtitles_download`
 - `extract`
 - `translate`
 
@@ -122,8 +126,8 @@ MCP 工具返回约定：
 
 ## OpenSubtitles
 
-- 配置 `OPENSUBTITLES_API_KEY` 后可使用真实 OpenSubtitles 访问器。
-- 建议同时配置 `OPENSUBTITLES_USERNAME` 与 `OPENSUBTITLES_PASSWORD` 以支持下载配额与会话。
+- 真实 API 搜索/下载依赖 `subtitle auth login` 写入的本地认证缓存。
+- `subtitle auth login` 会写入 api key、username、password，后续由 `aquire` 读取。
 - 仍保留 `OPENSUBTITLES_MOCK=1` 的离线测试分支。
 - 真实 API 集成建议拆分到独立 provider 模块，并补充鉴权与限流处理。
 

@@ -38,6 +38,56 @@ internal sealed class SubtitleOperations
         return new ProbeResult(input, targetLanguage, hasTarget, tracks);
     }
 
+    public async Task<SubtitleTimingCheckResult> CheckSubtitleTimingAsync(string input, string subtitle)
+    {
+        CliRuntimeLog.Info("timing-check", $"Start timing check. input={input} subtitle={subtitle}");
+        EnsureInputPathExists(input);
+        EnsureInputPathExists(subtitle);
+
+        if (Path.GetExtension(input).Equals(".srt", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("subtitle-timing-check requires media input as --input, not subtitle file.");
+        }
+
+        if (!Path.GetExtension(subtitle).Equals(".srt", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("subtitle-timing-check currently supports SRT subtitle input only.");
+        }
+
+        var videoDuration = await ProbeMediaDurationWithFfprobeAsync(input);
+        var cues = await LoadSrtAsync(subtitle);
+        var cueCount = cues.Count;
+        var subtitleLastCueEnd = cueCount == 0
+            ? TimeSpan.Zero
+            : cues.Max(x => x.End);
+
+        var threshold = TimeSpan.FromMinutes(10);
+        var absoluteDifference = (videoDuration - subtitleLastCueEnd).Duration();
+        var isWithinThreshold = cueCount > 0 && absoluteDifference < threshold;
+        var verdict = cueCount == 0
+            ? "subtitle_has_no_cues"
+            : isWithinThreshold
+                ? "duration_close_enough"
+                : "duration_too_far";
+
+        var result = new SubtitleTimingCheckResult(
+            input,
+            subtitle,
+            cueCount,
+            RoundSeconds(videoDuration),
+            RoundSeconds(subtitleLastCueEnd),
+            RoundSeconds(absoluteDifference),
+            RoundSeconds(threshold),
+            isWithinThreshold,
+            verdict);
+
+        CliRuntimeLog.Info(
+            "timing-check",
+            $"Completed. cueCount={result.SubtitleCueCount} diffSeconds={result.AbsoluteDifferenceSeconds:0.###} thresholdSeconds={result.ThresholdSeconds:0.###} withinThreshold={result.IsWithinThreshold}");
+
+        return result;
+    }
+
     public Task<OpenSubtitlesResult> SearchOpenSubtitlesAsync(
         string input,
         string targetLanguage,
@@ -61,8 +111,7 @@ internal sealed class SubtitleOperations
         var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
-            CliRuntimeLog.Info("opensubtitles", "No OpenSubtitles API key provided by function parameter. Returning empty candidate list.");
-            return Task.FromResult(new OpenSubtitlesResult(input, targetLanguage, new List<SubtitleCandidate>()));
+            throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles sk auth is empty.");
         }
 
         return SearchOpenSubtitlesWithAccessorAsync(input, targetLanguage, queries, accessor);
@@ -78,8 +127,7 @@ internal sealed class SubtitleOperations
         var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
-            throw new InvalidOperationException(
-                "OpenSubtitles candidate adoption requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
+            throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles candidate adoption auth is unavailable.");
         }
 
         CliRuntimeLog.Info("opensubtitles", $"Downloading candidate. fileId={candidate.FileId ?? "n/a"} name={candidate.Name}");
@@ -105,8 +153,7 @@ internal sealed class SubtitleOperations
         var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
-            throw new InvalidOperationException(
-            "OpenSubtitles download requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
+            throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles download auth is unavailable.");
         }
 
         SubtitleCandidate candidate;
@@ -164,8 +211,7 @@ internal sealed class SubtitleOperations
         var accessor = OpenSubtitlesAccessor.Create(credentials);
         if (accessor is null)
         {
-            throw new InvalidOperationException(
-                "OpenSubtitles download requires opensubtitlesApiKey parameter (and optionally opensubtitlesUsername/opensubtitlesPassword).");
+            throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles download auth is unavailable.");
         }
 
         var normalizedFileId = fileId.Trim();
@@ -228,6 +274,10 @@ internal sealed class SubtitleOperations
 
             var normalizedAnyLanguageCandidates = await SearchCandidatesAsync(accessor, normalizedQuery, null, "normalized-any-language");
             return new OpenSubtitlesResult(input, targetLanguage, normalizedAnyLanguageCandidates);
+        }
+        catch (OpenSubtitlesAuthException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -525,6 +575,28 @@ internal sealed class SubtitleOperations
         CliRuntimeLog.Info("ffprobe", $"ffprobe parse completed. streamCount={tracks.Count}");
 
         return tracks;
+    }
+
+    private static async Task<TimeSpan> ProbeMediaDurationWithFfprobeAsync(string input)
+    {
+        using var scope = CliRuntimeLog.BeginScope("ffprobe", $"Probe media duration: {input}");
+        await FfmpegBootstrap.EnsureAsync();
+
+        var ffprobe = ResolveExecutable("ffprobe");
+        var args = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {QuoteArg(input)}";
+        CliRuntimeLog.Info("ffprobe", $"Running ffprobe: {QuoteArg(ffprobe)} {args}");
+        var output = await RunProcessAsync(ffprobe, args);
+        var text = output.Trim();
+
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+            || double.IsNaN(seconds)
+            || double.IsInfinity(seconds)
+            || seconds < 0)
+        {
+            throw new InvalidOperationException($"ffprobe did not return a valid media duration. output={text}");
+        }
+
+        return TimeSpan.FromSeconds(seconds);
     }
 
     private async Task<ExtractionResult> ExtractBitmapSubtitleWithOcrAsync(
@@ -1114,4 +1186,7 @@ internal sealed class SubtitleOperations
 
         return $"Missing required dependency: {dependency}. The app attempts NuGet-based FFmpeg bootstrap first, then PATH fallback. Set FFMPEG_BIN_DIR to a folder containing ffmpeg/ffprobe, or install FFmpeg and ensure `{dependency}` is available in PATH. {installHint}";
     }
+
+    private static double RoundSeconds(TimeSpan value)
+        => Math.Round(value.TotalSeconds, 3, MidpointRounding.AwayFromZero);
 }

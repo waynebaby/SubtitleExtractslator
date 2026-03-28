@@ -1,5 +1,8 @@
 # CLI Reference
 
+This file is skill-facing runtime contract only.
+
+
 ## Runtime Paths
 
 Execution path rules:
@@ -42,35 +45,36 @@ Platform command rule:
 
 1. Probe:
 - `<cli_bin> --mode cli probe --input "movie.mkv" --lang zh`
-2. OpenSubtitles search:
-- `<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00" --opensubtitles-api-key "<key>" [--opensubtitles-username "<user>"] [--opensubtitles-password "<pass>"] [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
-3. OpenSubtitles download:
-- By ranked search candidate (default rank 1): `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>"`
-- By rank override: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>" --candidate-rank 2`
-- By direct file id: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --opensubtitles-api-key "<key>" --file-id 1234567`
-4. Download notes:
+2. Subtitle timing check:
+- `<cli_bin> --mode cli subtitle-timing-check --input "movie.mkv" --subtitle "movie.zh.srt"`
+- Returns whether `abs(video_duration - subtitle_last_cue_end) < 600 seconds`.
+3. OpenSubtitles search:
+- `<cli_bin> --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00" [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
+4. OpenSubtitles download:
+- By ranked search candidate (default rank 1): `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt"`
+- By rank override: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --candidate-rank 2`
+- By direct file id: `<cli_bin> --mode cli opensubtitles-download --input "movie.mkv" --lang zh --output "movie.zh.opensub.srt" --file-id 1234567`
+5. Download notes:
 - Ranked download reuses mandatory OpenSubtitles fallback search strategy (base filename first, then `<series_or_title> s00e00` from normalized full path).
 - Direct file-id download skips search.
-- Real API access requires explicit `--opensubtitles-api-key` parameter and sends `Api-Key` and `User-Agent` headers.
-5. Extract:
+- Real API access uses `subtitle auth login` cache and sends `Api-Key` and `User-Agent` headers.
+6. Auth commands:
+- `subtitle auth login --api-key "<key>" --username "<user>" --password "<pass>" [--opensubtitles-endpoint "<url>"] [--opensubtitles-user-agent "<ua>"]`
+- `subtitle auth aquire`
+- `subtitle auth status`
+- `subtitle auth clear`
+7. Auth notes:
+- `login` is the only write operation.
+- `clear` is the only delete operation.
+- Password prompt hides keystrokes when interactive input is used.
+8. Extract:
 - `<cli_bin> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
-6. Bitmap subtitle branch (PGS/DVD):
-- If selected subtitle codec is bitmap (`hdmv_pgs_subtitle` or `dvd_subtitle`), extract now runs: SUP export -> built-in SUP decode to PNG + timeline -> OCR -> SRT.
-- The render-overlay screenshot path is disabled; PNG frames must come from SUP conversion.
-- Intermediate artifacts are written under temp root `Path.GetTempPath()/SubtitleExtractslator/pgs` (or `SUBTITLEEXTRACTSLATOR_TEMPDIR` override).
-- SUP-to-PNG decoding is built in (pure C# parser + ImageSharp). No external converter command is required.
-- OCR is built in C# and calls a local OpenAI-compatible chat completion endpoint directly (no script dependency).
-- OCR endpoint env: `LLM_ENDPOINT` (default `http://localhost:1234/v1/chat/completions`).
-- OCR model env: `LLM_MODEL` (default `qwen3.5-9b-uncensored-hauhaucs-aggressive`).
-- OCR model/endpoint requirement: must support multimodal image input (`image_url` in OpenAI-compatible chat completions payload).
-- OCR timeout env: `SUBTITLEEXTRACTSLATOR_PGS_OCR_TIMEOUT_SECONDS` (default `120`, clamp `5..600`).
-- OCR ignores `LLM_REASONING` and always uses fixed fallback order: `off` -> `low` -> unset.
-- Reasoning fallback order for OCR requests: `off` -> `low` -> unset.
-- `SUBTITLEEXTRACTSLATOR_PGS_OCR_MAX_CUES` controls OCR cue cap (default `160`, clamp `1..2000`).
-7. Translate (CLI only):
+9. Translate (CLI only):
 - `<cli_bin> --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt" [--cues-per-group <n>] [--body-size <n>] [--llm-retry-count <n>]`
-8. Translate batch (CLI only):
+10. Translate batch (CLI only):
 - `<cli_bin> --mode cli translate-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"`
+
+Detailed bitmap OCR runtime internals and environment defaults are documented in `docs/skill-runtime-maintainer-notes.md`.
 
 ## Batch Input Rules
 

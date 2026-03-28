@@ -105,6 +105,16 @@ internal sealed class OpenSubtitlesAccessor
         return ReRank(collected, maxResults);
     }
 
+    public async Task ValidateSessionAsync()
+    {
+        await EnsureAuthAsync();
+        if (string.IsNullOrWhiteSpace(_token))
+        {
+            throw OpenSubtitlesAuthException.ReloginRequired(
+                "OpenSubtitles sk auth token is unavailable.");
+        }
+    }
+
     public async Task DownloadCandidateToFileAsync(SubtitleCandidate candidate, string outputPath)
     {
         if (string.IsNullOrWhiteSpace(outputPath))
@@ -137,6 +147,12 @@ internal sealed class OpenSubtitlesAccessor
         if (!resp.IsSuccessStatusCode)
         {
             var body = bytes.Length == 0 ? string.Empty : System.Text.Encoding.UTF8.GetString(bytes);
+            if ((int)resp.StatusCode is 401 or 403)
+            {
+                throw OpenSubtitlesAuthException.ReloginRequired(
+                    $"OpenSubtitles file download authorization failed ({(int)resp.StatusCode} {resp.ReasonPhrase}).");
+            }
+
             var debug = BuildHttpDebugBlock("download-file", req, null, resp, body);
             throw new InvalidOperationException(
                 $"OpenSubtitles download failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
@@ -160,14 +176,14 @@ internal sealed class OpenSubtitlesAccessor
 
         if (_loginRejected)
         {
-            throw new InvalidOperationException(
-                "OpenSubtitles login was rejected (401 Unauthorized). "
-                + "Stop retrying with the same credentials and provide valid opensubtitlesUsername/opensubtitlesPassword.");
+            throw OpenSubtitlesAuthException.ReloginRequired(
+                "OpenSubtitles login was rejected (401 Unauthorized).");
         }
 
         if (string.IsNullOrWhiteSpace(_settings.Username) || string.IsNullOrWhiteSpace(_settings.Password))
         {
-            return;
+            throw OpenSubtitlesAuthException.ReloginRequired(
+                "OpenSubtitles sk auth is missing username or password.");
         }
 
         var loginPayload = new
@@ -191,6 +207,12 @@ internal sealed class OpenSubtitlesAccessor
                 _loginRejected = true;
             }
 
+            if ((int)resp.StatusCode is 401 or 403)
+            {
+                throw OpenSubtitlesAuthException.ReloginRequired(
+                    $"OpenSubtitles login failed ({(int)resp.StatusCode} {resp.ReasonPhrase}).");
+            }
+
             var debug = BuildHttpDebugBlock("login", req, loginPayloadText, resp, body);
             throw new InvalidOperationException(
                 $"OpenSubtitles login failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
@@ -205,9 +227,8 @@ internal sealed class OpenSubtitlesAccessor
 
         if (string.IsNullOrWhiteSpace(_token))
         {
-            var debug = BuildHttpDebugBlock("login-missing-token", req, loginPayloadText, resp, body);
-            throw new InvalidOperationException(
-                "OpenSubtitles login succeeded but token was missing in response.\n" + debug);
+            throw OpenSubtitlesAuthException.ReloginRequired(
+                "OpenSubtitles login succeeded but token was missing in response.");
         }
 
         // OpenSubtitles requires subsequent requests to follow returned base_url host.
@@ -228,9 +249,8 @@ internal sealed class OpenSubtitlesAccessor
     {
         if (string.IsNullOrWhiteSpace(_token))
         {
-            throw new InvalidOperationException(
-                "OpenSubtitles /download requires Authorization bearer token. "
-                + "Provide opensubtitlesUsername and opensubtitlesPassword so login token can be created.");
+            throw OpenSubtitlesAuthException.ReloginRequired(
+                "OpenSubtitles /download requires Authorization bearer token.");
         }
 
         var downloadPayload = new { file_id = fileId };
@@ -245,6 +265,12 @@ internal sealed class OpenSubtitlesAccessor
         var body = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
         {
+            if ((int)resp.StatusCode is 401 or 403)
+            {
+                throw OpenSubtitlesAuthException.ReloginRequired(
+                    $"OpenSubtitles download-link authorization failed ({(int)resp.StatusCode} {resp.ReasonPhrase}).");
+            }
+
             var debug = BuildHttpDebugBlock("resolve-download-link", req, downloadPayloadText, resp, body);
             throw new InvalidOperationException(
                 $"OpenSubtitles download-link request failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
@@ -323,6 +349,12 @@ internal sealed class OpenSubtitlesAccessor
             var isRateLimited = IsRateLimited(resp, body);
             if (!isRateLimited)
             {
+                if ((int)resp.StatusCode is 401 or 403)
+                {
+                    throw OpenSubtitlesAuthException.ReloginRequired(
+                        $"OpenSubtitles search authorization failed ({(int)resp.StatusCode} {resp.ReasonPhrase}).");
+                }
+
                 var debug = BuildHttpDebugBlock("search", req, null, resp, body);
                 throw new InvalidOperationException(
                     $"OpenSubtitles search failed ({(int)resp.StatusCode} {resp.ReasonPhrase}). Body: {body}\n{debug}");
@@ -659,10 +691,8 @@ internal sealed class OpenSubtitlesAccessor
         {
             if (string.IsNullOrWhiteSpace(_token))
             {
-                throw new InvalidOperationException(
-                    "Missing OpenSubtitles Authorization token. "
-                    + "Protected endpoint requires both Api-Key and Authorization headers. "
-                    + "Provide opensubtitlesUsername and opensubtitlesPassword to obtain login token.");
+                throw OpenSubtitlesAuthException.ReloginRequired(
+                    "Missing OpenSubtitles Authorization token for protected endpoint.");
             }
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);

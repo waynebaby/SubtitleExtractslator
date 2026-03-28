@@ -14,12 +14,16 @@ internal static class CliCommandRunner
             "probe" => JsonSerializer.Serialize(await orchestrator.ProbeAsync(
                 options.Require("input"),
                 options.Require("lang")), JsonOptions.Pretty),
+            "subtitle-timing-check" => JsonSerializer.Serialize(await orchestrator.CheckSubtitleTimingAsync(
+                options.Require("input"),
+                options.Require("subtitle")), JsonOptions.Pretty),
             "opensubtitles-search" => JsonSerializer.Serialize(await orchestrator.SearchOpenSubtitlesAsync(
                 options.Require("input"),
                 options.Require("lang"),
                 ResolveOpenSubtitlesSearchQueries(options),
-                ResolveOpenSubtitlesCredentials(options, requireApiKey: true)), JsonOptions.Pretty),
+                ResolveOpenSubtitlesCredentials(options)), JsonOptions.Pretty),
             "opensubtitles-download" => JsonSerializer.Serialize(await RunOpenSubtitlesDownloadWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
+            "subtitle" => JsonSerializer.Serialize(await RunSubtitleAuthCommandAsync(options), JsonOptions.Pretty),
             "extract" => JsonSerializer.Serialize(await orchestrator.ExtractSubtitleAsync(
                 options.Require("input"),
                 options.Require("out"),
@@ -64,7 +68,80 @@ internal static class CliCommandRunner
             options.Require("output"),
             candidateRank,
             options.OptionalString("file-id"),
-            ResolveOpenSubtitlesCredentials(options, requireApiKey: true)!);
+            ResolveOpenSubtitlesCredentials(options));
+    }
+
+    private static Task<AuthCommandResult> RunSubtitleAuthCommandAsync(AppOptions options)
+    {
+        var group = options.OptionalString("command-2");
+        if (!string.Equals(group, "auth", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Unsupported subtitle command. Use: subtitle auth <login|aquire|status|clear>.");
+        }
+
+        var action = options.OptionalString("command-3")?.ToLowerInvariant();
+        return action switch
+        {
+            "login" => Task.FromResult(RunSubtitleAuthLogin(options)),
+            "aquire" => Task.FromResult(RunSubtitleAuthAquire(options)),
+            "status" => Task.FromResult(OpenSubtitlesAuthStore.Status()),
+            "clear" => Task.FromResult(OpenSubtitlesAuthStore.Clear()),
+            _ => throw new InvalidOperationException("Unsupported subtitle auth action. Use: subtitle auth <login|aquire|status|clear>.")
+        };
+    }
+
+    private static AuthCommandResult RunSubtitleAuthLogin(AppOptions options)
+    {
+        var apiKey = ResolveRequiredAuthField(options, "api-key", "OpenSubtitles API key", secret: false);
+        var username = ResolveRequiredAuthField(options, "username", "OpenSubtitles username", secret: false);
+        var password = ResolveRequiredAuthField(options, "password", "OpenSubtitles password", secret: true);
+        var endpoint = options.OptionalString("opensubtitles-endpoint");
+        var userAgent = options.OptionalString("opensubtitles-user-agent");
+
+        var credentials = new OpenSubtitlesCredentials(apiKey, username, password, endpoint, userAgent);
+        var accessor = OpenSubtitlesAccessor.Create(credentials)
+            ?? throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles auth login failed.");
+        try
+        {
+            accessor.ValidateSessionAsync().GetAwaiter().GetResult();
+        }
+        catch (OpenSubtitlesAuthException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw OpenSubtitlesAuthException.ReloginRequired($"OpenSubtitles auth login failed. {ex.Message}");
+        }
+
+        return OpenSubtitlesAuthStore.Login(apiKey, username, password, endpoint, userAgent);
+    }
+
+    private static AuthCommandResult RunSubtitleAuthAquire(AppOptions options)
+    {
+        var credentials = ResolveOpenSubtitlesCredentials(options);
+        var accessor = OpenSubtitlesAccessor.Create(credentials)
+            ?? throw OpenSubtitlesAuthException.ReloginRequired("OpenSubtitles sk auth is empty.");
+
+        try
+        {
+            accessor.ValidateSessionAsync().GetAwaiter().GetResult();
+        }
+        catch (OpenSubtitlesAuthException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw OpenSubtitlesAuthException.ReloginRequired($"OpenSubtitles auth aquire failed. {ex.Message}");
+        }
+
+        return new AuthCommandResult(
+            "aquire",
+            true,
+            "OpenSubtitles auth acquired successfully.",
+            true,
+            OpenSubtitlesAuthStore.CachePath);
     }
 
     private static async Task<BatchWorkflowResult> RunTranslateBatchWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)
@@ -208,33 +285,17 @@ internal static class CliCommandRunner
         return value;
     }
 
-    private static OpenSubtitlesCredentials? ResolveOpenSubtitlesCredentials(AppOptions options, bool requireApiKey)
+    private static OpenSubtitlesCredentials ResolveOpenSubtitlesCredentials(AppOptions options)
     {
-        var apiKey = options.OptionalString("opensubtitles-api-key");
-        var username = options.OptionalString("opensubtitles-username");
-        var password = options.OptionalString("opensubtitles-password");
-        var endpoint = options.OptionalString("opensubtitles-endpoint");
-        var userAgent = options.OptionalString("opensubtitles-user-agent");
-
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (options.OptionalString("opensubtitles-api-key") is not null)
         {
-            if (requireApiKey)
-            {
-                throw new InvalidOperationException("Missing required argument --opensubtitles-api-key");
-            }
-
-            if (string.IsNullOrWhiteSpace(username)
-                && string.IsNullOrWhiteSpace(password)
-                && string.IsNullOrWhiteSpace(endpoint)
-                && string.IsNullOrWhiteSpace(userAgent))
-            {
-                return null;
-            }
-
-            throw new InvalidOperationException("--opensubtitles-api-key is required when any OpenSubtitles credential/config parameter is provided.");
+            throw new InvalidOperationException(
+                "--opensubtitles-api-key is no longer supported. Run subtitle auth login to store api-key and retry.");
         }
 
-        return new OpenSubtitlesCredentials(apiKey, username, password, endpoint, userAgent);
+        var endpoint = options.OptionalString("opensubtitles-endpoint");
+        var userAgent = options.OptionalString("opensubtitles-user-agent");
+        return OpenSubtitlesAuthStore.Acquire(endpoint, userAgent);
     }
 
     private static OpenSubtitlesSearchQueries ResolveOpenSubtitlesSearchQueries(AppOptions options)
@@ -242,5 +303,60 @@ internal static class CliCommandRunner
         var primary = options.Require("search-query-primary");
         var normalized = options.Require("search-query-normalized");
         return new OpenSubtitlesSearchQueries(primary, normalized);
+    }
+
+    private static string ResolveRequiredAuthField(AppOptions options, string key, string prompt, bool secret)
+    {
+        var value = options.OptionalString(key);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        if (Console.IsInputRedirected || Console.IsOutputRedirected)
+        {
+            throw new InvalidOperationException(
+                $"Missing required argument --{key}. Non-interactive mode cannot prompt. Provide --api-key, --username, and --password explicitly.");
+        }
+
+        Console.Write($"{prompt}: ");
+        var entered = secret ? ReadSecretFromConsole() : Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(entered))
+        {
+            throw new InvalidOperationException($"{prompt} cannot be empty.");
+        }
+
+        return entered.Trim();
+    }
+
+    private static string ReadSecretFromConsole()
+    {
+        var chars = new List<char>();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                break;
+            }
+
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (chars.Count > 0)
+                {
+                    chars.RemoveAt(chars.Count - 1);
+                }
+
+                continue;
+            }
+
+            if (key.KeyChar != '\u0000')
+            {
+                chars.Add(key.KeyChar);
+            }
+        }
+
+        return new string(chars.ToArray());
     }
 }

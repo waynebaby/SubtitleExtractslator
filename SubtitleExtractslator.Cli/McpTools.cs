@@ -23,6 +23,17 @@ internal sealed class SubtitleMcpTools
         string lang)
         => ExecuteWithResultAsync("probe", () => _orchestrator.ProbeAsync(input, lang));
 
+    [McpServerTool(Name = "subtitle_timing_check", Title = "Check subtitle timing match")]
+    [Description("Compare media duration and subtitle last cue time. Returns whether absolute difference is less than 10 minutes.")]
+    public Task<McpToolResult<SubtitleTimingCheckResult>> SubtitleTimingCheck(
+        [Description("Input media file path.")]
+        string input,
+        [Description("Input subtitle file path (*.srt).")]
+        string subtitle)
+        => ExecuteWithResultAsync(
+            "subtitle_timing_check",
+            () => _orchestrator.CheckSubtitleTimingAsync(input, subtitle));
+
     [McpServerTool(Name = "opensubtitles_search", Title = "Search OpenSubtitles")]
     [Description("Search OpenSubtitles candidates for the specified input and target language.")]
     public Task<McpToolResult<OpenSubtitlesResult>> OpenSubtitlesSearch(
@@ -34,12 +45,6 @@ internal sealed class SubtitleMcpTools
         string searchQueryPrimary,
         [Description("Normalized fallback search query, e.g. <series_or_title> s00e00.")]
         string searchQueryNormalized,
-        [Description("OpenSubtitles API key used for search requests.")]
-        string opensubtitlesApiKey,
-        [Description("Optional OpenSubtitles username for authenticated login token.")]
-        string? opensubtitlesUsername = null,
-        [Description("Optional OpenSubtitles password for authenticated login token.")]
-        string? opensubtitlesPassword = null,
         [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
         string? opensubtitlesEndpoint = null,
         [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
@@ -52,7 +57,7 @@ internal sealed class SubtitleMcpTools
                     input,
                     lang,
                     new OpenSubtitlesSearchQueries(searchQueryPrimary, searchQueryNormalized),
-                    BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!);
+                    BuildOpenSubtitlesCredentials(opensubtitlesEndpoint, opensubtitlesUserAgent));
 
                 // Keep MCP payload compact; download tool uses fileId, not transient downloadUrl.
                 var compactCandidates = result.Candidates
@@ -68,12 +73,6 @@ internal sealed class SubtitleMcpTools
         string fileId,
         [Description("Output subtitle file path.")]
         string output,
-        [Description("OpenSubtitles API key used for download requests.")]
-        string opensubtitlesApiKey,
-        [Description("Optional OpenSubtitles username for authenticated login token.")]
-        string? opensubtitlesUsername = null,
-        [Description("Optional OpenSubtitles password for authenticated login token.")]
-        string? opensubtitlesPassword = null,
         [Description("Optional OpenSubtitles API endpoint. Default: https://api.opensubtitles.com/api/v1")]
         string? opensubtitlesEndpoint = null,
         [Description("Optional User-Agent header value for OpenSubtitles API calls.")]
@@ -83,7 +82,7 @@ internal sealed class SubtitleMcpTools
             () => _orchestrator.DownloadOpenSubtitleByFileIdAsync(
                 fileId,
                 output,
-                BuildOpenSubtitlesCredentials(opensubtitlesApiKey, opensubtitlesUsername, opensubtitlesPassword, opensubtitlesEndpoint, opensubtitlesUserAgent, requireApiKey: true)!));
+                BuildOpenSubtitlesCredentials(opensubtitlesEndpoint, opensubtitlesUserAgent)));
 
     [McpServerTool(Name = "extract", Title = "Extract subtitle")]
     [Description("Extract subtitle file from input media using preferred language with deterministic fallback.")]
@@ -174,34 +173,10 @@ internal sealed class SubtitleMcpTools
             });
     }
 
-    private static OpenSubtitlesCredentials? BuildOpenSubtitlesCredentials(
-        string? apiKey,
-        string? username,
-        string? password,
+    private static OpenSubtitlesCredentials BuildOpenSubtitlesCredentials(
         string? endpoint,
-        string? userAgent,
-        bool requireApiKey)
-    {
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            if (requireApiKey)
-            {
-                throw new InvalidOperationException("Missing required parameter: opensubtitlesApiKey");
-            }
-
-            if (string.IsNullOrWhiteSpace(username)
-                && string.IsNullOrWhiteSpace(password)
-                && string.IsNullOrWhiteSpace(endpoint)
-                && string.IsNullOrWhiteSpace(userAgent))
-            {
-                return null;
-            }
-
-            throw new InvalidOperationException("opensubtitlesApiKey is required when any OpenSubtitles credential/config parameter is provided.");
-        }
-
-        return new OpenSubtitlesCredentials(apiKey, username, password, endpoint, userAgent);
-    }
+        string? userAgent)
+        => OpenSubtitlesAuthStore.Acquire(endpoint, userAgent);
 
     private static async Task<McpToolResult<T>> ExecuteWithResultAsync<T>(string toolName, Func<Task<T>> action)
     {
@@ -223,16 +198,29 @@ internal sealed class SubtitleMcpTools
                 });
 
             CliRuntimeLog.Error("mcp-tool", $"{toolName} failed. {ex.Message}");
+            if (ex is OpenSubtitlesAuthException authEx)
+            {
+                return McpToolResult<T>.Failure(
+                    authEx.Code,
+                    BuildAuthFailureMessage(authEx.Message),
+                    snapshotPath,
+                    OpenSubtitlesAuthException.GuidanceText);
+            }
+
             return McpToolResult<T>.Failure("tool_execution_failed", ex.Message, snapshotPath);
         }
     }
+
+    private static string BuildAuthFailureMessage(string reason)
+        => "OpenSubtitles authentication is required. "
+            + "Reason: " + reason;
 }
 
 internal sealed record McpToolResult<T>(bool Ok, T? Data, McpToolError? Error)
 {
     public static McpToolResult<T> Success(T data) => new(true, data, null);
 
-    public static McpToolResult<T> Failure(string code, string message, string? snapshotPath)
+    public static McpToolResult<T> Failure(string code, string message, string? snapshotPath, string? guidance = null)
         => new(
             false,
             default,
@@ -240,7 +228,8 @@ internal sealed record McpToolResult<T>(bool Ok, T? Data, McpToolError? Error)
                 code,
                 message,
                 snapshotPath,
+                guidance,
                 DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
 }
 
-internal sealed record McpToolError(string Code, string Message, string? SnapshotPath, string TimeUtc);
+internal sealed record McpToolError(string Code, string Message, string? SnapshotPath, string? Guidance, string TimeUtc);

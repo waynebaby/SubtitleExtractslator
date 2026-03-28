@@ -1,5 +1,7 @@
 # MCP Reference
 
+This file is skill-facing runtime contract only.
+ 
 ## MCP-First Policy
 
 1. Prefer MCP mode first; CLI is fallback.
@@ -7,52 +9,54 @@
 3. If sampling fails (including missing server injection), return error directly.
 4. External/custom endpoint access (for example `LLM_ENDPOINT`) is CLI route only.
 
-## MCP Setup
+## MCP Setup Contract
 
 1. Ask user whether to set up MCP in current workspace.
-2. If agreed, create/update the MCP config file for the active agent client (do not assume one fixed file path).
+2. If agreed, create or update the MCP config file for the active agent client.
 3. On all platforms, use absolute executable path for `servers.subtitle-extractslator.command`.
 4. If config exists, merge/add server entry instead of overwriting unrelated servers.
 5. Always choose the binary path that matches current OS and CPU architecture.
 
-Agent MCP config target rule:
+## MCP decision tree
 
-1. GitHub Copilot: usually `./.vscode/mcp.json`.
-2. Claude Code/OpenClaw/Codex: use each client's MCP config location for current workspace/profile.
-3. When client-specific path is unknown, ask user for the exact target config file before writing.
-
-Recommended Windows `mcp.json` snippet:
-
-```json
-{
-  "servers": {
-    "subtitle-extractslator": {
-      "type": "stdio",
-      "command": "E:\\code\\g\\SubtitleExtractslator\\.github\\skills\\subtitle-extractslator\\assets\\bin\\win-x64\\SubtitleExtractslator.Cli.exe",
-      "args": ["--mode", "mcp"]
-    }
-  }
-}
+```mermaid
+flowchart TD
+	A([Need subtitle operation]) --> B{MCP configured?}
+	B -- No --> C[Create or update MCP config]
+	C --> D[Start subtitle-extractslator MCP server]
+	B -- Yes --> D
+	D --> E{Requested tool}
+	E -- translate --> F[Sampling-only translation]
+	F --> G{Sampling success?}
+	G -- No --> H[Return error, no external fallback]
+	G -- Yes --> R([Return ok result])
+	E -- opensubtitles_download --> I[Require fileId from prior search]
+	I --> J[Run auth aquire preflight]
+	J --> K{Auth valid?}
+	K -- No --> L[Return auth_relogin_required]
+	K -- Yes --> R
+	E -- probe / opensubtitles_search / extract --> M[Execute tool]
+	M --> R
 ```
-
-Cross-platform command path rule:
-
-1. Set `servers.subtitle-extractslator.command` to absolute binary path matching current RID under the active skill directory (`.github/skills` or `.claude/skills`) at `subtitle-extractslator/assets/bin/<rid>/`.
-2. Windows executable name: `SubtitleExtractslator.Cli.exe`; Linux/macOS executable name: `SubtitleExtractslator.Cli`.
-3. Linux/macOS command example pattern: `/path/to/<agent_workspace>/.github/skills/subtitle-extractslator/assets/bin/<rid>/SubtitleExtractslator.Cli` (or use `.claude/skills` if that is your agent workspace skill path).
 
 ## MCP Tools
 
 1. `probe`
-2. `opensubtitles_search`
-3. `opensubtitles_download`
-4. `extract`
-5. `translate`
+2. `subtitle_timing_check`
+3. `opensubtitles_search`
+4. `opensubtitles_download`
+5. `extract`
+6. `translate`
+
+`subtitle_timing_check` behavior:
+1. Compares media duration and subtitle last cue end time.
+2. Returns whether `abs(video_duration - subtitle_last_cue_end) < 600 seconds`.
+3. Uses ffprobe from FFmpeg toolchain internally.
 
 `opensubtitles_download` behavior:
 1. Requires `fileId` from a previous `opensubtitles_search` candidate.
 2. Does not run search internally and does not support `candidateRank`.
-3. Requires explicit `opensubtitlesApiKey` parameter for real API access.
+3. Runs per-call auth acquire before each request.
 
 OpenSubtitles parameter contract:
 1. `opensubtitles_search` required parameters:
@@ -60,13 +64,16 @@ OpenSubtitles parameter contract:
 - `lang`
 - `searchQueryPrimary`
 - `searchQueryNormalized`
-- `opensubtitlesApiKey`
 2. `opensubtitles_download` required parameters:
 - `fileId`
 - `output`
-- `opensubtitlesApiKey`
-3. Optional for both tools: `opensubtitlesUsername`, `opensubtitlesPassword`, `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
+3. Optional for both tools: `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
 4. `translate` is translation-only and does not accept OpenSubtitles parameters.
+
+Timing-check parameter contract:
+1. `subtitle_timing_check` required parameters:
+- `input`
+- `subtitle`
 
 `translate` behavior:
 1. Translation-only path: no probe/search/download/extract/mux orchestration.
@@ -84,12 +91,16 @@ OpenSubtitles parameter contract:
 
 1. All tools return structured object with `ok`, `data`, and `error`.
 2. Success: `ok=true`, `data` contains payload.
-3. Failure: `ok=false`, `error` contains `code`, `message`, optional `snapshotPath`, and `timeUtc`.
+3. Failure: `ok=false`, `error` contains `code`, `message`, optional `snapshotPath`, optional `guidance`, and `timeUtc`.
+4. Auth failures must return:
+- `code = auth_relogin_required`
+- stable `guidance = Run subtitle auth login and retry.`
+- `message` with explicit reason text for the current failure.
 
 ## Runtime Notes
 
 1. MCP server is stdio and can appear idle while waiting for frames.
 2. Logging must not break stdio protocol.
 3. Use MCP client tool responses for status and errors.
-4. OpenSubtitles credentials are passed as explicit tool parameters, not process environment variables.
+4. OpenSubtitles credentials are resolved from `subtitle auth login` cache via per-call `subtitle auth aquire` semantics.
 5. In MCP mode, do not commit secrets into repository files.

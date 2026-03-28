@@ -23,15 +23,20 @@ Actions:
 
 Current implementation behavior:
 1. If no candidate is available, workflow falls back to local extraction.
-2. Real API search requires explicit `opensubtitlesApiKey` parameter (CLI: `--opensubtitles-api-key`).
-3. Candidate adoption/download is more reliable when `opensubtitlesUsername` + `opensubtitlesPassword` are also provided.
-4. For offline testing, set `OPENSUBTITLES_MOCK=1`.
+2. Real API search/download requires valid auth cache from `subtitle auth login`.
+3. For offline testing, set `OPENSUBTITLES_MOCK=1`.
 
 Credential missing handling:
-1. If user explicitly chooses OpenSubtitles path and key parameter is missing, ask for `opensubtitlesApiKey`.
-2. Ask whether to add `opensubtitlesUsername` and `opensubtitlesPassword` for authenticated download.
-3. Pass answers as explicit command/tool parameters for current run.
-4. If user declines credential input, skip OpenSubtitles and continue local extraction fallback.
+1. Run `subtitle auth login` to set `api-key`, `username`, and `password`.
+2. Then run `subtitle auth aquire` to verify auth state.
+3. OpenSubtitles operations run per-call auth aquire semantics and do not accept username/password parameters.
+4. If operation fails with `auth_relogin_required`, the message must explicitly guide: run `subtitle auth login` and retry.
+
+Candidate mismatch handling:
+1. If filename confidence is low, do not adopt top candidate directly.
+2. Run `subtitle-timing-check --input <mediaFile> --subtitle <subtitleFile.srt>` after candidate download.
+3. Accept candidate only when absolute difference between video duration and subtitle last cue is less than 10 minutes.
+4. If check fails, try next candidate.
 
 ## Output structure changed unexpectedly
 

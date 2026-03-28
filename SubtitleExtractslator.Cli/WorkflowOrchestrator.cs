@@ -17,6 +17,9 @@ internal sealed class WorkflowOrchestrator
     public Task<ProbeResult> ProbeAsync(string input, string targetLanguage)
         => _ops.ProbeTracksAsync(input, targetLanguage);
 
+    public Task<SubtitleTimingCheckResult> CheckSubtitleTimingAsync(string input, string subtitle)
+        => _ops.CheckSubtitleTimingAsync(input, subtitle);
+
     public Task<OpenSubtitlesResult> SearchOpenSubtitlesAsync(
         string input,
         string targetLanguage,

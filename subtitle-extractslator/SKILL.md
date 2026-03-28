@@ -38,15 +38,14 @@ Use this skill when user asks to:
 Read these reference files for operational details:
 1. `references/cli.md`:
 - runtime paths and binaries
-- supported platform package matrix (win-x64/win-arm64/linux-x64/linux-musl-x64/linux-arm64/linux-musl-arm64/linux-arm/osx-arm64/osx-x64)
-- CLI command examples and batch mode
+- CLI command and auth-contract examples
 - output path policy
 2. `references/mcp.md`:
-- MCP-first setup and `mcp.json` rules
+- MCP-first policy and setup contract
 - exposed tools and return contract
 - MCP runtime notes and constraints
 3. `references/opensubtitles.md`:
-- OpenSubtitles explicit-parameter credential contract (CLI + MCP)
+- OpenSubtitles auth-command credential contract (CLI + MCP)
 - search/download fallback strategy, rate-limit handling, and parameter matrix
 4. `references/troubleshooting.md`:
 - failure patterns and diagnostics checklist
@@ -90,17 +89,25 @@ OpenSubtitles rules (CRITICAL):
 - normalized + target language
 - primary + any language
 - normalized + any language
-4. Credentials are explicit parameters only. Required: `opensubtitlesApiKey`.
+4. Before OpenSubtitles operations, ensure auth is available via `subtitle auth login` / `subtitle auth aquire` flow.
 5. `opensubtitles_download` is download-only and must use `fileId` from search candidate.
 6. Candidate `fileId` may be null; null `fileId` candidates are not valid for download-by-id.
-7. Post-download branch:
+7. Target-language strict review rule:
+- when target-language search returns many candidates and filename confidence is low, run strict review before final adoption
+- review step A: compare source/candidate names after removing season/episode tokens (`SxxEyy`, `xxyy`); non-episode tokens must remain similar
+- review step B: run timing-check interface against downloaded candidate subtitle:
+  - MCP: `subtitle_timing_check`
+  - CLI: `subtitle-timing-check`
+  - acceptance rule: `abs(video_duration - subtitle_last_cue_end) < 600 seconds`
+- if any step fails, skip current candidate and continue next candidate
+8. Post-download branch:
 - if downloaded subtitle already matches target language: finish (no translation)
 - otherwise: continue `translate`
-8. Rate limit (HTTP `429` or equivalent) handling:
+9. Rate limit (HTTP `429` or equivalent) handling:
 - switch to serial + delayed mode immediately
 - retry each request up to 20 times with increasing delay
 - stop OpenSubtitles branch when retries are exhausted
-9. Detailed input/output matrix is maintained in `references/opensubtitles.md`.
+10. Detailed input/output matrix is maintained in `references/opensubtitles.md`.
 
 4. Build timeline cue objects and split into groups.
 Default implementation groups by fixed cue count (`cuesPerGroup`, default 5, overridable by CLI/env).
@@ -134,7 +141,7 @@ All custom external endpoint access is CLI route responsibility.
 6. OpenSubtitles fallback uses language preference `en/eng` first, then other available languages.
 7. OpenSubtitles fallback query strategy is mandatory for every OpenSubtitles search call and must not be skipped.
 8. OpenSubtitles download by ranked candidate must call the same mandatory fallback-aware search path before selecting candidate rank.
-9. OpenSubtitles credentials must be passed as explicit parameters; environment-variable-only credential path is not allowed.
+9. OpenSubtitles auth must follow auth command flow (`login/aquire/status/clear`); do not use per-call username/password input.
 10. After any OpenSubtitles rate-limit signal, OpenSubtitles calls must run in serial delayed mode; parallel burst is forbidden.
 11. Every OpenSubtitles search request must include both primary and normalized query parameters.
 12. Fallback order must be executed inside MCP/CLI C# implementation, not by skill-side parallel fan-out.

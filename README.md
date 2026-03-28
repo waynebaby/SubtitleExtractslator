@@ -73,7 +73,9 @@ dotnet build SubtitleExtractslator.sln
 ```powershell
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "movie.mkv" --lang zh
 
-dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00" --opensubtitles-api-key "<key>"
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli subtitle-timing-check --input "movie.mkv" --subtitle "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00"
 
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
 
@@ -104,7 +106,9 @@ MCP transport and tool registration use the official `ModelContextProtocol` NuGe
 The MCP server supports:
 
 - `probe`
+- `subtitle_timing_check`
 - `opensubtitles_search`
+- `opensubtitles_download`
 - `extract`
 - `translate`
 
@@ -124,8 +128,8 @@ MCP tool return contract:
 
 ## OpenSubtitles
 
-- Real API accessor is available when `OPENSUBTITLES_API_KEY` is configured.
-- Optional auth (recommended for download quota): `OPENSUBTITLES_USERNAME` + `OPENSUBTITLES_PASSWORD`.
+- Real API search/download requires local auth cache from `subtitle auth login`.
+- `subtitle auth login` stores api key, username, and password in local cache for later `aquire` usage.
 - Optional mock branch remains available via `OPENSUBTITLES_MOCK=1` for offline testing.
 
 ## Publish single-file examples

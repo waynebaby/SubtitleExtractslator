@@ -34,6 +34,39 @@ internal sealed record OpenSubtitlesCredentials(
     string? Endpoint,
     string? UserAgent);
 
+internal sealed record OpenSubtitlesAuthState(
+    string ApiKey,
+    string Username,
+    string Password,
+    string? Endpoint,
+    string? UserAgent,
+    string UpdatedUtc);
+
+internal sealed record AuthCommandResult(
+    string Action,
+    bool Ok,
+    string Message,
+    bool HasAuth,
+    string CachePath);
+
+internal sealed class OpenSubtitlesAuthException : InvalidOperationException
+{
+    public const string GuidanceText = "Run subtitle auth login and retry.";
+
+    public OpenSubtitlesAuthException(string code, string message)
+        : base(message)
+    {
+        Code = code;
+    }
+
+    public string Code { get; }
+
+    public static OpenSubtitlesAuthException ReloginRequired(string reason)
+        => new(
+            "auth_relogin_required",
+            $"{reason} Authentication missing, expired, or unauthorized. Please {GuidanceText}");
+}
+
 internal sealed record OpenSubtitlesSearchQueries(
     string SearchQueryPrimary,
     string SearchQueryNormalized);
@@ -48,6 +81,17 @@ internal sealed record OpenSubtitlesDownloadResult(
     int CandidateRank,
     string? FileId,
     string? CandidateName);
+
+internal sealed record SubtitleTimingCheckResult(
+    string Input,
+    string Subtitle,
+    int SubtitleCueCount,
+    double VideoDurationSeconds,
+    double SubtitleLastCueSeconds,
+    double AbsoluteDifferenceSeconds,
+    double ThresholdSeconds,
+    bool IsWithinThreshold,
+    string Verdict);
 
 internal sealed record ExtractionResult(
     string Input,
