@@ -27,6 +27,72 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 - macOS x64 包（v0.1.6）：[subtitle-extractslator-v0.1.6-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.6/subtitle-extractslator-v0.1.6-osx-x64.zip)
 <!-- release-links:end -->
 
+## 在自己的 Agent 里使用 ZIP 包
+
+如果你的目标是把它作为 skill 跑在自己的 agent 里，建议先走这条路径。
+
+1. 从上面的 release 链接下载对应平台的 zip 包。
+2. 解压后保持目录名为 `subtitle-extractslator`（不要改名）。
+3. 在你的 agent 客户端里把这个目录作为本地 skill 包安装（例如 Claude Desktop skills）。
+4. 确认你系统对应的运行时文件存在于 `subtitle-extractslator/assets/bin/<rid>/`。
+5. 先执行一个最小调用（例如 `probe` 或 `translate`）确认 skill 可被正常调用。
+
+说明：
+- 仓库的主交付物是 zip 包中的 `subtitle-extractslator/` skill 目录。
+- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server）。
+- 构建与打包细节见 `docs/skill-installation-and-build.md`。
+
+### 使用场景示例
+
+在支持 skill 的 agent 对话中可直接用：
+
+```text
+/subtitle-extractslator
+```
+
+场景 1：处理目录下所有视频（MCP 模式）
+
+```text
+/subtitle-extractslator
+
+请使用 MCP 模式。
+递归处理 Z:\BT\xxx 目录下所有视频文件。
+每个文件执行：probe -> extract（优先英文）-> translate（目标 zh）-> 输出到源文件同目录。
+如果已存在同名 .zh.srt 则跳过。
+最后用表格汇总每个文件的成功/失败状态。
+```
+
+场景 2：将单个 SRT 翻译到指定语言
+
+```text
+/subtitle-extractslator
+
+翻译单个字幕文件。
+输入：Z:\BT\xxx\episode01.en.srt
+目标语言：ja
+输出：Z:\BT\xxx\episode01.ja.srt
+保持时间轴与 cue 编号不变。
+```
+
+场景 3：将单个 SRT 翻译到多个语言
+
+```text
+/subtitle-extractslator
+
+请使用 MCP 模式。
+输入字幕：Z:\BT\xxx\episode01.en.srt
+目标语言：zh、ja、es
+在同目录输出多个结果文件：
+- episode01.zh.srt
+- episode01.ja.srt
+- episode01.es.srt
+每个输出都保持时间轴与 cue 编号不变。
+```
+
+运行说明：
+- MCP 模式不提供单个 `translate-batch` 工具。批处理由 agent 在目录层面自行循环，逐个文件调用 MCP tools 实现。
+- 多语言输出同理：由 agent 按目标语言逐次调用 `translate`。
+
 ## 这个 Skill 解决什么问题
 
 - 提供可复用的字幕工作流 skill 约定（probe/search/extract/translate/merge）。

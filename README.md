@@ -28,6 +28,72 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 - macOS x64 package (v0.1.6): [subtitle-extractslator-v0.1.6-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.6/subtitle-extractslator-v0.1.6-osx-x64.zip)
 <!-- release-links:end -->
 
+## First: Use The ZIP In Your Agent
+
+If your goal is to run this as a skill in your own agent, start here.
+
+1. Download the platform zip from the release links above.
+2. Unzip it and keep the folder name as `subtitle-extractslator`.
+3. Install that folder as a local skill package in your agent client (for example, Claude Desktop skills).
+4. Verify runtime assets exist under `subtitle-extractslator/assets/bin/<rid>/` for your OS.
+5. Run one simple operation (for example `probe` or `translate`) to confirm the skill is callable.
+
+Notes:
+- This repository's primary deliverable is the `subtitle-extractslator/` skill package inside the zip.
+- The `SubtitleExtractslator.Cli/` project is the runtime host used by the skill (CLI + MCP server).
+- Build and packaging details are in `docs/skill-installation-and-build.md`.
+
+### Usage scenarios
+
+Use the skill name in your agent chat:
+
+```text
+/subtitle-extractslator
+```
+
+Scenario 1: Process all videos under a folder (MCP mode)
+
+```text
+/subtitle-extractslator
+
+Run in MCP mode.
+Process all video files under Z:\BT\xxx recursively.
+For each file: probe -> extract preferred English subtitle -> translate to zh -> write output next to source.
+If a file already has a .zh.srt sibling, skip it.
+Return a final table with success/failure for each file.
+```
+
+Scenario 2: Translate one SRT file to a target language
+
+```text
+/subtitle-extractslator
+
+Translate a single subtitle file.
+Input: Z:\BT\xxx\episode01.en.srt
+Target language: ja
+Output: Z:\BT\xxx\episode01.ja.srt
+Keep timeline and cue numbering unchanged.
+```
+
+Scenario 3: Translate one SRT file to multiple languages
+
+```text
+/subtitle-extractslator
+
+Run in MCP mode.
+Input subtitle: Z:\BT\xxx\episode01.en.srt
+Target languages: zh, ja, es
+Generate one output per language in the same directory:
+- episode01.zh.srt
+- episode01.ja.srt
+- episode01.es.srt
+Keep timeline and cue numbering unchanged for every output.
+```
+
+Operational note:
+- MCP mode does not expose a single `translate-batch` tool. Batch behavior is achieved by your agent looping over files and invoking MCP tools file-by-file.
+- Multi-language output is also an agent loop pattern: run `translate` once per target language.
+
 ## What The Skill Solves
 
 - Provides a reusable subtitle workflow skill contract for probe/search/extract/translate/merge.
