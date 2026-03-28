@@ -55,6 +55,7 @@ Read these reference files for operational details:
 Follow this exact decision tree (do not reorder):
 
 MCP invocation discipline (CRITICAL):
+NO SCRIPTS IN MCP.
 1. In MCP mode, tools must be invoked by the AI agent manually one-by-one in strict sequence (not human hand-operated steps).
 2. For all MCP steps, do not use scripts or batched wrappers to drive tool calls.
 3. Subagent fanout is allowed when it runs through the agent path and can use MCP sampling context.

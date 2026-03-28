@@ -4,6 +4,8 @@ This file is skill-facing runtime contract only.
  
 ## MCP-First Policy
 
+NO SCRIPTS IN MCP.
+
 1. Prefer MCP mode first; CLI is fallback.
 2. MCP translation path is sampling-only.
 3. If sampling fails (including missing server injection), return error directly.
