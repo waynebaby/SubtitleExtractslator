@@ -76,12 +76,19 @@ NO SCRIPTS IN MCP.
 4. Subagent fanout does not override tool-level serial constraints (for example OpenSubtitles `search -> download` remains strict serial).
 5. Reason: script-driven/non-agent calls can bypass agent sampling context and break MCP sampling behavior.
 
-0. MCP setup prompt first.
+0. Binary integrity check first.
+Before any MCP/CLI runtime action, verify skill runtime binary exists under `subtitle-extractslator/assets/bin/<rid>/` for current OS/CPU.
+Expected binary names:
+- Windows: `SubtitleExtractslator.Cli.exe`
+- Linux/macOS: `SubtitleExtractslator.Cli`
+If binary is missing or package is incomplete, stop and fix immediately using `references/binary-missing.md` (download correct release zip, replace local skill folder, then retry).
+
+0.5 MCP setup prompt.
 Ask user whether to configure MCP for current workspace now.
 If yes, create or update the MCP config file for the current agent client (for example, GitHub Copilot commonly uses `./.vscode/mcp.json`; Claude Code/OpenClaw/Codex use their own MCP config locations); on all platforms use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
 
-0.5 FFmpeg local path memory policy.
+0.75 FFmpeg local path memory policy.
 On every run, read `references/localpaths.md` first.
 If FFmpeg path is recorded and still valid, reuse it:
 - CLI path: set `FFMPEG_BIN_DIR` in environment before probe/extract.
