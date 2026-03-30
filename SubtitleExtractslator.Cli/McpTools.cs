@@ -122,6 +122,25 @@ internal sealed class SubtitleMcpTools
             });
     }
 
+    [McpServerTool(Name = "ffmpeg_set_bin_dir", Title = "Set FFmpeg bin directory")]
+    [Description("Apply FFmpeg bin directory to the current MCP process immediately, and optionally persist it to mcp.json server env.")]
+    public Task<McpToolResult<FfmpegPathUpdateResult>> FfmpegSetBinDir(
+        [Description("Absolute or relative directory path that contains both ffmpeg and ffprobe executables.")]
+        string binDir,
+        [Description("Whether to persist FFMPEG_BIN_DIR into mcp.json under servers.<server>.env. Default: true.")]
+        bool persistToMcpConfig = true,
+        [Description("Optional mcp.json path. Default: <current_working_directory>/.vscode/mcp.json")]
+        string? mcpConfigPath = null,
+        [Description("Optional MCP server name in config. Default: subtitle-extractslator")]
+        string? mcpServerName = null)
+        => ExecuteWithResultAsync(
+            "ffmpeg_set_bin_dir",
+            () => Task.FromResult(_orchestrator.ConfigureFfmpegPath(
+                binDir,
+                persistToMcpConfig,
+                mcpConfigPath,
+                mcpServerName)));
+
     [McpServerTool(Name = "translate", Title = "Translate subtitle")]
     [Description("Translate subtitle content to target language and write final SRT output. This tool performs translation only and does not run probe/search/download/extract/mux orchestration.")]
     public async Task<McpToolResult<WorkflowResult>> Translate(

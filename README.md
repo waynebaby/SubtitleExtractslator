@@ -15,6 +15,14 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 ## Downloads
 
+Quick install skill command:
+
+```bash
+npx skills add waynebaby/SubtitleExtractslator
+```
+
+If the downloaded skill package is missing runtime binaries in your environment, use the release links below and install from the platform zip directly.
+
 <!-- release-links:start -->
 - Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
 - Windows x64 package (v0.1.9): [subtitle-extractslator-v0.1.9-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.9/subtitle-extractslator-v0.1.9-win-x64.zip)
@@ -57,7 +65,7 @@ Scenario 1: Process all videos under a folder (MCP mode)
 /subtitle-extractslator
 
 Run in MCP mode.
-Process all video files under Z:\BT\xxx recursively.
+Process all video files under <media_root> recursively (for example /data/media or D:\\media).
 For each file: probe -> extract preferred English subtitle -> translate to zh -> write output next to source.
 If a file already has a .zh.srt sibling, skip it.
 Return a final table with success/failure for each file.
@@ -69,9 +77,9 @@ Scenario 2: Translate one SRT file to a target language
 /subtitle-extractslator
 
 Translate a single subtitle file.
-Input: Z:\BT\xxx\episode01.en.srt
+Input: <media_root>/episode01.en.srt
 Target language: ja
-Output: Z:\BT\xxx\episode01.ja.srt
+Output: <media_root>/episode01.ja.srt
 Keep timeline and cue numbering unchanged.
 ```
 
@@ -81,7 +89,7 @@ Scenario 3: Translate one SRT file to multiple languages
 /subtitle-extractslator
 
 Run in MCP mode.
-Input subtitle: Z:\BT\xxx\episode01.en.srt
+Input subtitle: <media_root>/episode01.en.srt
 Target languages: zh, ja, es
 Generate one output per language in the same directory:
 - episode01.zh.srt
@@ -127,6 +135,10 @@ Translation policy:
 dotnet build SubtitleExtractslator.sln
 ```
 
+```bash
+dotnet build SubtitleExtractslator.sln
+```
+
 ## Project structure
 
 - `subtitle-extractslator/`: skill package (primary)
@@ -150,6 +162,20 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"
 ```
 
+```bash
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "movie.mkv" --lang zh
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli subtitle-timing-check --input "movie.mkv" --subtitle "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"
+```
+
 Batch input file format (`--input-list`):
 - UTF-8 text file.
 - One media/subtitle path per line.
@@ -164,6 +190,10 @@ CLI common options:
 ## MCP stdio mode
 
 ```powershell
+dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
+```
+
+```bash
 dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 ```
 
@@ -205,6 +235,11 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r win-x64 -p:PublishSingleF
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 
+dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
+```
+
+```bash
+dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
 

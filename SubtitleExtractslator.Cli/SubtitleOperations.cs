@@ -1091,17 +1091,24 @@ internal sealed class SubtitleOperations
             return;
         }
 
-        var mappedDriveHint = string.Empty;
-        var root = Path.GetPathRoot(input);
-        if (!string.IsNullOrWhiteSpace(root)
-            && root.Length >= 2
-            && root[1] == ':'
-            && char.ToUpperInvariant(root[0]) != 'C')
+        var pathHint = string.Empty;
+        if (OperatingSystem.IsWindows())
         {
-            mappedDriveHint = " If this path is a mapped drive (for example Z:), try using the UNC path (\\\\server\\share\\...) or remap the drive in the current user session.";
+            var root = Path.GetPathRoot(input);
+            if (!string.IsNullOrWhiteSpace(root)
+                && root.Length >= 2
+                && root[1] == ':'
+                && char.ToUpperInvariant(root[0]) != 'C')
+            {
+                pathHint = " If this path is a mapped drive (for example Z:), try using the UNC path (\\\\server\\share\\...) or remap the drive in the current user session.";
+            }
+        }
+        else
+        {
+            pathHint = " If this path is on a mounted volume/share, confirm the mount is available in the current session and use the absolute POSIX path.";
         }
 
-        throw new InvalidOperationException($"Input file not found: {input}.{mappedDriveHint}");
+        throw new InvalidOperationException($"Input file not found: {input}.{pathHint}");
     }
 
     private static string ResolveExecutable(string name)
@@ -1184,7 +1191,7 @@ internal sealed class SubtitleOperations
             installHint = "Linux: install a current FFmpeg build, e.g. `sudo apt install ffmpeg` (or your distro equivalent).";
         }
 
-        return $"Missing required dependency: {dependency}. The app attempts NuGet-based FFmpeg bootstrap first, then PATH fallback. Set FFMPEG_BIN_DIR to a folder containing ffmpeg/ffprobe, or install FFmpeg and ensure `{dependency}` is available in PATH. {installHint}";
+        return $"Missing required dependency: {dependency}. AGENT ACTION REQUIRED for probe/extract: download FFmpeg and set environment variable FFMPEG_BIN_DIR to a folder containing both ffmpeg and ffprobe executables, then retry. If you prefer system install, ensure `{dependency}` is available in PATH. {installHint}";
     }
 
     private static double RoundSeconds(TimeSpan value)

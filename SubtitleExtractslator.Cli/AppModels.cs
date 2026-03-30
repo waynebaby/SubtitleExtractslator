@@ -101,6 +101,18 @@ internal sealed record ExtractionResult(
     string? ArtifactDirectory = null,
     string? ArtifactManifestPath = null);
 
+internal sealed record McpConfigUpdateResult(
+    string ConfigPath,
+    string ServerName,
+    string FfmpegBinDir,
+    string EnvKey);
+
+internal sealed record FfmpegPathUpdateResult(
+    string FfmpegBinDir,
+    bool AppliedToCurrentProcess,
+    bool PersistedToMcpConfig,
+    McpConfigUpdateResult? McpConfigUpdate);
+
 internal sealed record BatchWorkflowItemResult(
     string Input,
     string OutputPath,

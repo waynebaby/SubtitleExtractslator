@@ -22,6 +22,8 @@ NO SCRIPTS IN MCP.
 3. On all platforms, use absolute executable path for `servers.subtitle-extractslator.command`.
 4. If config exists, merge/add server entry instead of overwriting unrelated servers.
 5. Always choose the binary path that matches current OS and CPU architecture.
+6. Keep skill-side local FFmpeg path memory in `references/localpaths.md`.
+7. After FFmpeg is installed/downloaded locally, call `ffmpeg_set_bin_dir` and then update `references/localpaths.md` so next run can reuse the same path.
 
 ## MCP decision tree
 
@@ -52,7 +54,14 @@ flowchart TD
 3. `opensubtitles_search`
 4. `opensubtitles_download`
 5. `extract`
-6. `translate`
+6. `ffmpeg_set_bin_dir`
+7. `translate`
+
+`ffmpeg_set_bin_dir` behavior:
+1. Applies `FFMPEG_BIN_DIR` to the current running MCP process immediately.
+2. Validates target directory contains both `ffmpeg` and `ffprobe` executables.
+3. By default, persists `FFMPEG_BIN_DIR` to `servers.<server>.env` in `mcp.json` so next MCP start keeps same value.
+4. Default config path is `<workspace>/.vscode/mcp.json`; custom path/server name can be provided.
 
 `subtitle_timing_check` behavior:
 1. Compares media duration and subtitle last cue end time.

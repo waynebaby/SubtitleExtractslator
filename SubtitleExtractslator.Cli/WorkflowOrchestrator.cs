@@ -45,6 +45,27 @@ internal sealed class WorkflowOrchestrator
     public Task<ExtractionResult> ExtractSubtitleAsync(string input, string output, string preferredLanguage)
         => _ops.ExtractSubtitleAsync(input, output, preferredLanguage);
 
+    public FfmpegPathUpdateResult ConfigureFfmpegPath(
+        string ffmpegBinDir,
+        bool persistToMcpConfig,
+        string? mcpConfigPath,
+        string? mcpServerName)
+    {
+        FfmpegBootstrap.ApplyBinDirectory(ffmpegBinDir);
+
+        McpConfigUpdateResult? persisted = null;
+        if (persistToMcpConfig)
+        {
+            persisted = McpConfigStore.PersistFfmpegBinDir(ffmpegBinDir, mcpConfigPath, mcpServerName);
+        }
+
+        return new FfmpegPathUpdateResult(
+            Path.GetFullPath(ffmpegBinDir.Trim()),
+            AppliedToCurrentProcess: true,
+            PersistedToMcpConfig: persistToMcpConfig,
+            McpConfigUpdate: persisted);
+    }
+
     public async Task<WorkflowResult> TranslateAsync(
         string input,
         string targetLanguage,

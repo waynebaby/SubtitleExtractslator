@@ -10,9 +10,20 @@ dotnet build SubtitleExtractslator.sln -c Debug
 dotnet test SubtitleExtractslator.sln -c Debug
 ```
 
+```bash
+dotnet restore SubtitleExtractslator.sln
+dotnet build SubtitleExtractslator.sln -c Debug
+dotnet test SubtitleExtractslator.sln -c Debug
+```
+
 CLI run examples:
 
 ```powershell
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "samples/demo.en.srt" --lang zh
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "samples/demo.en.srt" --lang zh --output "artifacts/test-output/demo.zh.srt"
+```
+
+```bash
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "samples/demo.en.srt" --lang zh
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "samples/demo.en.srt" --lang zh --output "artifacts/test-output/demo.zh.srt"
 ```
@@ -23,12 +34,20 @@ MCP server run:
 dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 ```
 
+```bash
+dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
+```
+
 ## 2. Binary publishing and packaging
 
 Local multi-platform publish helper:
 
 ```powershell
 .\scripts\publish-skill-binaries.ps1
+```
+
+```bash
+pwsh ./scripts/publish-skill-binaries.ps1
 ```
 
 Default output root:
@@ -102,17 +121,19 @@ Notes:
 | `OPENSUBTITLES_MOCK` | unset | Enables mock search candidate behavior for offline testing. |
 | `FFMPEG_BIN_DIR` | auto-detect | Explicit FFmpeg/ffprobe binary directory override. |
 
-OS/runtime variables used internally for detection:
+Runtime detection notes:
 
-1. `LOCALAPPDATA`
-2. `USERPROFILE`
+1. On Windows, known FFmpeg lookup includes WinGet links under user profile directories.
+2. On Linux/macOS, known FFmpeg lookup uses common system bin directories.
 
 ## 4. Runtime paths and persisted data
 
 Important paths:
 
 1. OpenSubtitles auth cache:
-   - `%LOCALAPPDATA%/SubtitleExtractslator/opensubtitles.auth.json`
+   - Windows: `%LOCALAPPDATA%/SubtitleExtractslator/opensubtitles.auth.json`
+   - Linux: `$XDG_DATA_HOME/SubtitleExtractslator/opensubtitles.auth.json` (or `~/.local/share/SubtitleExtractslator/opensubtitles.auth.json`)
+   - macOS: `~/Library/Application Support/SubtitleExtractslator/opensubtitles.auth.json`
 2. Temp root:
    - `Path.GetTempPath()/SubtitleExtractslator` (or `SUBTITLEEXTRACTSLATOR_TEMPDIR`)
 3. Snapshot logs:

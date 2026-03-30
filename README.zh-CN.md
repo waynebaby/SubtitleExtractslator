@@ -14,6 +14,14 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 ## 下载
 
+快捷安装 skill 命令：
+
+```bash
+npx skills add waynebaby/SubtitleExtractslator
+```
+
+如果通过该命令下载到的 skill 缺少运行时二进制，请直接使用下面的 release 平台 zip 包安装。
+
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
 - Windows x64 包（v0.1.9）：[subtitle-extractslator-v0.1.9-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.9/subtitle-extractslator-v0.1.9-win-x64.zip)
@@ -56,7 +64,7 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 /subtitle-extractslator
 
 请使用 MCP 模式。
-递归处理 Z:\BT\xxx 目录下所有视频文件。
+递归处理 <media_root> 目录下所有视频文件（例如 /data/media 或 D:\\media）。
 每个文件执行：probe -> extract（优先英文）-> translate（目标 zh）-> 输出到源文件同目录。
 如果已存在同名 .zh.srt 则跳过。
 最后用表格汇总每个文件的成功/失败状态。
@@ -68,9 +76,9 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 /subtitle-extractslator
 
 翻译单个字幕文件。
-输入：Z:\BT\xxx\episode01.en.srt
+输入：<media_root>/episode01.en.srt
 目标语言：ja
-输出：Z:\BT\xxx\episode01.ja.srt
+输出：<media_root>/episode01.ja.srt
 保持时间轴与 cue 编号不变。
 ```
 
@@ -80,7 +88,7 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 /subtitle-extractslator
 
 请使用 MCP 模式。
-输入字幕：Z:\BT\xxx\episode01.en.srt
+输入字幕：<media_root>/episode01.en.srt
 目标语言：zh、ja、es
 在同目录输出多个结果文件：
 - episode01.zh.srt
@@ -126,6 +134,10 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 dotnet build SubtitleExtractslator.sln
 ```
 
+```bash
+dotnet build SubtitleExtractslator.sln
+```
+
 ## 项目结构
 
 - `subtitle-extractslator/`：skill 包（主体）
@@ -149,6 +161,20 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "
 dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --input-list ".\\inputs.txt" --lang zh --output-dir ".\\out" --output-suffix ".zh.srt"
 ```
 
+```bash
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli probe --input "movie.mkv" --lang zh
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli subtitle-timing-check --input "movie.mkv" --subtitle "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli opensubtitles-search --input "movie.mkv" --lang zh --search-query-primary "movie" --search-query-normalized "movie s00e00"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt"
+
+dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --input-list "./inputs.txt" --lang zh --output-dir "./out" --output-suffix ".zh.srt"
+```
+
 批量输入文件格式（`--input-list`）：
 - UTF-8 文本文件。
 - 每行一个媒体/字幕文件路径。
@@ -163,6 +189,10 @@ CLI 通用参数：
 ## MCP stdio 模式
 
 ```powershell
+dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
+```
+
+```bash
 dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 ```
 
@@ -204,6 +234,11 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r win-x64 -p:PublishSingleF
 
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 
+dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
+```
+
+```bash
+dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
 

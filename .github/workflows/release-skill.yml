@@ -175,7 +175,7 @@ jobs:
           "release_asset_url_osx_x64=$releaseAssetUrlOsxX64" >> $env:GITHUB_OUTPUT
           "releases_home=$releasesHome" >> $env:GITHUB_OUTPUT
 
-      - name: Update SKILL metadata.version and README release links
+      - name: Update SKILL metadata.version and release links
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
@@ -199,11 +199,36 @@ jobs:
           $assetUrlOsxArm64 = "${{ steps.version.outputs.release_asset_url_osx_arm64 }}"
           $assetUrlOsxX64 = "${{ steps.version.outputs.release_asset_url_osx_x64 }}"
           $releasesHome = "${{ steps.version.outputs.releases_home }}"
+          $projectHome = "https://github.com/${{ github.repository }}"
+          $repoSlug = "${{ github.repository }}"
 
           $skillPath = "subtitle-extractslator/SKILL.md"
           $skillRaw = Get-Content $skillPath -Raw
           $skillRaw = [regex]::Replace($skillRaw, "(?m)^(\s*version:\s*)([0-9]+\.[0-9]+\.[0-9]+)\s*$", ('${1}' + $version))
           Set-Content -Path $skillPath -Value $skillRaw -Encoding utf8
+
+          $binaryMissingPath = "subtitle-extractslator/references/binary-missing.md"
+          $binaryMissingRaw = Get-Content $binaryMissingPath -Raw
+          $binaryMissingReleaseBlock = @(
+            "<!-- release-links:start -->",
+            "- Project URL: [$repoSlug]($projectHome)",
+            "- Releases URL: [Releases]($releasesHome)",
+            "- Windows x64 package ($tag): [$zipNameWinX64]($assetUrlWinX64)",
+            "- Windows ARM64 package ($tag): [$zipNameWinArm64]($assetUrlWinArm64)",
+            "- Linux x64 package ($tag): [$zipNameLinuxX64]($assetUrlLinuxX64)",
+            "- Linux musl x64 package ($tag): [$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
+            "- Linux ARM64 package ($tag): [$zipNameLinuxArm64]($assetUrlLinuxArm64)",
+            "- Linux musl ARM64 package ($tag): [$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
+            "- Linux ARM package ($tag): [$zipNameLinuxArm]($assetUrlLinuxArm)",
+            "- macOS ARM64 package ($tag): [$zipNameOsxArm64]($assetUrlOsxArm64)",
+            "- macOS x64 package ($tag): [$zipNameOsxX64]($assetUrlOsxX64)",
+            "<!-- release-links:end -->"
+          ) -join "`n"
+          if ($binaryMissingRaw -notmatch "<!-- release-links:start -->") {
+            throw "Missing release-links marker in $binaryMissingPath"
+          }
+          $binaryMissingRaw = [regex]::Replace($binaryMissingRaw, "(?s)<!-- release-links:start -->.*?<!-- release-links:end -->", $binaryMissingReleaseBlock)
+          Set-Content -Path $binaryMissingPath -Value $binaryMissingRaw -Encoding utf8
 
           $readmeEnPath = "README.md"
           $enBlock = @(
@@ -328,7 +353,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add subtitle-extractslator/SKILL.md README.md README.zh-CN.md
+          git add subtitle-extractslator/SKILL.md subtitle-extractslator/references/binary-missing.md README.md README.zh-CN.md
 
           if (-not (git diff --cached --quiet)) {
             git commit -m "chore(release): update metadata and release links for $tag [skip-release]"

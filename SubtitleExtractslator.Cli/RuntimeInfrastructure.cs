@@ -8,12 +8,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Xabe.FFmpeg;
-using Xabe.FFmpeg.Downloader;
 
 namespace SubtitleExtractslator.Cli;
 
@@ -55,52 +55,6 @@ internal static class FfmpegBootstrap
                 return;
             }
 
-            var downloadDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SubtitleExtractslator",
-                "ffmpeg");
-
-            if (!HasExecutables(downloadDir))
-            {
-                Directory.CreateDirectory(downloadDir);
-                LogInfo($"FFmpeg not found locally. Downloading to: {downloadDir}");
-                try
-                {
-                    var lastLoggedPercent = -10;
-                    var progress = new Progress<ProgressInfo>(p =>
-                    {
-                        if (p.TotalBytes <= 0)
-                        {
-                            return;
-                        }
-
-                        var percent = (int)Math.Round(p.DownloadedBytes * 100d / p.TotalBytes, MidpointRounding.AwayFromZero);
-                        if (percent >= lastLoggedPercent + 10 || percent == 100)
-                        {
-                            lastLoggedPercent = percent;
-                            LogInfo($"FFmpeg download progress: {percent}% ({p.DownloadedBytes}/{p.TotalBytes} bytes)");
-                        }
-                    });
-
-                    await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, downloadDir, progress);
-                    LogInfo("FFmpeg download completed.");
-                }
-                catch (Exception ex)
-                {
-                    LogWarn($"FFmpeg download failed, falling back to PATH lookup. Reason: {ex.Message}");
-                }
-            }
-            else
-            {
-                LogInfo($"Found existing FFmpeg binaries at: {downloadDir}");
-            }
-
-            if (HasExecutables(downloadDir))
-            {
-                LogInfo($"Using FFmpeg binaries from: {downloadDir}");
-                FFmpeg.SetExecutablesPath(downloadDir);
-            }
-
             _initialized = true;
         }
         finally
@@ -124,6 +78,26 @@ internal static class FfmpegBootstrap
         }
 
         return string.IsNullOrWhiteSpace(FFmpeg.ExecutablesPath) ? null : FFmpeg.ExecutablesPath;
+    }
+
+    public static void ApplyBinDirectory(string binDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(binDirectory))
+        {
+            throw new InvalidOperationException("FFmpeg bin directory cannot be empty.");
+        }
+
+        var normalized = Path.GetFullPath(binDirectory.Trim());
+        if (!HasExecutables(normalized))
+        {
+            throw new InvalidOperationException(
+                $"FFmpeg bin directory is invalid: {normalized}. The folder must contain both ffmpeg and ffprobe executables.");
+        }
+
+        Environment.SetEnvironmentVariable("FFMPEG_BIN_DIR", normalized);
+        FFmpeg.SetExecutablesPath(normalized);
+        _initialized = true;
+        LogInfo($"FFmpeg runtime path updated to: {normalized}");
     }
 
     private static bool HasExecutables(string directory)
@@ -193,6 +167,100 @@ internal static class FfmpegBootstrap
     private static void LogWarn(string message)
     {
         Console.Error.WriteLine($"[ffmpeg-bootstrap][warn] {message}");
+    }
+}
+
+internal static class McpConfigStore
+{
+    public static McpConfigUpdateResult PersistFfmpegBinDir(
+        string ffmpegBinDir,
+        string? mcpConfigPath,
+        string? serverName)
+    {
+        if (string.IsNullOrWhiteSpace(ffmpegBinDir))
+        {
+            throw new InvalidOperationException("FFmpeg bin directory cannot be empty.");
+        }
+
+        var normalizedBinDir = Path.GetFullPath(ffmpegBinDir.Trim());
+        var resolvedServerName = string.IsNullOrWhiteSpace(serverName)
+            ? "subtitle-extractslator"
+            : serverName.Trim();
+        var resolvedConfigPath = ResolveConfigPath(mcpConfigPath);
+
+        var root = LoadRootObject(resolvedConfigPath);
+        var servers = EnsureObject(root, "servers");
+        var server = EnsureObject(servers, resolvedServerName);
+        var env = EnsureObject(server, "env");
+        env["FFMPEG_BIN_DIR"] = normalizedBinDir;
+
+        var parentDir = Path.GetDirectoryName(resolvedConfigPath);
+        if (!string.IsNullOrWhiteSpace(parentDir))
+        {
+            Directory.CreateDirectory(parentDir);
+        }
+
+        var json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(resolvedConfigPath, json, Encoding.UTF8);
+
+        return new McpConfigUpdateResult(
+            resolvedConfigPath,
+            resolvedServerName,
+            normalizedBinDir,
+            "FFMPEG_BIN_DIR");
+    }
+
+    private static string ResolveConfigPath(string? mcpConfigPath)
+    {
+        if (!string.IsNullOrWhiteSpace(mcpConfigPath))
+        {
+            return Path.GetFullPath(mcpConfigPath.Trim());
+        }
+
+        return Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, ".vscode", "mcp.json"));
+    }
+
+    private static JsonObject LoadRootObject(string configPath)
+    {
+        if (!File.Exists(configPath))
+        {
+            return new JsonObject();
+        }
+
+        var content = File.ReadAllText(configPath, Encoding.UTF8);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return new JsonObject();
+        }
+
+        JsonNode? parsed;
+        try
+        {
+            parsed = JsonNode.Parse(content);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException($"MCP config is not valid JSON: {configPath}", ex);
+        }
+
+        if (parsed is JsonObject root)
+        {
+            return root;
+        }
+
+        throw new InvalidOperationException($"MCP config root must be a JSON object: {configPath}");
+    }
+
+    private static JsonObject EnsureObject(JsonObject parent, string key)
+    {
+        if (parent[key] is JsonObject existing)
+        {
+            return existing;
+        }
+
+        var created = new JsonObject();
+        parent[key] = created;
+        return created;
     }
 }
 

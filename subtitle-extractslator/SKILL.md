@@ -19,6 +19,14 @@ This repository is skill-first: the subtitle skill package is the primary delive
 
 This skill orchestrates subtitle discovery and translation using MCP-first execution with local CLI fallback.
 
+## Installation and Release Links
+
+Use GitHub release packages as the canonical installation source when you need a complete skill package with binaries.
+
+- Project URL: [waynebaby/SubtitleExtractslator](https://github.com/waynebaby/SubtitleExtractslator)
+- Releases URL: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
+- Binary missing diagnosis and fix guide: `references/binary-missing.md`
+
 Primary goals:
 1. Keep timeline and subtitle structure stable.
 2. Prioritize existing subtitle resources before extraction.
@@ -49,6 +57,12 @@ Read these reference files for operational details:
 - search/download fallback strategy, rate-limit handling, and parameter matrix
 4. `references/troubleshooting.md`:
 - failure patterns and diagnostics checklist
+5. `references/binary-missing.md`:
+- release download links for current version binaries
+- binary missing diagnosis, validation checklist, and recovery flow
+6. `references/localpaths.md`:
+- local machine path memory (for example FFmpeg bin path)
+- persisted records for next skill run
 
 ## Workflow Contract
 
@@ -66,6 +80,14 @@ NO SCRIPTS IN MCP.
 Ask user whether to configure MCP for current workspace now.
 If yes, create or update the MCP config file for the current agent client (for example, GitHub Copilot commonly uses `./.vscode/mcp.json`; Claude Code/OpenClaw/Codex use their own MCP config locations); on all platforms use absolute `command` path for `subtitle-extractslator` server and confirm server is available.
 If no, continue in CLI mode.
+
+0.5 FFmpeg local path memory policy.
+On every run, read `references/localpaths.md` first.
+If FFmpeg path is recorded and still valid, reuse it:
+- CLI path: set `FFMPEG_BIN_DIR` in environment before probe/extract.
+- MCP path: call MCP tool `ffmpeg_set_bin_dir` so running MCP process receives path immediately (and mcp.json env can stay in sync).
+If FFmpeg is newly installed/downloaded on this machine, append/update absolute FFmpeg bin path in `references/localpaths.md` for future runs.
+Code/runtime must not parse or depend on `references/localpaths.md`; it is skill-side operational memory only.
 
 1. Confirm user target:
 - input file

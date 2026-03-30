@@ -218,9 +218,8 @@ Guard strategy:
 
 1. `FFMPEG_BIN_DIR` override
 2. known system locations
-3. local app data download via `Xabe.FFmpeg.Downloader`
 
-This keeps extraction/probing/mux operations portable across environments.
+If FFmpeg is not found, probe/extract operations return actionable error guidance for the agent to download FFmpeg and set `FFMPEG_BIN_DIR`.
 
 ## 9. Configuration model
 

@@ -17,7 +17,9 @@ Possible causes:
 Actions:
 1. Validate file path.
 2. Run ffprobe manually.
-3. Use external subtitle file as direct input.
+3. In MCP mode, after downloading FFmpeg call `ffmpeg_set_bin_dir` to hot-apply path to current MCP process (and persist to mcp.json by default).
+4. If MCP is not used, set `FFMPEG_BIN_DIR` in environment and retry.
+5. Record or refresh the same absolute path in `references/localpaths.md` for the next run.
 
 ## OpenSubtitles has no results
 
