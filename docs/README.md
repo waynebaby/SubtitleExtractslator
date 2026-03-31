@@ -10,6 +10,24 @@ This folder contains maintainer-facing project design and implementation documen
 
 This separation keeps runtime contract docs stable while allowing implementation notes to evolve.
 
+## Terminology Glossary
+
+Use the canonical terms below across `README*.md`, `docs/*.md`, and `subtitle-extractslator/references/*.md`.
+
+| Canonical term | Definition / usage rule | Avoid variants |
+| --- | --- | --- |
+| supervisor/worker contract | Mandatory batch-processing model. Applies to every batch-processing scenario. | optional topology, ad-hoc batch roles |
+| subagent | Delegated agent unit for bounded worker batches. | worker thread, helper bot |
+| If platform supports subagents | Mandatory condition phrase for delegation behavior. | if client supports subagents, if subagents are available |
+| bounded batch | Small isolated execution unit for stability and retries. | micro batch, chunk (when used as contract term) |
+| single-agent loop | Fallback execution path when subagents are unavailable. | single agent loop, one agent loop |
+| centralized queue state | Queue tracking state stored under temp root, not beside media files. | local queue folder beside media |
+| temp root (`<temp-root>`) | `SUBTITLEEXTRACTSLATOR_TEMPDIR` when set; otherwise OS temp + `SubtitleExtractslator`. | working folder temp, media-folder temp |
+| run-id (`<run-id>`) | Deterministic identifier for one queue run scope. | random session id (for queue contract) |
+| queue state files | `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, `run-notes.md`. | custom filename set |
+| run-to-completion | Continue processing until queue is empty or only hard blockers remain. | per-batch permission loop |
+| hard blocker | Real unresolved item-level blocker recorded in `failed.txt`. | transient error treated as blocker |
+
 ## Suggested reading order
 
 1. [System Architecture](./system-architecture.md)

@@ -82,3 +82,13 @@ Detailed bitmap OCR runtime internals and environment defaults are documented in
 2. One input path per line.
 3. Empty lines and lines starting with `#` are ignored.
 4. Output suffix defaults to `.<lang>.srt` when `--output-suffix` is omitted.
+
+## Long-Running Batch Queue State
+
+When orchestrating folder/season/library runs around CLI commands:
+1. Keep queue tracking files in centralized temp storage, not in media target folders.
+2. Temp root is `SUBTITLEEXTRACTSLATOR_TEMPDIR` when set, otherwise OS temp root + `SubtitleExtractslator`.
+3. State workspace path is `<temp-root>/agent-runs/<run-id>/`.
+4. Required tracking files: `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, `run-notes.md`.
+5. Use deterministic output naming for completion checks: `<basename>.<lang>.srt`.
+6. If user intent is "finish all" or equivalent, progress updates should not ask for continuation permission.

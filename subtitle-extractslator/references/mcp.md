@@ -14,6 +14,9 @@ NO SCRIPTS IN MCP.
 6. For all MCP steps, do not execute tool calls through scripts/batch wrappers.
 7. Subagent fanout is allowed if it runs through the agent path and preserves MCP sampling context.
 8. Subagent fanout does not remove tool-level serial constraints (for example OpenSubtitles `search -> download`).
+9. For multi-file jobs, queue state must be written to centralized temp storage, not media target folders.
+10. Use `<temp-root>/agent-runs/<run-id>/` for queue tracking files (`queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, `run-notes.md`).
+11. Temp root is `SUBTITLEEXTRACTSLATOR_TEMPDIR` when set, otherwise OS temp root + `SubtitleExtractslator`.
 
 ## MCP Setup Contract
 
@@ -102,6 +105,14 @@ Timing-check parameter contract:
 
 `translate-batch` is intentionally not exposed in MCP mode due to timeout risk in common MCP clients.
 
+Long-running queue policy:
+1. For full-folder or full-library requests, use `references/batching.md`.
+2. Use `references/supervisor.md` and `references/worker.md` for every batch-processing scenario.
+3. Progress reports are status-only and must not repeatedly ask whether to continue.
+4. Continue until queue is empty or only hard blockers remain.
+5. If platform supports subagents, supervisor must delegate bounded batches to worker subagents.
+6. If subagents are unavailable, keep the same supervisor/worker contract in a single-agent loop.
+
 ## Tool Return Contract
 
 1. All tools return structured object with `ok`, `data`, and `error`.
@@ -120,3 +131,5 @@ Timing-check parameter contract:
 4. OpenSubtitles credentials are resolved from `subtitle auth login` cache via per-call `subtitle auth aquire` semantics.
 5. In MCP mode, do not commit secrets into repository files.
 6. In MCP mode, keep orchestration agent-driven; allow subagent fanout but avoid script-driven tool loops.
+7. In MCP mode, keep queue state in centralized temp storage, not beside media files.
+8. In MCP mode, platform-specific agent files are optional adapters; runtime behavior must come from skill references.

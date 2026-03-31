@@ -142,6 +142,10 @@ Important paths:
    - `<temp-root>/translatehistory`
 5. Bitmap extraction artifacts:
    - `<temp-root>/pgs`
+6. Multi-file queue tracking state:
+   - `<temp-root>/agent-runs/<run-id>/`
+   - required files: `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, `run-notes.md`
+   - keep queue state centralized under temp root (do not place in media target folders)
 
 ## 5. Test and verification strategy
 

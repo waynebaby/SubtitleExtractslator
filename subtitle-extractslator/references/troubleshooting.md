@@ -82,3 +82,16 @@ Actions:
 1. Run `--help` and verify command shape.
 2. Test one failing path with single `translate` command.
 3. Confirm output folder is writable.
+
+## Queue tracking files are missing or in wrong location
+
+Checks:
+1. Queue state files should be under `<temp-root>/agent-runs/<run-id>/`, not near media files.
+2. `temp-root` should resolve to `SUBTITLEEXTRACTSLATOR_TEMPDIR` when set, otherwise OS temp root + `SubtitleExtractslator`.
+3. Required files are `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, and `run-notes.md`.
+
+Actions:
+1. Move or rebuild queue state under centralized temp storage.
+2. Reconcile already-generated deterministic outputs (`<basename>.<lang>.srt`) before rewriting `queue.txt`.
+3. Resume from centralized state without rescanning the full library blindly.
+4. For policy details, follow `references/batching.md`.

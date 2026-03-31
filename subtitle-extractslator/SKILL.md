@@ -63,6 +63,15 @@ Read these reference files for operational details:
 6. `references/localpaths.md`:
 - local machine path memory (for example FFmpeg bin path)
 - persisted records for next skill run
+7. `references/batching.md`:
+- long-run queue batching and resume policy
+- centralized temp tracking file contract for multi-file jobs
+8. `references/supervisor.md`:
+- persistent coordinator playbook for multi-file runs
+- queue ownership, batch selection, and resume behavior
+9. `references/worker.md`:
+- bounded batch execution playbook
+- per-item completion/failure handoff contract
 
 ## Workflow Contract
 
@@ -95,6 +104,21 @@ If FFmpeg path is recorded and still valid, reuse it:
 - MCP path: call MCP tool `ffmpeg_set_bin_dir` so running MCP process receives path immediately (and mcp.json env can stay in sync).
 If FFmpeg is newly installed/downloaded on this machine, append/update absolute FFmpeg bin path in `references/localpaths.md` for future runs.
 Code/runtime must not parse or depend on `references/localpaths.md`; it is skill-side operational memory only.
+
+0.8 Multi-file temp-state location policy.
+For folder/season/library jobs, tracking files must be centralized and must not be written next to media files.
+Use this root policy for queue state:
+1. prefer `SUBTITLEEXTRACTSLATOR_TEMPDIR` when set
+2. otherwise use OS temp root + `SubtitleExtractslator`
+3. state workspace path is `<temp-root>/agent-runs/<run-id>/`
+Required tracking files:
+- `queue.txt`
+- `completed.txt`
+- `failed.txt`
+- `in-progress.txt`
+- `run-notes.md`
+On resume, read and reconcile these files first.
+Detailed rules are in `references/batching.md`.
 
 1. Confirm user target:
 - input file
@@ -158,6 +182,19 @@ Preserve index, timestamps, line counts, and segmentation rhythm.
 
 7. Merge all translated groups into final SRT.
 
+## Autonomous Completion Contract
+
+When user intent is clearly "continue", "finish all", "run through folder", or equivalent:
+1. Treat request as permission to keep processing until completion criteria are met.
+2. Do not ask whether to continue after each batch.
+3. Continue with small bounded batches and update centralized temp state files after each batch.
+4. If one file fails, record reason and continue with next eligible item.
+5. Stop only when one of the following is true:
+- queue is empty after reconciliation
+- all remaining items have hard blockers recorded in `failed.txt`
+- user explicitly interrupts or redirects the task
+6. For every batch-processing scenario, apply supervisor/worker model; if platform supports subagents, supervisor must delegate bounded batches to worker subagents.
+
 ## Mode-Aware Translation Source Policy
 
 1. MCP mode (preferred):
@@ -183,6 +220,7 @@ All custom external endpoint access is CLI route responsibility.
 11. Every OpenSubtitles search request must include both primary and normalized query parameters.
 12. Fallback order must be executed inside MCP/CLI C# implementation, not by skill-side parallel fan-out.
 13. Skill must orchestrate OpenSubtitles `search` -> `download` in strict serial order; no parallel calls.
+14. Multi-file tracking state must use centralized temp storage; do not create temp state folders inside media target paths.
 
 ## Operational Notes
 
@@ -191,6 +229,8 @@ All custom external endpoint access is CLI route responsibility.
 3. For command details and troubleshooting, read `references/cli.md` and `references/troubleshooting.md`.
 4. For literary or entertainment subtitles (jokes, sarcasm, taboo language, sexual humor, dark comedy), strongly prefer an uncensored model variant. Censored models are more likely to weaken punchlines, skip sensitive phrasing, or leave source fragments untranslated.
 5. In agent scenarios, prefer MCP mode with explicit plan steps. Reusing MCP sampling through the existing client session can reduce token spend and lower deployment/ops overhead compared with standing up separate external-only translation services.
+6. For long-running folder jobs, read `references/batching.md` and keep queue state in centralized temp storage.
+7. This repository ships platform-neutral skill contracts. Platform-specific agent entry files are optional external adapters, not required runtime dependencies.
 
 
 

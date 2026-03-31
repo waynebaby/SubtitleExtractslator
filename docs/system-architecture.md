@@ -233,3 +233,19 @@ Main groups:
 4. FFmpeg binary resolution
 
 Detailed matrix is documented in [Development and Operations](./development-and-operations.md).
+
+## 10. Long-Running Queue Orchestration Design
+
+For folder/season/library scale processing, orchestration design uses centralized and resume-safe queue state.
+
+Design points:
+1. Queue state is persisted under temp root workspace: `<temp-root>/agent-runs/<run-id>/`.
+2. Required state files are `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, and `run-notes.md`.
+3. Processing proceeds in bounded small batches to isolate failures and support stable progress.
+4. One-file failure is recorded and should not terminate the whole queue.
+5. Completion target is queue exhaustion (or only hard blockers remain) rather than per-batch manual continuation.
+6. Batch topology rule: use supervisor/worker for all batch-processing scenarios; if platform supports subagents, supervisor must delegate bounded batches to worker subagents.
+
+Contract source:
+1. runtime-facing contract files live under `subtitle-extractslator/references/`
+2. maintainers should keep architecture docs and skill contract docs aligned when this design changes

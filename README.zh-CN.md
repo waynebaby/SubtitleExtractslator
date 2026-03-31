@@ -50,7 +50,7 @@ npx skills add waynebaby/SubtitleExtractslator
 - `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server）。
 - 构建与打包细节见 `docs/skill-installation-and-build.md`。
 
-### 使用场景示例
+### 使用场景示例（短提示模板）
 
 在支持 skill 的 agent 对话中可直接用：
 
@@ -58,48 +58,74 @@ npx skills add waynebaby/SubtitleExtractslator
 /subtitle-extractslator
 ```
 
-场景 1：处理目录下所有视频（MCP 模式）
+场景 1：单个视频翻译到中文（指定本地模型端口）
+
+```text
+/subtitle-extractslator
+
+把 D:\\media\\xxx.mkv 翻译成中文。
+本地模型端口使用 http://127.0.0.1:1234/v1/chat/completions。
+输出 D:\\media\\xxx.zh.srt。
+```
+
+场景 2：递归处理一个文件夹
 
 ```text
 /subtitle-extractslator
 
 请使用 MCP 模式。
-递归处理 <media_root> 目录下所有视频文件（例如 /data/media 或 D:\\media）。
-每个文件执行：probe -> extract（优先英文）-> translate（目标 zh）-> 输出到源文件同目录。
-如果已存在同名 .zh.srt 则跳过。
-最后用表格汇总每个文件的成功/失败状态。
+把 D:\\tv\\Fallout\\S01 递归翻译到中文。
+已有 .zh.srt 的文件直接跳过。
 ```
 
-场景 2：将单个 SRT 翻译到指定语言
+场景 3：从中断点继续整个目录任务
 
 ```text
 /subtitle-extractslator
 
-翻译单个字幕文件。
-输入：<media_root>/episode01.en.srt
-目标语言：ja
-输出：<media_root>/episode01.ja.srt
-保持时间轴与 cue 编号不变。
+继续上次 D:\\tv\\Fallout 的中文任务。
+从集中临时队列状态恢复，不要重跑已完成项。
 ```
 
-场景 3：将单个 SRT 翻译到多个语言
+场景 4：单个 SRT 输出多语言
 
 ```text
 /subtitle-extractslator
 
-请使用 MCP 模式。
-输入字幕：<media_root>/episode01.en.srt
-目标语言：zh、ja、es
-在同目录输出多个结果文件：
-- episode01.zh.srt
-- episode01.ja.srt
-- episode01.es.srt
-每个输出都保持时间轴与 cue 编号不变。
+把 D:\\subs\\episode01.en.srt 翻译为 zh、ja、es。
+保持时间轴和 cue 顺序不变。
+```
+
+场景 5：只做探测不翻译
+
+```text
+/subtitle-extractslator
+
+探测 D:\\media\\xxx.mkv 是否有内嵌中文字幕轨。
+只返回探测结果。
+```
+
+场景 6：Supervisor/Worker 处理批任务
+
+```text
+/subtitle-extractslator
+
+执行目录级中文翻译长任务。
+这类批处理统一使用 supervisor + worker 模型。
+如果平台支持 subagent，supervisor 必须把 bounded 批次委派给 worker 子代理。
+如果不支持，保持同样 supervisor/worker 合同在单代理循环中执行。
 ```
 
 运行说明：
 - MCP 模式不提供单个 `translate-batch` 工具。批处理由 agent 在目录层面自行循环，逐个文件调用 MCP tools 实现。
 - 多语言输出同理：由 agent 按目标语言逐次调用 `translate`。
+
+设计说明：
+1. 多文件长任务的队列状态采用集中临时目录存放。
+2. 队列状态支持小批次持续推进和中断恢复。
+3. 默认是持续处理到队列清空，或仅剩真实阻塞项。
+4. 批处理统一采用 supervisor/worker；平台支持 subagent 时，委派是必选项。
+5. 术语标准定义统一维护在 `docs/README.md` 的 `Terminology Glossary` 小节。
 
 ## 这个 Skill 解决什么问题
 

@@ -51,7 +51,7 @@ Notes:
 - The `SubtitleExtractslator.Cli/` project is the runtime host used by the skill (CLI + MCP server).
 - Build and packaging details are in `docs/skill-installation-and-build.md`.
 
-### Usage scenarios
+### Usage Scenarios (Short Prompts)
 
 Use the skill name in your agent chat:
 
@@ -59,48 +59,74 @@ Use the skill name in your agent chat:
 /subtitle-extractslator
 ```
 
-Scenario 1: Process all videos under a folder (MCP mode)
+Scenario 1: Translate one video to Chinese with local model endpoint
+
+```text
+/subtitle-extractslator
+
+Translate D:\\media\\xxx.mkv to zh.
+Use local model endpoint http://127.0.0.1:1234/v1/chat/completions. model: qwen3.5-9b-uncensored-hauhaucs-aggressive
+Output D:\\media\\xxx.zh.srt.
+```
+
+Scenario 2: Process one folder recursively
 
 ```text
 /subtitle-extractslator
 
 Run in MCP mode.
-Process all video files under <media_root> recursively (for example /data/media or D:\\media).
-For each file: probe -> extract preferred English subtitle -> translate to zh -> write output next to source.
-If a file already has a .zh.srt sibling, skip it.
-Return a final table with success/failure for each file.
+Process D:\\tv\\Fallout\\S01 recursively to zh.
+Skip files that already have .zh.srt.
 ```
 
-Scenario 2: Translate one SRT file to a target language
+Scenario 3: Resume interrupted folder run
 
 ```text
 /subtitle-extractslator
 
-Translate a single subtitle file.
-Input: <media_root>/episode01.en.srt
-Target language: ja
-Output: <media_root>/episode01.ja.srt
-Keep timeline and cue numbering unchanged.
+Continue previous D:\\tv\\Fallout run to zh.
+Resume from centralized temp queue state.
 ```
 
-Scenario 3: Translate one SRT file to multiple languages
+Scenario 4: Translate one SRT to multiple languages
 
 ```text
 /subtitle-extractslator
 
-Run in MCP mode.
-Input subtitle: <media_root>/episode01.en.srt
-Target languages: zh, ja, es
-Generate one output per language in the same directory:
-- episode01.zh.srt
-- episode01.ja.srt
-- episode01.es.srt
-Keep timeline and cue numbering unchanged for every output.
+Translate D:\\subs\\episode01.en.srt to zh, ja, es.
+Keep timing and cue order unchanged.
+```
+
+Scenario 5: Probe-only check
+
+```text
+/subtitle-extractslator
+
+Probe D:\\media\\xxx.mkv for embedded zh subtitle track.
+Return probe result only.
+```
+
+Scenario 6: Batch processing with supervisor/worker
+
+```text
+/subtitle-extractslator
+
+Run long folder translation to zh.
+Use supervisor + worker model for this batch run.
+If platform supports subagents, supervisor must delegate bounded batches to worker subagents.
+If subagents are unavailable, keep the same supervisor/worker contract in a single-agent loop.
 ```
 
 Operational note:
 - MCP mode does not expose a single `translate-batch` tool. Batch behavior is achieved by your agent looping over files and invoking MCP tools file-by-file.
 - Multi-language output is also an agent loop pattern: run `translate` once per target language.
+
+Design note:
+1. Long-running multi-file orchestration uses centralized queue state under the temp root.
+2. Queue state is designed for resume-safe small-batch processing.
+3. Typical completion behavior is run-to-completion until queue is empty or only blocked items remain.
+4. Batch processing uses supervisor/worker model; when platform supports subagents, delegation is required.
+5. Canonical term definitions are maintained in `docs/README.md` under `Terminology Glossary`.
 
 ## What The Skill Solves
 
