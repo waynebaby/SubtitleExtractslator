@@ -13,3 +13,5 @@ tmp/
 TestSubtitles/
 */bin/
 subtitle-extractslator/assets/bin/
+.agents/
+skills-lock.json
