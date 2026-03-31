@@ -24,15 +24,15 @@ npx skills add waynebaby/SubtitleExtractslator
 
 <!-- release-links:start -->
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-win-x64.zip)
-- Windows ARM64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-win-arm64.zip)
-- Linux x64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-linux-x64.zip)
-- Linux musl x64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-linux-musl-x64.zip)
-- Linux ARM64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-linux-arm64.zip)
-- Linux musl ARM64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-linux-musl-arm64.zip)
-- Linux ARM 包（v0.1.12）：[subtitle-extractslator-v0.1.12-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-linux-arm.zip)
-- macOS ARM64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-osx-arm64.zip)
-- macOS x64 包（v0.1.12）：[subtitle-extractslator-v0.1.12-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.12/subtitle-extractslator-v0.1.12-osx-x64.zip)
+- Windows x64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-win-x64.zip)
+- Windows ARM64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-win-arm64.zip)
+- Linux x64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-linux-x64.zip)
+- Linux musl x64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-linux-musl-x64.zip)
+- Linux ARM64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-linux-arm64.zip)
+- Linux musl ARM64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-linux-musl-arm64.zip)
+- Linux ARM 包（v0.1.13）：[subtitle-extractslator-v0.1.13-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-linux-arm.zip)
+- macOS ARM64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-osx-arm64.zip)
+- macOS x64 包（v0.1.13）：[subtitle-extractslator-v0.1.13-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.13/subtitle-extractslator-v0.1.13-osx-x64.zip)
 <!-- release-links:end -->
 
 ## 在自己的 Agent 里使用 ZIP 包
@@ -267,6 +267,7 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 
 
 

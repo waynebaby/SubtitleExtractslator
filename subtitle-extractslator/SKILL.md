@@ -5,7 +5,7 @@ compatibility: Designed for agent environments (GitHub Copilot, Claude Code, Ope
 license: MIT
 metadata:
   author: waynebaby
-  version: 0.1.12
+  version: 0.1.13
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN
@@ -231,6 +231,7 @@ All custom external endpoint access is CLI route responsibility.
 5. In agent scenarios, prefer MCP mode with explicit plan steps. Reusing MCP sampling through the existing client session can reduce token spend and lower deployment/ops overhead compared with standing up separate external-only translation services.
 6. For long-running folder jobs, read `references/batching.md` and keep queue state in centralized temp storage.
 7. This repository ships platform-neutral skill contracts. Platform-specific agent entry files are optional external adapters, not required runtime dependencies.
+
 
 
 
