@@ -146,9 +146,10 @@ internal sealed class WorkflowOrchestrator
 
         if (!accepted)
         {
-            CliRuntimeLog.Info("workflow", "Using local extraction branch (preferred language: en).");
+            var preferredSourceLanguage = ResolvePreferredSourceLanguageForExtraction(probe.Tracks, targetLanguage);
+            CliRuntimeLog.Info("workflow", $"Using local extraction branch (preferred language: {preferredSourceLanguage}).");
             var provisionalPath = BuildTemporaryExtractionPath(output, "source");
-            var extract = await ExtractSubtitleAsync(input, provisionalPath, "en");
+            var extract = await ExtractSubtitleAsync(input, provisionalPath, preferredSourceLanguage);
             var sourceLanguage = NormalizeLanguageToken(extract.SelectedLanguage);
             var languageNamedPath = BuildTemporaryExtractionPath(output, sourceLanguage);
             if (!extract.OutputPath.Equals(languageNamedPath, StringComparison.OrdinalIgnoreCase))
@@ -432,6 +433,55 @@ internal sealed class WorkflowOrchestrator
 
         var token = language.Trim().ToLowerInvariant();
         return token.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_') ? token : "und";
+    }
+
+    private static string ResolvePreferredSourceLanguageForExtraction(List<SubtitleTrack> tracks, string targetLanguage)
+    {
+        if (tracks.Count == 0)
+        {
+            return "en";
+        }
+
+        var normalizedTarget = NormalizeLanguageToken(targetLanguage);
+        var candidateTracks = tracks
+            .Where(x => !NormalizeLanguageToken(x.Language).Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (candidateTracks.Count == 0)
+        {
+            candidateTracks = tracks;
+        }
+
+        var english = candidateTracks
+            .Select(x => NormalizeLanguageToken(x.Language))
+            .FirstOrDefault(IsEnglishLanguageToken);
+        if (!string.IsNullOrWhiteSpace(english))
+        {
+            return english;
+        }
+
+        var anyKnownLanguage = candidateTracks
+            .Select(x => NormalizeLanguageToken(x.Language))
+            .FirstOrDefault(x => !x.Equals("und", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(anyKnownLanguage))
+        {
+            return anyKnownLanguage;
+        }
+
+        return "en";
+    }
+
+    private static bool IsEnglishLanguageToken(string language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return false;
+        }
+
+        var token = NormalizeLanguageToken(language);
+        return token.Equals("en", StringComparison.OrdinalIgnoreCase)
+            || token.Equals("eng", StringComparison.OrdinalIgnoreCase)
+            || token.StartsWith("en-", StringComparison.OrdinalIgnoreCase)
+            || token.StartsWith("en_", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool AskUserYesNo(string prompt)

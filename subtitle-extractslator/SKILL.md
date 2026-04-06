@@ -134,14 +134,14 @@ ELSE continue.
 3. Select source subtitle material in this strict order:
 1. Embedded subtitle tracks from input video:
 - prefer `en/eng`
-- if no `en/eng`, use another available embedded subtitle language
+- if no `en/eng`, immediately use another available embedded subtitle language (do not block waiting for English)
 2. IF no embedded subtitle tracks exist:
 - search local input folder and all subfolders for `*.srt`
-- prefer English file when available, otherwise use another available language file
+- prefer English file when available; if not, immediately use another available language file
 3. IF still no local subtitle material:
 - search OpenSubtitles in any language
-- prefer English candidates first
-- then use the best available non-English candidate
+- prefer English candidates first when available
+- if English candidates are empty, immediately use the best available non-English candidate and continue
 OpenSubtitles rules (CRITICAL):
 1. Every `opensubtitles_search` call must include both `searchQueryPrimary` and `searchQueryNormalized`.
 2. Skill-side orchestration must be strictly linear: `opensubtitles_search` -> `opensubtitles_download` only. No parallel fan-out.
@@ -210,9 +210,9 @@ All custom external endpoint access is CLI route responsibility.
 1. Never modify timestamps or cue ordering.
 2. Never merge or split cues unless explicit user request overrides default policy.
 3. If structure validation fails, report error and stop instead of emitting broken output.
-4. Embedded subtitle source selection is deterministic: `en/eng` first, otherwise first available language.
+4. Embedded subtitle source selection is deterministic: `en/eng` first when available, otherwise first available language; English absence must not block workflow.
 5. When no embedded subtitle exists, local folder/subfolder subtitle search is attempted before OpenSubtitles.
-6. OpenSubtitles fallback uses language preference `en/eng` first, then other available languages.
+6. OpenSubtitles fallback may prefer `en/eng`, but must continue with best available non-English candidates when English is unavailable.
 7. OpenSubtitles fallback query strategy is mandatory for every OpenSubtitles search call and must not be skipped.
 8. OpenSubtitles download by ranked candidate must call the same mandatory fallback-aware search path before selecting candidate rank.
 9. OpenSubtitles auth must follow auth command flow (`login/aquire/status/clear`); do not use per-call username/password input.

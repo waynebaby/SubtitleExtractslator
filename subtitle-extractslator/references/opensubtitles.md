@@ -61,6 +61,7 @@ For every OpenSubtitles search entry (standalone search, workflow-internal searc
 3. `searchQueryPrimary` with any language
 4. `searchQueryNormalized` with any language
 5. If all four stages are empty, return not found and continue fallback branch.
+6. Candidate language availability is non-blocking: do not keep waiting for English-only results; if target-language stages are empty, continue with any-language results immediately.
 
 ## Download Input Contract
 
@@ -110,6 +111,7 @@ When searching in target language and candidate count is high but filename confi
 4. After `opensubtitles_download`:
 - if downloaded subtitle already matches target language, finish with deterministic output naming (no translation)
 - if downloaded subtitle is non-target language, continue grouped rolling-context translation to target language
+5. English candidates are preference only. If no English candidate is available, select the best non-English candidate that passes review and continue; English absence must not block workflow.
 
 ## Rate-Limit Handling (Critical)
 
