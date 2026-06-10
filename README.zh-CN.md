@@ -20,34 +20,47 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 npx skills add waynebaby/SubtitleExtractslator
 ```
 
-如果通过该命令下载到的 skill 缺少运行时二进制，请直接使用下面的 release 平台 zip 包安装。
+运行时主交付已经切换为 NuGet 包 + portable DLL 入口。
+
+包索引：
+- 稳定通道: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
+- 稳定通道中文: [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
+- Beta 通道: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
+- Beta 通道中文: [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
+
+安装示例：
+
+```bash
+dotnet add package SubtitleExtractslator.Cli --version <VERSION>
+```
+
+guide-first 入口：
+
+```bash
+dotnet SubtitleExtractslator.Cli.dll --guide
+```
+
+如果包管理源不可用，请使用下面的 GitHub fallback `.nupkg` 链接。
 
 <!-- release-links:start -->
-- Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-x64.zip)
-- Windows ARM64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-arm64.zip)
-- Linux x64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-x64.zip)
-- Linux musl x64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-x64.zip)
-- Linux ARM64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm64.zip)
-- Linux musl ARM64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-arm64.zip)
-- Linux ARM 包（v0.1.14）：[subtitle-extractslator-v0.1.14-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm.zip)
-- macOS ARM64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-arm64.zip)
-- macOS x64 包（v0.1.14）：[subtitle-extractslator-v0.1.14-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-x64.zip)
+- 稳定通道回退 Release：[nuget-stable-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest)
+- 稳定通道 latest 包：[SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg)
+- Beta 通道回退 Release：[nuget-beta-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest)
+- Beta 通道 latest 包：[SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg)
 <!-- release-links:end -->
 
-## 在自己的 Agent 里使用 ZIP 包
+## 先走 Guide-First 入口
 
-如果你的目标是把它作为 skill 跑在自己的 agent 里，建议先走这条路径。
+如果你的目标是在 agent 中运行此 skill，继续保留 `npx skills add` 作为发现入口，并以 NuGet 运行时与 guide 作为命令真相来源。
 
-1. 从上面的 release 链接下载对应平台的 zip 包。
-2. 解压后保持目录名为 `subtitle-extractslator`（不要改名）。
-3. 在你的 agent 客户端里把这个目录作为本地 skill 包安装（例如 Claude Desktop skills）。
-4. 确认你系统对应的运行时文件存在于 `subtitle-extractslator/assets/bin/<rid>/`。
-5. 先执行一个最小调用（例如 `probe` 或 `translate`）确认 skill 可被正常调用。
+1. 从稳定或 Beta 通道安装 NuGet 包。
+2. 先运行 `dotnet SubtitleExtractslator.Cli.dll --guide`。
+3. 按 guide 中的入口命令执行 CLI 或 MCP。
+4. 包源不可用时，使用上面的 fallback `.nupkg` 链接。
 
 说明：
-- 仓库的主交付物是 zip 包中的 `subtitle-extractslator/` skill 目录。
-- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server）。
+- 仓库继续保留 `subtitle-extractslator/` 作为 skill 路由与策略层。
+- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server），主交付是 portable DLL 包。
 - 构建与打包细节见 `docs/skill-installation-and-build.md`。
 
 ### 使用场景示例（短提示模板）

@@ -1,0 +1,17 @@
+mode: ContinuousDelivery
+next-version: 0.1.14
+branches:
+  main:
+    regex: ^main$
+    increment: Patch
+    label: ''
+    is-main-branch: true
+  development:
+    regex: ^development$
+    increment: Patch
+    label: beta
+    source-branches:
+      - main
+      - development
+ignore:
+  sha: []

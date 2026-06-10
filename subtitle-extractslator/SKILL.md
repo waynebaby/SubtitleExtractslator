@@ -21,11 +21,21 @@ This skill orchestrates subtitle discovery and translation using MCP-first execu
 
 ## Installation and Release Links
 
-Use GitHub release packages as the canonical installation source when you need a complete skill package with binaries.
+Use NuGet package channels as canonical runtime source. Keep GitHub releases as fallback when package feed is unavailable.
 
 - Project URL: [waynebaby/SubtitleExtractslator](https://github.com/waynebaby/SubtitleExtractslator)
-- Releases URL: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Binary missing diagnosis and fix guide: `references/binary-missing.md`
+- Stable package index: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
+- Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
+- Beta package index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
+- Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
+- GitHub fallback release home: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
+- Runtime missing diagnosis and fallback guide: `references/binary-missing.md`
+
+Guide-first runtime entry:
+
+```bash
+dotnet SubtitleExtractslator.Cli.dll --guide
+```
 
 Primary goals:
 1. Keep timeline and subtitle structure stable.

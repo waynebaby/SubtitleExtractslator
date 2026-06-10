@@ -1,0 +1,88 @@
+name: Release NuGet Stable
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: 9.0.x
+  PACKAGE_ID: SubtitleExtractslator.Cli
+  PROJECT_PATH: SubtitleExtractslator.Cli/SubtitleExtractslator.Cli.csproj
+
+jobs:
+  release-stable:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: 6.0.x
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+
+      - name: Resolve stable package version
+        id: version
+        shell: bash
+        run: |
+          echo "PACKAGE_VERSION=${{ steps.gitversion.outputs.majorMinorPatch }}" >> "$GITHUB_ENV"
+          echo "package_version=${{ steps.gitversion.outputs.majorMinorPatch }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore SubtitleExtractslator.sln
+
+      - name: Build
+        run: dotnet build SubtitleExtractslator.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test SubtitleExtractslator.sln -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack ${{ env.PROJECT_PATH }} -c Release --no-build -o artifacts/nuget /p:PackageVersion=${{ steps.version.outputs.package_version }}
+
+      - name: Prepare fallback artifacts
+        shell: bash
+        run: |
+          PACKAGE_VERSION="${{ steps.version.outputs.package_version }}"
+          mkdir -p artifacts/fallback
+          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg"
+          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.latest.nupkg"
+
+      - name: Publish stable fallback release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nuget-stable-latest
+          name: NuGet Stable Latest
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/fallback/${{ env.PACKAGE_ID }}.${{ steps.version.outputs.package_version }}.nupkg
+            artifacts/fallback/${{ env.PACKAGE_ID }}.latest.nupkg
+
+      - name: Push package to NuGet
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "${NUGET_API_KEY}" ]; then
+            echo "NUGET_API_KEY is not set, skip NuGet push."
+            exit 0
+          fi
+          dotnet nuget push artifacts/nuget/*.nupkg --api-key "${NUGET_API_KEY}" --source https://api.nuget.org/v3/index.json --skip-duplicate

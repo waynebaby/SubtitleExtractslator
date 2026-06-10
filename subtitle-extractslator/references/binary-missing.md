@@ -1,49 +1,37 @@
 # Binary Missing Recovery
 
-Use this reference when the installed skill package does not contain runtime binaries under `assets/bin/<rid>/`.
+Use this reference when runtime package restore fails or portable DLL runtime is unavailable.
 
 ## Official Source
 
-Always download from GitHub release artifacts for deterministic package completeness.
+Use package channels first. Use GitHub fallback `.nupkg` only when package feed is unavailable.
 
 <!-- release-links:start -->
 - Project URL: [waynebaby/SubtitleExtractslator](https://github.com/waynebaby/SubtitleExtractslator)
-- Releases URL: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-x64.zip)
-- Windows ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-arm64.zip)
-- Linux x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-x64.zip)
-- Linux musl x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-x64.zip)
-- Linux ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm64.zip)
-- Linux musl ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-arm64.zip)
-- Linux ARM package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm.zip)
-- macOS ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-arm64.zip)
-- macOS x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-x64.zip)
+- Stable index: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
+- Beta index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
+- Stable fallback release: [nuget-stable-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest)
+- Stable latest package: [SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg)
+- Beta fallback release: [nuget-beta-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest)
+- Beta latest package: [SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg)
 <!-- release-links:end -->
 
-## Verify Package Integrity
+## Verify Runtime Integrity
 
-1. Unzip package root and confirm `subtitle-extractslator/SKILL.md` exists.
-2. Confirm your runtime RID directory exists:
-- Windows x64: `subtitle-extractslator/assets/bin/win-x64/`
-- Windows ARM64: `subtitle-extractslator/assets/bin/win-arm64/`
-- Linux x64: `subtitle-extractslator/assets/bin/linux-x64/`
-- Linux musl x64: `subtitle-extractslator/assets/bin/linux-musl-x64/`
-- Linux ARM64: `subtitle-extractslator/assets/bin/linux-arm64/`
-- Linux musl ARM64: `subtitle-extractslator/assets/bin/linux-musl-arm64/`
-- Linux ARM: `subtitle-extractslator/assets/bin/linux-arm/`
-- macOS ARM64: `subtitle-extractslator/assets/bin/osx-arm64/`
-- macOS x64: `subtitle-extractslator/assets/bin/osx-x64/`
-3. Confirm executable file exists inside your RID directory:
-- Windows: `SubtitleExtractslator.Cli.exe`
-- Linux/macOS: `SubtitleExtractslator.Cli`
+1. Confirm package restore/build succeeds for `SubtitleExtractslator.Cli`.
+2. Confirm runtime output contains `SubtitleExtractslator.Cli.dll`.
+3. Run guide-first command:
+	- `dotnet SubtitleExtractslator.Cli.dll --guide`
+4. If guide output succeeds, runtime is considered healthy.
 
 ## Recovery Flow
 
-1. Delete incomplete local skill copy.
-2. Download the correct platform zip from release links above.
-3. Replace local skill folder with the extracted `subtitle-extractslator` folder.
-4. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
-5. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
+1. Retry package restore from stable/beta index instructions.
+2. If feed is unavailable, download fallback `.nupkg` from links above.
+3. Add/use package from local `.nupkg` and rebuild runtime output.
+4. Re-run `dotnet SubtitleExtractslator.Cli.dll --guide`.
+5. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
+6. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
 
 
 

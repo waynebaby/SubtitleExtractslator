@@ -21,34 +21,47 @@ Quick install skill command:
 npx skills add waynebaby/SubtitleExtractslator
 ```
 
-If the downloaded skill package is missing runtime binaries in your environment, use the release links below and install from the platform zip directly.
+Primary runtime distribution now uses NuGet package + portable DLL entry.
+
+Package indexes:
+- Stable index: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
+- Stable index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
+- Beta index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
+- Beta index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
+
+Install example:
+
+```bash
+dotnet add package SubtitleExtractslator.Cli --version <VERSION>
+```
+
+Guide-first entry:
+
+```bash
+dotnet SubtitleExtractslator.Cli.dll --guide
+```
+
+If the package feed is unavailable, use the GitHub fallback `.nupkg` links below.
 
 <!-- release-links:start -->
-- Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-x64.zip)
-- Windows ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-win-arm64.zip)
-- Linux x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-x64.zip)
-- Linux musl x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-x64.zip)
-- Linux ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm64.zip)
-- Linux musl ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-musl-arm64.zip)
-- Linux ARM package (v0.1.14): [subtitle-extractslator-v0.1.14-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-linux-arm.zip)
-- macOS ARM64 package (v0.1.14): [subtitle-extractslator-v0.1.14-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-arm64.zip)
-- macOS x64 package (v0.1.14): [subtitle-extractslator-v0.1.14-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.14/subtitle-extractslator-v0.1.14-osx-x64.zip)
+- Stable fallback release: [nuget-stable-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest)
+- Stable latest package: [SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg)
+- Beta fallback release: [nuget-beta-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest)
+- Beta latest package: [SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg)
 <!-- release-links:end -->
 
-## First: Use The ZIP In Your Agent
+## First: Guide-First Runtime Entry
 
-If your goal is to run this as a skill in your own agent, start here.
+If your goal is to run this as a skill in your own agent, keep `npx skills add` for discovery, and use NuGet package runtime as command source of truth.
 
-1. Download the platform zip from the release links above.
-2. Unzip it and keep the folder name as `subtitle-extractslator`.
-3. Install that folder as a local skill package in your agent client (for example, Claude Desktop skills).
-4. Verify runtime assets exist under `subtitle-extractslator/assets/bin/<rid>/` for your OS.
-5. Run one simple operation (for example `probe` or `translate`) to confirm the skill is callable.
+1. Install package from stable/beta channel.
+2. Run `dotnet SubtitleExtractslator.Cli.dll --guide` first.
+3. Follow guide command entries for CLI or MCP mode.
+4. If package feed is unavailable, download fallback `.nupkg` from the release links above.
 
 Notes:
-- This repository's primary deliverable is the `subtitle-extractslator/` skill package inside the zip.
-- The `SubtitleExtractslator.Cli/` project is the runtime host used by the skill (CLI + MCP server).
+- This repository keeps `subtitle-extractslator/` for skill routing and policy context.
+- The `SubtitleExtractslator.Cli/` project is the runtime host used by the skill (CLI + MCP server), delivered as portable DLL package.
 - Build and packaging details are in `docs/skill-installation-and-build.md`.
 
 ### Usage Scenarios (Short Prompts)

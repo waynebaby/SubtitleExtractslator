@@ -5,11 +5,14 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>embedded</DebugType>
+    <PackageId>SubtitleExtractslator.Cli</PackageId>
+    <Description>SubtitleExtractslator portable CLI runtime for subtitle probe, extraction, OpenSubtitles lookup, and translation workflows.</Description>
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>subtitle;translation;mcp;workflow;dotnet;ffmpeg</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.nuget.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +28,13 @@
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>SubtitleExtractslator.Tests</_Parameter1>
     </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\icon.nuget.png" Pack="true" PackagePath="\">
+      <Link>icon.nuget.png</Link>
+    </None>
   </ItemGroup>
 
   <Target Name="PublishSkillBinariesOnBuild" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipSkillBinaryPublish)' != 'true'">

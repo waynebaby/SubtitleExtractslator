@@ -9,11 +9,16 @@ internal sealed record AppOptions(
 SubtitleExtractslator CLI
 
 Usage:
-SubtitleExtractslator.Cli --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
-SubtitleExtractslator.Cli --mode mcp
-SubtitleExtractslator.Cli --help
+dotnet SubtitleExtractslator.Cli.dll --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
+dotnet SubtitleExtractslator.Cli.dll --mode mcp
+dotnet SubtitleExtractslator.Cli.dll --guide
+dotnet SubtitleExtractslator.Cli.dll --help
+
+Guide-first:
+Run `--guide` before operational commands to get channel/install and fallback pointers.
 
 Commands:
+guide
 probe --input <mediaFile> --lang <targetLang>
 subtitle-timing-check --input <mediaFile> --subtitle <subtitleFile.srt>
 opensubtitles-search --input <mediaFile> --lang <targetLang> --search-query-primary <query> --search-query-normalized <query> [--opensubtitles-endpoint <url>] [--opensubtitles-user-agent <ua>]
@@ -76,6 +81,11 @@ MCP exposes tool `translate` (translation-only; not a CLI command).
             }
 
             map[key] = value;
+        }
+
+        if (map.ContainsKey("guide"))
+        {
+            map["command"] = "guide";
         }
 
         if (positional.Count > 0)

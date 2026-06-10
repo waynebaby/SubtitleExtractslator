@@ -11,6 +11,7 @@ internal static class CliCommandRunner
         using var envScope = RuntimeEnvironmentOverrides.Begin(RuntimeEnvironmentOverrides.Parse(options.OptionalString("env")));
         return options.Command?.ToLowerInvariant() switch
         {
+            "guide" => BuildGuideText(),
             "probe" => JsonSerializer.Serialize(await orchestrator.ProbeAsync(
                 options.Require("input"),
                 options.Require("lang")), JsonOptions.Pretty),
@@ -32,6 +33,37 @@ internal static class CliCommandRunner
             "translate-batch" => JsonSerializer.Serialize(await RunTranslateBatchWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
             _ => AppOptions.HelpText
         };
+    }
+
+    private static string BuildGuideText()
+    {
+        return """
+SubtitleExtractslator Guide
+
+Preferred runtime form:
+- Portable .NET DLL via `dotnet SubtitleExtractslator.Cli.dll ...`
+
+Channels:
+- Stable channel: main branch release line (numeric stable versions)
+- Beta channel: development branch prerelease line
+
+Package indexes:
+- Stable: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md
+- Stable (zh-CN): https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md
+- Beta: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md
+- Beta (zh-CN): https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md
+
+Fallback when package feed is unavailable:
+- Use the corresponding latest GitHub release fallback listed in the package indexes above.
+
+Typical command entry:
+- dotnet SubtitleExtractslator.Cli.dll --mode cli probe --input "movie.mkv" --lang zh
+- dotnet SubtitleExtractslator.Cli.dll --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt"
+- dotnet SubtitleExtractslator.Cli.dll --mode mcp
+
+Skill routing note:
+- Skill docs should route users to this guide and package indexes, instead of maintaining a second runtime truth source.
+""";
     }
 
     private static async Task<WorkflowResult> RunTranslateWithOptionsAsync(WorkflowOrchestrator orchestrator, AppOptions options)

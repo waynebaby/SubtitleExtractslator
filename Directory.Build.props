@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Wayne Wang 韦恩卑鄙</Authors>
+    <Company>Wayne Wang 韦恩卑鄙</Company>
+    <PackageProjectUrl>https://github.com/waynebaby/SubtitleExtractslator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/waynebaby/SubtitleExtractslator.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+</Project>

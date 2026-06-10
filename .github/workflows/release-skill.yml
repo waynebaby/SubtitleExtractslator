@@ -1,4 +1,9 @@
-name: Release Skill Package
+name: Release Skill Package (Deprecated)
+
+# Deprecated: This workflow is retained temporarily for migration visibility.
+# Use NuGet-first workflows instead:
+# - .github/workflows/release-nuget-stable.yml
+# - .github/workflows/release-nuget-beta.yml
 
 on:
   push:
