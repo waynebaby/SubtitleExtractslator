@@ -45,15 +45,15 @@ If the package feed is unavailable, use the GitHub fallback `.nupkg` links below
 
 <!-- release-links:start -->
 - Latest releases: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-x64.zip)
-- Windows ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-arm64.zip)
-- Linux x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-x64.zip)
-- Linux musl x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-x64.zip)
-- Linux ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm64.zip)
-- Linux musl ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-arm64.zip)
-- Linux ARM package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm.zip)
-- macOS ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-arm64.zip)
-- macOS x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-x64.zip)
+- Windows x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-win-x64.zip)
+- Windows ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-win-arm64.zip)
+- Linux x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-x64.zip)
+- Linux musl x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-musl-x64.zip)
+- Linux ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-arm64.zip)
+- Linux musl ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-musl-arm64.zip)
+- Linux ARM package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-arm.zip)
+- macOS ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-osx-arm64.zip)
+- macOS x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-osx-x64.zip)
 <!-- release-links:end -->
 
 ## First: Guide-First Runtime Entry
@@ -287,6 +287,7 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 
 
 

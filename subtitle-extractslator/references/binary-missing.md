@@ -9,15 +9,15 @@ Use package channels first. Use GitHub fallback `.nupkg` only when package feed 
 <!-- release-links:start -->
 - Project URL: [waynebaby/SubtitleExtractslator](https://github.com/waynebaby/SubtitleExtractslator)
 - Releases URL: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-x64.zip)
-- Windows ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-arm64.zip)
-- Linux x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-x64.zip)
-- Linux musl x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-x64.zip)
-- Linux ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm64.zip)
-- Linux musl ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-arm64.zip)
-- Linux ARM package (v0.1.15): [subtitle-extractslator-v0.1.15-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm.zip)
-- macOS ARM64 package (v0.1.15): [subtitle-extractslator-v0.1.15-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-arm64.zip)
-- macOS x64 package (v0.1.15): [subtitle-extractslator-v0.1.15-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-x64.zip)
+- Windows x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-win-x64.zip)
+- Windows ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-win-arm64.zip)
+- Linux x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-x64.zip)
+- Linux musl x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-musl-x64.zip)
+- Linux ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-arm64.zip)
+- Linux musl ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-musl-arm64.zip)
+- Linux ARM package (v0.1.16): [subtitle-extractslator-v0.1.16-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-linux-arm.zip)
+- macOS ARM64 package (v0.1.16): [subtitle-extractslator-v0.1.16-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-osx-arm64.zip)
+- macOS x64 package (v0.1.16): [subtitle-extractslator-v0.1.16-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.16/subtitle-extractslator-v0.1.16-osx-x64.zip)
 <!-- release-links:end -->
 
 ## Verify Runtime Integrity
@@ -36,6 +36,7 @@ Use package channels first. Use GitHub fallback `.nupkg` only when package feed 
 4. Re-run `dotnet SubtitleExtractslator.Cli.dll --guide`.
 5. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
 6. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
+
 
 
 
