@@ -43,10 +43,16 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 如果包管理源不可用，请使用下面的 GitHub fallback `.nupkg` 链接。
 
 <!-- release-links:start -->
-- 稳定通道回退 Release：[nuget-stable-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest)
-- 稳定通道 latest 包：[SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg)
-- Beta 通道回退 Release：[nuget-beta-latest](https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest)
-- Beta 通道 latest 包：[SubtitleExtractslator.Cli.latest.nupkg](https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg)
+- Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
+- Windows x64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-x64.zip)
+- Windows ARM64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-win-arm64.zip)
+- Linux x64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-x64.zip)
+- Linux musl x64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-x64.zip)
+- Linux ARM64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm64.zip)
+- Linux musl ARM64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-musl-arm64.zip)
+- Linux ARM 包（v0.1.15）：[subtitle-extractslator-v0.1.15-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-linux-arm.zip)
+- macOS ARM64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-arm64.zip)
+- macOS x64 包（v0.1.15）：[subtitle-extractslator-v0.1.15-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.15/subtitle-extractslator-v0.1.15-osx-x64.zip)
 <!-- release-links:end -->
 
 ## 先走 Guide-First 入口
@@ -280,6 +286,7 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
 
 
 
