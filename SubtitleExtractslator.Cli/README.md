@@ -8,10 +8,10 @@ It provides deterministic subtitle probing, extraction, OpenSubtitles candidate 
 
 Stable and beta package indexes:
 
-- Stable index: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md
-- Stable index (zh-CN): https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md
-- Beta index: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md
-- Beta index (zh-CN): https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md
+- Stable index: <https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md>
+- Stable index (zh-CN): <https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md>
+- Beta index: <https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md>
+- Beta index (zh-CN): <https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md>
 
 Typical install command:
 
@@ -26,7 +26,7 @@ If the package feed is unavailable, use GitHub fallback links from the package i
 After obtaining the runtime, use guide mode as the authoritative entry point:
 
 ```bash
-dotnet SubtitleExtractslator.Cli.dll --guide
+dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 ```
 
 The guide prints channel information, command entry points, and fallback locations.
@@ -43,4 +43,4 @@ dotnet SubtitleExtractslator.Cli.dll --mode mcp
 
 ## Relationship To Skill
 
-The skill package remains discoverable via repository installation and acts as a routing layer. Runtime command truth should come from CLI guide output rather than duplicated skill-side runtime instructions.
+The skill package remains discoverable via repository installation and acts as a routing layer. The skill package is binary-free and does not ship runtime DLLs or platform bins. Runtime command truth should come from CLI guide output rather than duplicated skill-side runtime instructions.
