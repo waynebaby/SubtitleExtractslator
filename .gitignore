@@ -2,7 +2,6 @@
 obj/
 .vs/
 .vscode/
-.github/skills/
 *.user
 *.suo
 *.cache
@@ -14,4 +13,11 @@ TestSubtitles/
 */bin/
 subtitle-extractslator/assets/bin/
 .agents/
-skills-lock.json
+.github/skills/subtitle-extractslator/assets/so-workflow/audit/
+.github/skills/subtitle-extractslator/assets/so-workflow/audit-v021/
+.github/skills/subtitle-extractslator/assets/so-workflow/compile-audit/
+.github/skills/subtitle-extractslator/assets/so-workflow/compile-audit-v021-current/
+.github/skills/subtitle-extractslator/assets/so-workflow/reflected-workflow.mermaid.md
+.github/skills/subtitle-extractslator/assets/so-workflow/resume-result.json
+.github/skills/subtitle-extractslator/assets/so-workflow/so-template.runtime.json
+.github/skills/subtitle-extractslator/assets/so-workflow/so-template.runtime.json.events.jsonl

@@ -1,7 +1,7 @@
 # MCP Reference
 
 This file is skill-facing runtime contract only.
- 
+
 ## MCP-First Policy
 
 NO SCRIPTS IN MCP.
@@ -22,32 +22,33 @@ NO SCRIPTS IN MCP.
 
 1. Ask user whether to set up MCP in current workspace.
 2. If agreed, create or update the MCP config file for the active agent client.
-3. On all platforms, use absolute executable path for `servers.subtitle-extractslator.command`.
+3. On all platforms, use `dotnet` as `servers.subtitle-extractslator.command` and pass an absolute `SubtitleExtractslator.Cli.dll` path in `args`.
 4. If config exists, merge/add server entry instead of overwriting unrelated servers.
-5. Always choose the binary path that matches current OS and CPU architecture.
+5. Always choose a DLL path restored or extracted from `SubtitleExtractslator.Cli` acquired through this repository's `packages.*.md` absolute URLs.
 6. Keep skill-side local FFmpeg path memory in `references/localpaths.md`.
 7. After FFmpeg is installed/downloaded locally, call `ffmpeg_set_bin_dir` and then update `references/localpaths.md` so next run can reuse the same path.
+8. The skill package intentionally ships no `assets/bin/` runtime directory.
 
 ## MCP decision tree
 
 ```mermaid
 flowchart TD
-	A([Need subtitle operation]) --> B{MCP configured?}
-	B -- No --> C[Create or update MCP config]
-	C --> D[Start subtitle-extractslator MCP server]
-	B -- Yes --> D
-	D --> E{Requested tool}
-	E -- translate --> F[Sampling-only translation]
-	F --> G{Sampling success?}
-	G -- No --> H[Return error, no external fallback]
-	G -- Yes --> R([Return ok result])
-	E -- opensubtitles_download --> I[Require fileId from prior search]
-	I --> J[Run auth aquire preflight]
-	J --> K{Auth valid?}
-	K -- No --> L[Return auth_relogin_required]
-	K -- Yes --> R
-	E -- probe / opensubtitles_search / extract --> M[Execute tool]
-	M --> R
+    A([Need subtitle operation]) --> B{MCP configured?}
+    B -- No --> C[Create or update MCP config]
+    C --> D[Start subtitle-extractslator MCP server]
+    B -- Yes --> D
+    D --> E{Requested tool}
+    E -- translate --> F[Sampling-only translation]
+    F --> G{Sampling success?}
+    G -- No --> H[Return error, no external fallback]
+    G -- Yes --> R([Return ok result])
+    E -- opensubtitles_download --> I[Require fileId from prior search]
+    I --> J[Run auth aquire preflight]
+    J --> K{Auth valid?}
+    K -- No --> L[Return auth_relogin_required]
+    K -- Yes --> R
+    E -- probe / opensubtitles_search / extract --> M[Execute tool]
+    M --> R
 ```
 
 ## MCP Tools
@@ -61,44 +62,56 @@ flowchart TD
 7. `translate`
 
 `ffmpeg_set_bin_dir` behavior:
+
 1. Applies `FFMPEG_BIN_DIR` to the current running MCP process immediately.
 2. Validates target directory contains both `ffmpeg` and `ffprobe` executables.
 3. By default, persists `FFMPEG_BIN_DIR` to `servers.<server>.env` in `mcp.json` so next MCP start keeps same value.
 4. Default config path is `<workspace>/.vscode/mcp.json`; custom path/server name can be provided.
 
 `subtitle_timing_check` behavior:
+
 1. Compares media duration and subtitle last cue end time.
 2. Returns whether `abs(video_duration - subtitle_last_cue_end) < 600 seconds`.
 3. Uses ffprobe from FFmpeg toolchain internally.
 
 `opensubtitles_download` behavior:
+
 1. Requires `fileId` from a previous `opensubtitles_search` candidate.
 2. Does not run search internally and does not support `candidateRank`.
 3. Runs per-call auth acquire before each request.
 
 OpenSubtitles parameter contract:
+
 1. `opensubtitles_search` required parameters:
+
 - `input`
 - `lang`
 - `searchQueryPrimary`
 - `searchQueryNormalized`
-2. `opensubtitles_download` required parameters:
+
+1. `opensubtitles_download` required parameters:
+
 - `fileId`
 - `output`
-3. Optional for both tools: `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
-4. `translate` is translation-only and does not accept OpenSubtitles parameters.
+
+1. Optional for both tools: `opensubtitlesEndpoint`, `opensubtitlesUserAgent`.
+2. `translate` is translation-only and does not accept OpenSubtitles parameters.
 
 Timing-check parameter contract:
+
 1. `subtitle_timing_check` required parameters:
+
 - `input`
 - `subtitle`
 
 `translate` behavior:
+
 1. Translation-only path: no probe/search/download/extract/mux orchestration.
 2. Required inputs: subtitle file input, target language, output path.
 3. Optional translation controls: `cuesPerGroup`, `bodySize`, `llmRetryCount`.
 
 `extract` behavior in MCP mode:
+
 1. Non-bitmap subtitle extraction follows the same FFmpeg flow as CLI.
 2. Bitmap subtitle branch (`hdmv_pgs_subtitle` / `dvd_subtitle`) runs SUP -> PNG+timeline in C# and OCR through MCP sampling.
 3. This differs from CLI only at OCR source: MCP uses sampling, CLI uses configured local OpenAI-compatible endpoint.
@@ -106,6 +119,7 @@ Timing-check parameter contract:
 `translate-batch` is intentionally not exposed in MCP mode due to timeout risk in common MCP clients.
 
 Long-running queue policy:
+
 1. For full-folder or full-library requests, use `references/batching.md`.
 2. Use `references/supervisor.md` and `references/worker.md` for every batch-processing scenario.
 3. Progress reports are status-only and must not repeatedly ask whether to continue.
@@ -119,6 +133,7 @@ Long-running queue policy:
 2. Success: `ok=true`, `data` contains payload.
 3. Failure: `ok=false`, `error` contains `code`, `message`, optional `snapshotPath`, optional `guidance`, and `timeUtc`.
 4. Auth failures must return:
+
 - `code = auth_relogin_required`
 - stable `guidance = Run subtitle auth login and retry.`
 - `message` with explicit reason text for the current failure.
@@ -133,3 +148,4 @@ Long-running queue policy:
 6. In MCP mode, keep orchestration agent-driven; allow subagent fanout but avoid script-driven tool loops.
 7. In MCP mode, keep queue state in centralized temp storage, not beside media files.
 8. In MCP mode, platform-specific agent files are optional adapters; runtime behavior must come from skill references.
+9. In MCP mode, runtime acquisition is external to the skill package and should start from this repository's package index pages.

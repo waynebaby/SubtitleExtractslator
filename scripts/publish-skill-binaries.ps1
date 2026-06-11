@@ -1,9 +1,13 @@
 [CmdletBinding()]
 param(
-    [string]$OutputRoot = ".\subtitle-extractslator\assets\bin",
+    [string]$OutputRoot = ".\artifacts\cli-runtime",
     [string]$Configuration = "Release",
     [switch]$NoSelfContained
 )
+
+# Legacy script name retained for compatibility.
+# This helper stages external CLI runtime artifacts under artifacts/cli-runtime/
+# and must not copy binaries into .github/skills/subtitle-extractslator/assets/bin/.
 
 $ErrorActionPreference = "Stop"
 

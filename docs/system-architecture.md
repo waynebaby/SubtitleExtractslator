@@ -8,6 +8,8 @@ SubtitleExtractslator is a skill-first repository with a runtime implementation 
 - Runtime implementation: `SubtitleExtractslator.Cli/`
 - Tests: `SubtitleExtractslator.Tests/`
 
+The skill package is binary-free. Runtime acquisition is external and starts from this repository's package index pages.
+
 The current solution (`SubtitleExtractslator.sln`) contains two projects:
 
 1. `SubtitleExtractslator.Cli` (`net9.0`, executable)
@@ -15,7 +17,7 @@ The current solution (`SubtitleExtractslator.sln`) contains two projects:
 
 ## 2. Runtime modes
 
-The executable starts in one of two modes via `--mode`:
+The external runtime package executable starts in one of two modes via `--mode`:
 
 1. CLI mode (`--mode cli`, default)
 2. MCP mode (`--mode mcp`)
@@ -239,6 +241,7 @@ Detailed matrix is documented in [Development and Operations](./development-and-
 For folder/season/library scale processing, orchestration design uses centralized and resume-safe queue state.
 
 Design points:
+
 1. Queue state is persisted under temp root workspace: `<temp-root>/agent-runs/<run-id>/`.
 2. Required state files are `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, and `run-notes.md`.
 3. Processing proceeds in bounded small batches to isolate failures and support stable progress.
@@ -247,5 +250,12 @@ Design points:
 6. Batch topology rule: use supervisor/worker for all batch-processing scenarios; if platform supports subagents, supervisor must delegate bounded batches to worker subagents.
 
 Contract source:
-1. runtime-facing contract files live under `subtitle-extractslator/references/`
+
+1. runtime-facing contract files live under `.github/skills/subtitle-extractslator/references/`
 2. maintainers should keep architecture docs and skill contract docs aligned when this design changes
+
+## 11. SO Template Ownership
+
+1. `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md` is compile input only.
+2. `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json` is the canonical deterministic execution basis after SO enhancement.
+3. `.github/skills/subtitle-extractslator/assets/so-workflow/audit/` stores run/resume audit evidence.
