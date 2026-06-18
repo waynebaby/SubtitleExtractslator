@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gitversion_output="$(mktemp)"
+          gitversion_output="$(mktemp "${RUNNER_TEMP}/gitversion.XXXXXX.json")"
           trap 'rm -f "${gitversion_output}"' EXIT
           dotnet-gitversion /output file /outputfile "${gitversion_output}"
           python - <<'PY' "${gitversion_output}" >> "$GITHUB_OUTPUT"
@@ -50,12 +50,17 @@ jobs:
           output = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
           def get_value(*keys):
               for key in keys:
-                  value = output.get(key)
-                  if isinstance(value, str):
-                      if value.strip():
-                          return value
-                  elif value is not None:
-                      return value
+                  if key not in output:
+                      continue
+                  value = output[key]
+                  if value is None:
+                      continue
+                  if not isinstance(value, str):
+                      raise TypeError(f"GitVersion value '{key}' must be a string, got {type(value).__name__}")
+                  value = value.strip()
+                  if not value:
+                      raise ValueError(f"GitVersion value '{key}' was empty")
+                  return value
               raise KeyError(f"Missing GitVersion value. Tried: {', '.join(keys)}")
 
           print(f"majorMinorPatch={get_value('MajorMinorPatch')}")
