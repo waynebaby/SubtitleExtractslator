@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           gitversion_output="$(mktemp)"
+          trap 'rm -f "${gitversion_output}"' EXIT
           dotnet-gitversion /output file /outputfile "${gitversion_output}"
           python - <<'PY' "${gitversion_output}" >> "$GITHUB_OUTPUT"
           import json
@@ -50,7 +51,10 @@ jobs:
           def get_value(*keys):
               for key in keys:
                   value = output.get(key)
-                  if value is not None:
+                  if isinstance(value, str):
+                      if value.strip():
+                          return value
+                  elif value is not None:
                       return value
               raise KeyError(f"Missing GitVersion value. Tried: {', '.join(keys)}")
 
