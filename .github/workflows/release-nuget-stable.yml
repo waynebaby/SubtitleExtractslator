@@ -36,7 +36,38 @@ jobs:
 
       - name: Determine version
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v4
+        shell: bash
+        run: |
+          set -euo pipefail
+          gitversion_output="$(mktemp "${RUNNER_TEMP}/gitversion.XXXXXX")"
+          trap 'rm -f "${gitversion_output}"' EXIT
+          dotnet-gitversion /output file /outputfile "${gitversion_output}"
+          python - <<'PY' "${gitversion_output}" >> "$GITHUB_OUTPUT"
+          import json
+          import sys
+          from pathlib import Path
+
+          output = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
+          def get_value(*keys):
+              for key in keys:
+                  if key not in output:
+                      continue
+                  value = output[key]
+                  if value is None:
+                      continue
+                  if not isinstance(value, str):
+                      raise TypeError(f"GitVersion value '{key}' must be a string, got {type(value).__name__}")
+                  value = value.strip()
+                  if not value:
+                      raise ValueError(f"GitVersion value '{key}' was empty")
+                  return value
+              raise KeyError(f"Missing GitVersion value. Tried: {', '.join(keys)}")
+
+          # Prefer GitVersion's dedicated NuGet fields first, then fall back to semver fields
+          # that are present in newer output schemas.
+          print(f"majorMinorPatch={get_value('MajorMinorPatch')}")
+          print(f"nuGetVersionV2={get_value('NuGetVersionV2', 'NuGetVersion', 'SemVer', 'FullSemVer')}")
+          PY
 
       - name: Resolve stable package version
         id: version
