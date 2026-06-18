@@ -1,0 +1,75 @@
+{
+  "instanceId": "false-then-true-probe",
+  "nodes": {
+    "state.start": {
+      "$kind": "state",
+      "id": "state.start",
+      "name": "Start",
+      "description": "Probe first false then true condition evaluation.",
+      "groups": [
+        {
+          "id": "group.start",
+          "strategy": "firstSuccess",
+          "cancelLosers": true,
+          "transitionIds": [
+            "transition.batch",
+            "transition.single"
+          ]
+        }
+      ],
+      "entranceTime": "2026-06-18T14:13:26.0072764+00:00",
+      "waitBehavior": "blockUntilComplete"
+    },
+    "state.done": {
+      "$kind": "state",
+      "id": "state.done",
+      "name": "Done",
+      "description": "Finished.",
+      "groups": [],
+      "waitBehavior": "blockUntilComplete"
+    },
+    "transition.batch": {
+      "$kind": "expr",
+      "id": "transition.batch",
+      "name": "Batch",
+      "description": "False branch first.",
+      "targetNodeId": "state.done",
+      "outputPath": "route",
+      "priority": 100,
+      "succeedExpression": "true",
+      "guardExpression": "context[\u0022request_kind\u0022] == \u0022batch\u0022",
+      "stepKind": "conditionBranch"
+    },
+    "transition.single": {
+      "$kind": "expr",
+      "id": "transition.single",
+      "name": "Single",
+      "description": "True branch second.",
+      "targetNodeId": "state.done",
+      "outputPath": "route",
+      "priority": 90,
+      "succeedExpression": "true",
+      "guardExpression": "context[\u0022request_kind\u0022] == \u0022single\u0022",
+      "stepKind": "conditionBranch"
+    }
+  },
+  "startNodeId": "state.start",
+  "currentNodeId": "state.start",
+  "endNodeId": "state.done",
+  "status": "running",
+  "context": {
+    "request_kind": "single"
+  },
+  "history": [
+    {
+      "timestamp": "2026-06-18T14:13:26.0072967+00:00",
+      "nodeId": "state.start",
+      "nodeType": "state",
+      "status": "started",
+      "message": "Start"
+    }
+  ],
+  "version": 1,
+  "activeWaitGroups": [],
+  "lastActivityUtc": "2026-06-18T14:13:26.0089593+00:00"
+}

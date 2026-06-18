@@ -1,0 +1,7 @@
+{
+  "transition_id": "transition.collect",
+  "correlation_key": null,
+  "payload": {
+    "request_kind": "single"
+  }
+}

@@ -19,6 +19,8 @@ Typical install command:
 dotnet add package SubtitleExtractslator.Cli --version <VERSION>
 ```
 
+For execution-only scenarios, running an already restored or extracted `SubtitleExtractslator.Cli.dll` requires the `.NET 9 Runtime`, not the full SDK. Keep the SDK only when you need package restore, build, or publish commands.
+
 If the package feed is unavailable, use GitHub fallback links from the package indexes above.
 
 ## Guide-First Entry

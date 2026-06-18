@@ -6,12 +6,12 @@ This document explains how the subtitle-extractslator skill has been enhanced wi
 
 ## Enhancement Status
 
-- **Status**: Stable Implementation
+- **Status**: SO-Exclusive Governed Implementation
 - **Version**: 0.1.14
-- **SO Channel**: Stable (main branch)
-- **SO Runtime Version**: 0.1.22
-- **SO Package Index**: [Techne Loom packages.released.md](https://github.com/waynebaby/Techne-Loom/blob/main/packages.released.md)
-- **SO Guide**: [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/main/docs/en/reference/products/so-guide.md)
+- **SO Channel**: Beta (development branch)
+- **SO Runtime Version**: 0.2.91-beta
+- **SO Package Index**: [Techne Loom packages.beta.md](https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md)
+- **SO Guide**: [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/development/docs/en/reference/products/so-guide.md)
 
 ## What Changed
 
@@ -26,7 +26,7 @@ This document explains how the subtitle-extractslator skill has been enhanced wi
 
 - Explicit **deterministic workflow JSON** (`assets/so-workflow/so-template.json`) defines all states, transitions, and decision points
 - **Skill plan** (`assets/so-workflow/skill-plan.md`) documents the orchestration intent
-- SO runtime **compiles** the workflow and **validates** structure before execution
+- SO runtime **validates** the existing workflow JSON via `compile` before execution
 - SO runtime **executes** deterministically with explicit weave-out points for external actions
 - **Audit artifacts** (Mermaid visualizations, event logs) provide execution transparency
 
@@ -34,31 +34,31 @@ This document explains how the subtitle-extractslator skill has been enhanced wi
 
 ### 1. Skill Plan (`assets/so-workflow/skill-plan.md`)
 
-- **Purpose**: High-level orchestration plan that SO uses as input for compilation
+- **Purpose**: High-level maintainer-facing orchestration plan used to review and evolve the workflow template
 - **Content**:
   - Package channel and SO authority references
   - Goal and deterministic node design
   - External seam classifications (AskUser, McpCall, SubagentCall, WaitResume)
   - Guardrails and success criteria
-- **Maintenance**: Update this when adding new deterministic flows or changing external seam behavior
+- **Maintenance**: Update this when adding new deterministic flows or changing external seam behavior; `compile` does not read this Markdown file as a CLI input
 
 ### 2. Workflow Template (`assets/so-workflow/so-template.json`)
 
-- **Purpose**: Compiled deterministic execution model (execution authority)
+- **Purpose**: Deterministic workflow JSON execution model validated by SO `compile` (execution authority)
 - **Structure**:
-  - **Nodes**: 80+ state nodes representing decision points, tool calls, ask prompts, memory operations
+  - **Nodes**: 80+ state nodes representing decision points, subagent seams, ask prompts, memory operations
   - **Transitions**: 150+ explicit transitions with branch conditions
   - **Start/Current**: Initial node and execution position
   - **Status**: `template` (not yet run) → `active` (running) → `completed` (done)
   - **Context**: Metadata including skill version, SO version, package indices
 - **Key Node Types**:
-  - `state` (StateUpdate): Parse inputs, validate, route decisions
+  - `state` (State): Owning workflow node that hosts the outgoing transition group for each decision point
   - `condition`: Branch on deterministic evaluation
-  - `tool` (ToolCall): Call CLI/MCP tools, extract, probe, translate, etc.
+  - `subagent` (SubagentCall): Delegate CLI-side runtime work and deterministic helper steps to an outer skill-runner agent, then resume with structured payload
+  - `tool` (ToolCall): Reserved for true SO built-in tool surfaces; the governed template should not depend on unresolved custom tool names here
   - `ask` (AskUser): Request user input for unresolved decisions
   - `wait` (WaitResume): Pause for external signal
-  - `artifact` (ArtifactEmit): Emit output files
-  - `memory_write` (MemoryWrite): Update rolling context for translation consistency
+  - Current validated template mix: `modelThink`, `mcpCall`, `subagentCall`, `askUser`, `conditionBranch`, `waitResume`
 
 ### 3. Audit Output (`assets/so-workflow/audit/`)
 
@@ -185,7 +185,11 @@ When SO encounters a weave-out, it returns a `<so_property>` JSON payload with:
 
 ### SubagentCall Points
 
+- `normalize_request`: Populate the initial routing payload instead of relying on implicit in-engine mutation
+- `ensure_cli_runtime`: Verify portable CLI host readiness and bootstrap minimal .NET runtime when needed
+- `read_localpaths`: Load remembered local runtime paths before probing or extraction
 - `batch_subagent_worker`: Delegate bounded batch work to worker subagent
+- Other CLI-side runtime helpers such as FFmpeg readiness, OpenSubtitles auth/search/download, local extraction, bitmap OCR reconstruction, translation grouping, rolling-memory updates, summary emission, merge, mux, and queue reconciliation
 
 ## Compilation & Validation
 
@@ -195,11 +199,10 @@ To validate the workflow template:
 cd e:\code\g\SubtitleExtractslator
 
 # Set SO runtime path
-$soPath = Join-Path $env:TEMP 'techne-loom-so-runtime-v021/run/so.dll'
+$soPath = Join-Path $env:TEMP 'techne-loom-so-runtime-v0291-beta/expanded/Techne.Loom.SkillOrchestrator.latest/lib/net9.0/so.dll'
 
 # Compile with validation
 dotnet $soPath compile `
-  --description-file .github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md `
   --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json `
   --audit-output artifacts/so-compile-audit
 
@@ -213,14 +216,16 @@ Get-Item artifacts/so-compile-audit/*.html
 - Mermaid Markdown visualization
 - Interactive HTML diagram
 - Workflow JSON backup for comparison
+- Workflow analysis report for gate/seam review
 
 ## Execution & Resume
 
 ### Single Run
 
 ```bash
+cp .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json artifacts/so-run-audit/workflow.current.json
 dotnet $soPath run `
-  --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json `
+  --workflow-file artifacts/so-run-audit/workflow.current.json `
   --audit-output artifacts/so-run-audit
 ```
 
@@ -251,8 +256,8 @@ dotnet $soPath resume `
 ### CLI Reference (`references/cli.md`)
 
 - Unchanged: All CLI commands documented in `references/cli.md` remain the same
-- Integration: SO calls these CLI tools via `ToolCall` nodes
-- Example: `cli_download_candidate` node calls `SubtitleExtractslator.Cli.dll opensubtitles-download`
+- Integration: SO delegates CLI-side runtime work through `SubagentCall` seams; the outer skill-runner agent executes the documented CLI command or equivalent deterministic local step, then resumes the workflow with the declared outputs
+- Example: `cli_download_candidate` seam runs `SubtitleExtractslator.Cli.dll opensubtitles-download`, captures `downloaded_subtitle_path` / `timing_check_required`, and resumes the workflow
 
 ### MCP Reference (`references/mcp.md`)
 

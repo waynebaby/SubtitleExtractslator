@@ -1,0 +1,131 @@
+{
+  "instanceId": "resume-condition-probe",
+  "nodes": {
+    "state.start": {
+      "$kind": "state",
+      "id": "state.start",
+      "name": "Start",
+      "description": "Probe resume-injected condition evaluation.",
+      "groups": [
+        {
+          "id": "group.start",
+          "strategy": "firstSuccess",
+          "cancelLosers": true,
+          "transitionIds": [
+            "transition.collect"
+          ]
+        }
+      ],
+      "entranceTime": "2026-06-18T14:12:36.7487819+00:00",
+      "waitBehavior": "blockUntilComplete"
+    },
+    "state.route": {
+      "$kind": "state",
+      "id": "state.route",
+      "name": "Route",
+      "description": "Route on resume-injected request kind.",
+      "groups": [
+        {
+          "id": "group.route",
+          "strategy": "firstSuccess",
+          "cancelLosers": true,
+          "transitionIds": [
+            "transition.single",
+            "transition.fallback"
+          ]
+        }
+      ],
+      "entranceTime": "2026-06-18T14:12:36.923382+00:00",
+      "waitBehavior": "blockUntilComplete"
+    },
+    "state.done": {
+      "$kind": "state",
+      "id": "state.done",
+      "name": "Done",
+      "description": "Finished.",
+      "groups": [],
+      "entranceTime": "2026-06-18T14:12:36.9279457+00:00",
+      "waitBehavior": "blockUntilComplete"
+    },
+    "transition.collect": {
+      "$kind": "tbr",
+      "designNotes": "SubagentCall seam. Inject request_kind through resume.",
+      "id": "transition.collect",
+      "name": "Collect",
+      "description": "Collect request kind through resume.",
+      "targetNodeId": "state.route",
+      "outputPath": "resume_payload",
+      "priority": 100,
+      "succeedExpression": "true",
+      "guardExpression": "true",
+      "stepKind": "subagentCall"
+    },
+    "transition.single": {
+      "$kind": "expr",
+      "id": "transition.single",
+      "name": "Single",
+      "description": "Should match request_kind == single.",
+      "targetNodeId": "state.done",
+      "outputPath": "route",
+      "priority": 100,
+      "succeedExpression": "true",
+      "guardExpression": "context[\u0022request_kind\u0022] == \u0022single\u0022",
+      "stepKind": "conditionBranch"
+    },
+    "transition.fallback": {
+      "$kind": "expr",
+      "id": "transition.fallback",
+      "name": "Fallback",
+      "description": "Catch-all fallback.",
+      "targetNodeId": "state.done",
+      "outputPath": "route",
+      "priority": 90,
+      "succeedExpression": "true",
+      "guardExpression": "true",
+      "stepKind": "conditionBranch"
+    }
+  },
+  "startNodeId": "state.start",
+  "currentNodeId": "state.done",
+  "endNodeId": "state.done",
+  "status": "succeeded",
+  "context": {
+    "request_kind": "single"
+  },
+  "history": [
+    {
+      "timestamp": "2026-06-18T14:12:36.7487986+00:00",
+      "nodeId": "state.start",
+      "nodeType": "state",
+      "status": "started",
+      "message": "Start"
+    },
+    {
+      "timestamp": "2026-06-18T14:12:36.7517522+00:00",
+      "nodeId": "transition.collect",
+      "nodeType": "transition",
+      "status": "suspended",
+      "message": "Blocked on SubagentCall"
+    },
+    {
+      "timestamp": "2026-06-18T14:12:36.9233842+00:00",
+      "nodeId": "transition.collect",
+      "nodeType": "transition",
+      "status": "succeeded",
+      "contextChanges": {
+        "request_kind": "single"
+      },
+      "message": "Resume applied"
+    },
+    {
+      "timestamp": "2026-06-18T14:12:36.9279425+00:00",
+      "nodeId": "transition.fallback",
+      "nodeType": "transition",
+      "status": "succeeded",
+      "message": "Expression transition succeeded"
+    }
+  ],
+  "version": 2,
+  "activeWaitGroups": [],
+  "lastActivityUtc": "2026-06-18T14:12:36.9280034+00:00"
+}

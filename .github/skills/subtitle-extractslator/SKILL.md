@@ -15,9 +15,11 @@ metadata:
 
 ## Purpose
 
-This repository is skill-first: the subtitle skill package is the primary deliverable, while CLI and MCP are runtime layers used to execute this skill.
+This repository is skill-first: the subtitle skill package is the primary deliverable, and execution authority is governed by Loom SO.
 
-**This skill is SO-enhanced (Stable).** Deterministic orchestration is materialized as a workflow JSON template using SO runtime 0.1.22 (see `Workflow Contract` below). Runtime contracts remain in `references/` for implementation.
+**This skill has been enhanced by Loom SO and is now SO-exclusive governed (Beta channel, locked to 0.2.91-beta).** Only `dotnet so.dll run` and `dotnet so.dll resume` count as official skill runs and official skill execution history. Direct CLI and direct MCP are runtime primitives for component operations only.
+
+Deterministic orchestration is encoded in the checked-in workflow JSON template and validated by SO runtime 0.2.91-beta (see `Workflow Contract` below). The authoritative runtime lock is `assets/so-workflow/so-package-lock.json`. Runtime contracts remain in `references/` for SO-orchestrated implementation.
 
 ## Installation and Release Links
 
@@ -28,20 +30,43 @@ Use this repository's package index pages as the canonical runtime source. This 
 - Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta package index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- SO package index (Beta source of truth): [Techne Loom packages.beta.md](https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md)
-- SO guide (Beta source of truth): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/development/docs/en/reference/products/so-guide.md)
+- SO package index (Current Beta source of truth): [Techne Loom packages.beta.md](https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md)
+- SO guide (Current Beta source of truth, zh-CN): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/development/docs/zh-cn/reference/products/so-guide.md)
+- SO package index (Released reference): [Techne Loom packages.released.md](https://github.com/waynebaby/Techne-Loom/blob/main/packages.released.md)
+- SO guide (Released reference): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/main/docs/en/reference/products/so-guide.md)
 - Runtime fallback `.nupkg` links are maintained inside the package index pages above.
 - Runtime missing diagnosis and fallback guide: `references/binary-missing.md`
 
-SO materialized files in this skill package:
-1. `assets/so-workflow/skill-plan.md` — Deterministic orchestration plan
-2. `assets/so-workflow/so-template.json` — Compiled workflow template (execution authority)
-3. `assets/so-workflow/audit/` — Compile validation and run/resume audit artifacts
+SO workflow files in this skill package:
+1. `assets/so-workflow/skill-plan.md` — Supporting maintainer-facing orchestration plan
+2. `assets/so-workflow/so-template.json` — Workflow JSON template (execution authority)
+3. `assets/so-workflow/so-package-lock.json` — Authoritative SO runtime version lock
+4. External audit artifacts — Compile validation and run/resume audit evidence must stay outside the skill folder
 
-Guide-first runtime entry:
+Workflow modification confirmation loop for maintainers:
+1. Update `assets/so-workflow/skill-plan.md` or `assets/so-workflow/so-template.json`.
+2. Validate `assets/so-workflow/so-template.json` with the locked `0.2.91-beta` SO runtime and an external audit root.
+3. Review Mermaid, HTML, workflow backup, and `workflow.analysis.json`.
+4. If governance, seam ownership, or route coverage is still unsatisfied, revise and recompile again.
+5. Update this `SKILL.md` only after the compiled workflow is accepted.
+
+Official SO guide refresh for governed maintenance and validation:
+
+```bash
+dotnet so.dll --guide --lang zh-cn
+```
+
+Component primitive guide entry (direct CLI runtime diagnostics only):
 
 ```bash
 dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+```
+
+Official skill execution entry:
+
+```bash
+dotnet so.dll run --workflow-file <runtime-workflow-copy>.json
+dotnet so.dll resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json
 ```
 
 Primary goals:
@@ -62,11 +87,11 @@ Use this skill when user asks to:
 
 Read these reference files for operational details:
 1. `references/cli.md`:
-- runtime package acquisition and guide-first CLI entry
+- runtime package acquisition and CLI primitive command surface
 - CLI command and auth-contract examples
 - output path policy
 2. `references/mcp.md`:
-- MCP-first policy and setup contract
+- MCP primitive policy and setup contract
 - exposed tools and return contract
 - MCP runtime notes and constraints
 3. `references/opensubtitles.md`:
@@ -92,19 +117,20 @@ Read these reference files for operational details:
 
 ## Workflow Contract
 
-SO template (`assets/so-workflow/so-template.json`) is the canonical deterministic execution model:
+SO template (`assets/so-workflow/so-template.json`) is the canonical and exclusive deterministic execution model. Official skill runs and official skill history are SO-owned.
 
-**Compilation Authority**: Validate and regenerate with:
+`skill-plan.md` is maintainer-facing planning context. Public `dotnet so.dll compile` validates the existing workflow JSON template; it does not accept `skill-plan.md` as a CLI input.
+
+**Compilation Authority**: Validate with:
 ```bash
 dotnet so.dll compile \
-  --description-file assets/so-workflow/skill-plan.md \
   --workflow-file assets/so-workflow/so-template.json \
-  [--audit-output artifacts/so-audit/]
+  [--audit-output <external-audit-root>]
 ```
 
-**Execution**: Run via SO runtime:
+**Execution**: Run via SO runtime against a runtime copy outside the skill folder:
 ```bash
-dotnet so.dll run --workflow-file assets/so-workflow/so-template.json [--audit-output artifacts/so-audit/]
+dotnet so.dll run --workflow-file <runtime-workflow-copy>.json [--audit-output <external-audit-root>]
 dotnet so.dll resume --workflow-file <current>.json --result-file <external-result>.json
 ```
 
@@ -137,6 +163,7 @@ dotnet so.dll resume --workflow-file <current>.json --result-file <external-resu
 11. Keep queue state in centralized temp storage, never beside media files.
 12. Keep MCP orchestration agent-driven and avoid script-driven tool loops.
 13. Keep `subtitle-extractslator/` binary-free; acquire runtime from this repository's `packages.*.md` absolute URLs.
+14. Never use workflow nodes or steps equivalent to `run a multistep plan`; this pattern is prohibited because it weakens SO governance boundaries and can expose execution-leak paths.
 
 ## Operational Notes
 

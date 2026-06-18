@@ -175,13 +175,7 @@ Common modification entry points:
 
 ## 10. SO workflow artifacts
 
-- `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`
-  - Compile input only.
-  - Describes deterministic node boundaries and external seams for SO materialization.
-
-- `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`
-  - Canonical deterministic execution basis for the optimized skill.
-  - Produced or refreshed by `dotnet so.dll compile`, or checked in as an explicit workflow JSON when compile does not yet expand the desired graph.
-
-- `.github/skills/subtitle-extractslator/assets/so-workflow/audit/`
-  - Stores run/resume audit evidence including Mermaid Markdown, HTML, workflow backups, and event logs.
+- `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`: Supporting planning source for governed workflow updates and workflow authoring review.
+- `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`: Canonical deterministic execution authority, authored as workflow JSON and validated by `dotnet so.dll compile`.
+- External audit output root
+  - Stores compile and run/resume audit evidence including Mermaid Markdown, HTML, workflow backups, and event logs.

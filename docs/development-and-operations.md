@@ -56,20 +56,18 @@ pwsh ./scripts/publish-skill-binaries.ps1
 
 ### Compile Workflow
 
-Validate and generate audit artifacts (Mermaid, HTML, JSON backup):
+Validate the existing workflow template and generate audit artifacts (Mermaid, HTML, workflow JSON backup, analysis):
 
 ```powershell
-$soPath = Join-Path $env:TEMP 'techne-loom-so-runtime-v021/run/so.dll'
+$soPath = Join-Path $env:TEMP 'techne-loom-so-runtime-v0291-beta/expanded/Techne.Loom.SkillOrchestrator.latest/lib/net9.0/so.dll'
 dotnet $soPath compile `
-   --description-file .github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md `
    --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json `
   --audit-output artifacts/so-compile-audit
 ```
 
 ```bash
-export SO_PATH="$TMPDIR/techne-loom-so-runtime-v021/run/so.dll"
+export SO_PATH="$TMPDIR/techne-loom-so-runtime-v0291-beta/expanded/Techne.Loom.SkillOrchestrator.latest/lib/net9.0/so.dll"
 dotnet $SO_PATH compile \
-   --description-file .github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md \
    --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json \
   --audit-output artifacts/so-compile-audit
 ```
@@ -78,7 +76,8 @@ dotnet $SO_PATH compile \
 
 - `*.mermaid.md` — Mermaid flowchart visualization
 - `*.html` — Interactive HTML diagram
-- `workflow.backup.json` — Workflow state snapshot
+- `workflow.json` — Workflow JSON backup snapshot
+- `workflow.analysis.json` — Machine-readable workflow analysis report
 
 ### Inspect Workflow Structure
 
@@ -93,8 +92,9 @@ dotnet $soPath inspect-workflow --workflow-file .github/skills/subtitle-extracts
 Run workflow deterministically:
 
 ```powershell
+Copy-Item .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json artifacts/so-run-audit/workflow.current.json
 dotnet $soPath run `
-   --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json `
+   --workflow-file artifacts/so-run-audit/workflow.current.json `
   --audit-output artifacts/so-run-audit
 ```
 
@@ -111,7 +111,7 @@ dotnet $soPath resume `
 View execution event log:
 
 ```powershell
-dotnet $soPath inspect-events --event-log-file artifacts/so-run-audit/events.jsonl | Select-Object -First 50
+dotnet $soPath inspect-events --workflow-file artifacts/so-run-audit/workflow.current.json | Select-Object -First 50
 ```
 
 ### Troubleshooting

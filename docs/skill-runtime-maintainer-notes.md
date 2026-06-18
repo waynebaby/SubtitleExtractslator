@@ -44,15 +44,20 @@ Cross-platform command path rule:
 2. Do not assume `.github/skills` or `.claude/skills` contains runtime binaries.
 3. Package pages are the canonical runtime source; the skill folder only carries contracts and SO artifacts.
 
-## Detailed CLI Runtime Entry
+## Detailed Governed Runtime Entry
 
 Canonical execution basis for the SO-enhanced skill:
 
-1. Compile input only: `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`
-2. Canonical deterministic workflow template: `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`
-3. Runtime audit evidence: `.github/skills/subtitle-extractslator/assets/so-workflow/audit/`
+1. Checked-in workflow authority: `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`
+2. Supporting planning source: `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`
+3. Runtime compile/run audit evidence should stay outside the skill folder.
 
-Guide-first runtime entry:
+Official SO guide refresh for governed maintenance:
+
+1. Resolve the selected SO runtime directory.
+2. Run `dotnet so.dll --guide --lang zh-cn`.
+
+Component primitive guide for direct CLI runtime diagnostics:
 
 1. Resolve external package DLL path.
 2. Run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`.

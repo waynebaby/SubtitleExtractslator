@@ -1,0 +1,4 @@
+{"timestamp":"2026-06-18T14:12:36.7487986+00:00","nodeId":"state.start","nodeType":"state","status":"started","contextChanges":null,"message":"Start"}
+{"timestamp":"2026-06-18T14:12:36.7517522+00:00","nodeId":"transition.collect","nodeType":"transition","status":"suspended","contextChanges":null,"message":"Blocked on SubagentCall"}
+{"timestamp":"2026-06-18T14:12:36.9233842+00:00","nodeId":"transition.collect","nodeType":"transition","status":"succeeded","contextChanges":{"request_kind":"single"},"message":"Resume applied"}
+{"timestamp":"2026-06-18T14:12:36.9279425+00:00","nodeId":"transition.fallback","nodeType":"transition","status":"succeeded","contextChanges":null,"message":"Expression transition succeeded"}

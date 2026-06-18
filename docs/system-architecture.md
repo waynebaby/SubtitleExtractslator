@@ -216,6 +216,10 @@ Guard strategy:
 
 ## 8. Runtime dependency bootstrap
 
+The portable CLI host targets `net9.0`.
+
+If the `dotnet` host is missing, execution-only scenarios should install the smallest matching `.NET 9 Runtime` first. Do not require the full SDK unless build or package-authoring commands are actually needed.
+
 `FfmpegBootstrap` resolves FFmpeg binaries in this order:
 
 1. `FFMPEG_BIN_DIR` override
@@ -244,10 +248,10 @@ Design points:
 
 1. Queue state is persisted under temp root workspace: `<temp-root>/agent-runs/<run-id>/`.
 2. Required state files are `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, and `run-notes.md`.
-3. Processing proceeds in bounded small batches to isolate failures and support stable progress.
+3. Each queued item re-enters the same single-item subtitle pipeline used by direct translate execution; queue orchestration only wraps selection, progress, cooldown, and resume.
 4. One-file failure is recorded and should not terminate the whole queue.
 5. Completion target is queue exhaustion (or only hard blockers remain) rather than per-batch manual continuation.
-6. Batch topology rule: use supervisor/worker for all batch-processing scenarios; if platform supports subagents, supervisor must delegate bounded batches to worker subagents.
+6. Optional subagents are execution adapters only; they must not introduce a separate subtitle business path from the shared single-item flow.
 
 Contract source:
 
@@ -256,6 +260,6 @@ Contract source:
 
 ## 11. SO Template Ownership
 
-1. `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md` is compile input only.
-2. `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json` is the canonical deterministic execution basis after SO enhancement.
-3. `.github/skills/subtitle-extractslator/assets/so-workflow/audit/` stores run/resume audit evidence.
+1. `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md` is the supporting planning source used to describe governed flow updates.
+2. `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json` is the canonical deterministic execution authority after SO enhancement.
+3. Compile and run/resume audit evidence should be emitted to an external audit root outside the skill folder.

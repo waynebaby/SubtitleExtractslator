@@ -20,7 +20,17 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 
 ## SO Enhancement Note
 
-The SO-enhanced workflow template currently ships on the Beta documentation path only. Use `packages.beta.md` for the current `so-template.json` contract story.
+This skill has been enhanced by Loom SO and is now SO-exclusive governed.
+
+- Execution authority: SO only
+- Official run: `dotnet so.dll run --workflow-file <skill-path>/assets/so-workflow/so-template.json`
+- Official resume: `dotnet so.dll resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json`
+- Direct CLI and direct MCP: runtime primitives only (not official skill execution history)
+
+For released governance references:
+
+- SO package index: <https://github.com/waynebaby/Techne-Loom/blob/main/packages.released.md>
+- SO guide: <https://github.com/waynebaby/Techne-Loom/blob/main/docs/en/reference/products/so-guide.md>
 
 ## GitHub Fallback
 
