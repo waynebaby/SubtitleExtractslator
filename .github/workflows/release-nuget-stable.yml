@@ -13,6 +13,7 @@ env:
   DOTNET_VERSION: 9.0.x
   PACKAGE_ID: SubtitleExtractslator.Cli
   PROJECT_PATH: SubtitleExtractslator.Cli/SubtitleExtractslator.Cli.csproj
+  SKILL_PACKAGE_NAME: subtitle-extractslator-skill.zip
 
 jobs:
   release-stable:
@@ -96,6 +97,22 @@ jobs:
           cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg"
           cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.latest.nupkg"
 
+      - name: Prepare skill package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL_ROOT="artifacts/skill/subtitle-extractslator"
+          rm -rf artifacts/skill
+          rm -f "artifacts/fallback/${SKILL_PACKAGE_NAME}"
+          mkdir -p "${SKILL_ROOT}/references" "${SKILL_ROOT}/assets/so-workflow"
+          cp .github/skills/subtitle-extractslator/SKILL.md "${SKILL_ROOT}/SKILL.md"
+          cp -R .github/skills/subtitle-extractslator/references/. "${SKILL_ROOT}/references/"
+          cp -R .github/skills/subtitle-extractslator/assets/so-workflow/. "${SKILL_ROOT}/assets/so-workflow/"
+          (
+            cd artifacts/skill
+            zip -qr "../fallback/${SKILL_PACKAGE_NAME}" subtitle-extractslator
+          )
+
       - name: Publish stable fallback release
         uses: softprops/action-gh-release@v2
         with:
@@ -106,6 +123,7 @@ jobs:
           files: |
             artifacts/fallback/${{ env.PACKAGE_ID }}.${{ steps.version.outputs.package_version }}.nupkg
             artifacts/fallback/${{ env.PACKAGE_ID }}.latest.nupkg
+            artifacts/fallback/${{ env.SKILL_PACKAGE_NAME }}
 
       - name: Push package to NuGet
         shell: bash

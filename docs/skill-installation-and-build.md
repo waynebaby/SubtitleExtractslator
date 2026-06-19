@@ -34,10 +34,24 @@ Binary-free rule:
 
 ## Install from Releases (Recommended)
 
-1. Open repository Releases page and download `subtitle-extractslator-vX.Y.Z.zip`.
-2. Unzip and keep the folder name `subtitle-extractslator` unchanged.
-3. Verify the extracted skill folder contains no `assets/bin/` directory.
-4. Acquire the runtime package from the selected package index page and run:
+Use the packaged skill zip produced by the active fallback release workflows instead of repo-root discovery.
+
+Stable:
+
+```bash
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
+```
+
+Beta:
+
+```bash
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip
+```
+
+If your installer only accepts a local archive, download the same release asset, unzip it, and keep the folder name `subtitle-extractslator` unchanged.
+
+1. Verify the extracted skill folder contains no `assets/bin/` directory.
+2. Acquire the runtime package from the selected package index page and run:
    - `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`
 
 ## Build Locally (Contributor Path)

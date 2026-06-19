@@ -15,10 +15,10 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 ## Downloads
 
-Quick install skill command:
+Quick install packaged skill command:
 
 ```bash
-npx skills add waynebaby/SubtitleExtractslator
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
 ```
 
 Primary runtime distribution now uses the `SubtitleExtractslator.Cli` NuGet package plus a portable DLL entry outside the skill folder.
@@ -94,13 +94,14 @@ This skill is now enhanced with **SkillOrchestrator deterministic workflow** sup
 
 ## First: Guide-First Runtime Entry
 
-If your goal is to run this as a skill in your own agent, keep `npx skills add` for discovery, and use NuGet package runtime as command source of truth.
+If your goal is to run this as a skill in your own agent, install the packaged skill zip from Releases instead of relying on repo-root discovery, and use NuGet package runtime as command source of truth.
 
-1. Install package from stable/beta channel.
-2. Resolve an absolute DLL path from the restored or extracted package.
-3. Run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide` first.
-4. Follow guide command entries for CLI or MCP mode.
-5. If package feed is unavailable, use the fallback `.nupkg` link listed inside the selected package index page.
+1. Add the packaged skill zip from the stable/beta fallback release.
+2. Install runtime package from stable/beta channel.
+3. Resolve an absolute DLL path from the restored or extracted package.
+4. Run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide` first.
+5. Follow guide command entries for CLI or MCP mode.
+6. If package feed is unavailable, use the fallback `.nupkg` link listed inside the selected package index page.
 
 Notes:
 
@@ -334,4 +335,3 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
-

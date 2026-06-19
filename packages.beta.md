@@ -10,6 +10,14 @@ This page is the canonical runtime acquisition entry for the binary-free `.githu
 dotnet add package SubtitleExtractslator.Cli --version <beta-version>
 ```
 
+## Install Skill Package
+
+Use the packaged skill zip instead of repo-root discovery:
+
+```bash
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip
+```
+
 ## Guide First
 
 After restore or `.nupkg` extraction is available, resolve an absolute DLL path and run:
@@ -29,4 +37,5 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 Use fallback only when package feed is unavailable.
 
 - Latest beta fallback release: <https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest>
+- Latest beta skill zip: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip>
 - Latest beta `.latest.nupkg`: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg>
