@@ -22,3 +22,4 @@ subtitle-extractslator/assets/bin/
 .github/skills/subtitle-extractslator/assets/so-workflow/so-template.runtime.json
 .github/skills/subtitle-extractslator/assets/so-workflow/so-template.runtime.json.events.jsonl
 .build-logs/
+skills-lock.json
