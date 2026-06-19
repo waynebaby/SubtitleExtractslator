@@ -12,7 +12,7 @@ Use package channels first. Use the fallback `.nupkg` listed in the chosen packa
 - Project URL: [waynebaby/SubtitleExtractslator](https://github.com/waynebaby/SubtitleExtractslator)
 - Stable index: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
 - Beta index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
-- Current fallback `.nupkg` links are maintained inside the package index pages above.
+- Runtime fallback .nupkg links are maintained inside the package index pages above.
 <!-- release-links:end -->
 
 ## Verify Runtime Integrity
@@ -40,3 +40,4 @@ Use package channels first. Use the fallback `.nupkg` listed in the chosen packa
 1. Re-run the component runtime guide command: `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`.
 1. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
 1. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
+
