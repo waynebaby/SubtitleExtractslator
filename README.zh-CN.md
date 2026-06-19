@@ -49,8 +49,7 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 - 稳定通道中文包索引：[packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta 通道包索引：[packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta 通道中文包索引：[packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- fallback `.nupkg` 链接统一由上述包索引页维护。
+- fallback .nupkg 链接统一由上述包索引页维护。
 <!-- release-links:end -->
 
 ## 先走 Guide-First 入口
@@ -296,3 +295,4 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+

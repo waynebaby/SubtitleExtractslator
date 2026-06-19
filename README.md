@@ -89,8 +89,7 @@ This skill is now enhanced with **SkillOrchestrator deterministic workflow** sup
 - Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta package index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- GitHub fallback release home: [Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Runtime fallback `.nupkg` links are maintained in the package index pages above.
+- Runtime fallback .nupkg links are maintained in the package index pages above.
 <!-- release-links:end -->
 
 ## First: Guide-First Runtime Entry
@@ -335,3 +334,4 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
+
