@@ -5,7 +5,7 @@ compatibility: Designed for agent environments (GitHub Copilot, Claude Code, Ope
 license: MIT
 metadata:
   author: waynebaby
-  version: 0.1.18
+  version: 0.1.19
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN
@@ -172,6 +172,7 @@ dotnet so.dll resume --workflow-file <current>.json --result-file <external-resu
 3. For commands and troubleshooting, use `references/cli.md` and `references/troubleshooting.md`.
 4. For long-running folder jobs, use `references/batching.md`, `references/supervisor.md`, and `references/worker.md`.
 5. Platform-specific agent files are optional adapters; runtime behavior is defined by this skill and `references/` contracts.
+
 
 
 

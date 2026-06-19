@@ -41,3 +41,4 @@ Use package channels first. Use the fallback `.nupkg` listed in the chosen packa
 1. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
 1. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
 
+
