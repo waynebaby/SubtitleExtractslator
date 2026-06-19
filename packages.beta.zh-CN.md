@@ -10,6 +10,14 @@
 dotnet add package SubtitleExtractslator.Cli --version <beta-version>
 ```
 
+## 安装 Skill 包
+
+请使用打包后的 skill zip，不要依赖仓库根目录发现：
+
+```bash
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip
+```
+
 ## 运行前先看 guide
 
 在还原或解包 `.nupkg` 后，先定位绝对 DLL 路径，再执行：
@@ -29,4 +37,5 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 仅在包管理源不可用时使用回退通道。
 
 - Beta 通道最新回退 Release: <https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest>
+- Beta 通道 skill zip: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip>
 - Beta 通道 `.latest.nupkg`: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg>

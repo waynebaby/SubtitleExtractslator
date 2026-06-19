@@ -15,10 +15,10 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 ## 下载
 
-快捷安装 skill 命令：
+快捷安装打包后的 skill 命令：
 
 ```bash
-npx skills add waynebaby/SubtitleExtractslator
+npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
 ```
 
 运行时主交付已经切换为 `SubtitleExtractslator.Cli` NuGet 包 + skill 外部的 portable DLL 入口。
@@ -54,13 +54,14 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 
 ## 先走 Guide-First 入口
 
-如果你的目标是在 agent 中运行此 skill，继续保留 `npx skills add` 作为发现入口，并以 NuGet 运行时与 guide 作为命令真相来源。
+如果你的目标是在 agent 中运行此 skill，请改为安装 Releases 中打包好的 skill zip，而不是依赖仓库根目录发现，并以 NuGet 运行时与 guide 作为命令真相来源。
 
-1. 从稳定或 Beta 通道安装 NuGet 包。
-2. 从还原或解包结果里定位绝对 DLL 路径。
-3. 先运行 `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`。
-4. 按 guide 中的入口命令执行 CLI 或 MCP。
-5. 包源不可用时，使用所选包索引页中的 fallback `.nupkg` 链接。
+1. 从稳定或 Beta fallback release 添加打包好的 skill zip。
+2. 从稳定或 Beta 通道安装 NuGet 包。
+3. 从还原或解包结果里定位绝对 DLL 路径。
+4. 先运行 `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`。
+5. 按 guide 中的入口命令执行 CLI 或 MCP。
+6. 包源不可用时，使用所选包索引页中的 fallback `.nupkg` 链接。
 
 说明：
 
@@ -295,5 +296,3 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
-
-
