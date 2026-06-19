@@ -38,9 +38,99 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 ```
 
-## 2. Binary publishing and packaging
+## 2. CLI runtime publishing and skill packaging
 
-Local multi-platform publish helper:
+Local external CLI runtime staging helper:
+
+```powershell
+.\scripts\publish-skill-binaries.ps1
+```
+
+```bash
+pwsh ./scripts/publish-skill-binaries.ps1
+```
+
+## 3. SO Workflow Compilation and Validation
+
+**Note**: Requires Techne Loom SO runtime. See `.github/skills/subtitle-extractslator/SKILL.md` for acquisition links.
+
+### Compile Workflow
+
+Validate the existing workflow template and generate audit artifacts (Mermaid, HTML, workflow JSON backup, analysis):
+
+```powershell
+$soPath = Join-Path $env:TEMP 'techne-loom-so-runtime-v0291-beta/expanded/Techne.Loom.SkillOrchestrator.latest/lib/net9.0/so.dll'
+dotnet $soPath compile `
+   --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json `
+  --audit-output artifacts/so-compile-audit
+```
+
+```bash
+export SO_PATH="$TMPDIR/techne-loom-so-runtime-v0291-beta/expanded/Techne.Loom.SkillOrchestrator.latest/lib/net9.0/so.dll"
+dotnet $SO_PATH compile \
+   --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json \
+  --audit-output artifacts/so-compile-audit
+```
+
+**Output**:
+
+- `*.mermaid.md` — Mermaid flowchart visualization
+- `*.html` — Interactive HTML diagram
+- `workflow.json` — Workflow JSON backup snapshot
+- `workflow.analysis.json` — Machine-readable workflow analysis report
+
+### Inspect Workflow Structure
+
+View effective workflow shape:
+
+```powershell
+dotnet $soPath inspect-workflow --workflow-file .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json
+```
+
+### Execution
+
+Run workflow deterministically:
+
+```powershell
+Copy-Item .github/skills/subtitle-extractslator/assets/so-workflow/so-template.json artifacts/so-run-audit/workflow.current.json
+dotnet $soPath run `
+   --workflow-file artifacts/so-run-audit/workflow.current.json `
+  --audit-output artifacts/so-run-audit
+```
+
+Resume from weave-out:
+
+```powershell
+dotnet $soPath resume `
+  --workflow-file artifacts/so-run-audit/workflow.current.json `
+  --result-file artifacts/external-result.json
+```
+
+### Event Inspection
+
+View execution event log:
+
+```powershell
+dotnet $soPath inspect-events --workflow-file artifacts/so-run-audit/workflow.current.json | Select-Object -First 50
+```
+
+### Troubleshooting
+
+If SO runtime not found, install from package index:
+
+```bash
+# Beta channel (development)
+https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md
+
+# Extract to temp directory or install via NuGet
+nuget install Techne.Loom.SkillOrchestrator.CliTool -OutputDirectory <temp-dir>
+```
+
+For detailed SO diagnostics, see [SO Enhancement Guide](so-enhancement-guide.md).
+
+## 4. CLI runtime publishing and skill packaging
+
+Local external CLI runtime staging helper:
 
 ```powershell
 .\scripts\publish-skill-binaries.ps1
@@ -52,7 +142,13 @@ pwsh ./scripts/publish-skill-binaries.ps1
 
 Default output root:
 
-- `subtitle-extractslator/assets/bin/`
+- `artifacts/cli-runtime/`
+
+Skill packaging rule:
+
+1. `subtitle-extractslator/` is source-only and binary-free.
+2. Final skill package must not contain `subtitle-extractslator/assets/bin/`.
+3. Runtime acquisition starts from this repository's `packages.released.md` or `packages.beta.md` absolute URLs.
 
 CI release workflow:
 
@@ -62,8 +158,8 @@ Release workflow covers:
 
 1. restore/build/test
 2. version bump selection
-3. release-link updates in README files
-4. multi-platform binary packaging
+3. package-index-link updates in README files
+4. source-only skill packaging
 5. release asset publication
 
 ## 3. Runtime configuration matrix
@@ -176,7 +272,7 @@ Optional real-LLM mode:
 4. Tune OpenSubtitles behavior:
    - preserve auth error guidance and fallback ordering guarantees.
 5. Package updates:
-   - republish binaries and verify expected files under `subtitle-extractslator/assets/bin/`.
+   - stage CLI runtime outside the skill folder and verify the final skill package remains binary-free.
 
 ## 7. Related documents
 

@@ -4,6 +4,7 @@ name: Release Skill Package (Deprecated)
 # Use NuGet-first workflows instead:
 # - .github/workflows/release-nuget-stable.yml
 # - .github/workflows/release-nuget-beta.yml
+# Final skill package must remain binary-free; runtime acquisition is external.
 
 on:
   push:
@@ -90,7 +91,7 @@ jobs:
         run: |
           git fetch --tags --force
 
-          $skillPath = "subtitle-extractslator/SKILL.md"
+          $skillPath = ".github/skills/subtitle-extractslator/SKILL.md"
           if (-not (Test-Path $skillPath)) {
             throw "Skill file not found: $skillPath"
           }
@@ -207,26 +208,19 @@ jobs:
           $projectHome = "https://github.com/${{ github.repository }}"
           $repoSlug = "${{ github.repository }}"
 
-          $skillPath = "subtitle-extractslator/SKILL.md"
+          $skillPath = ".github/skills/subtitle-extractslator/SKILL.md"
           $skillRaw = Get-Content $skillPath -Raw
           $skillRaw = [regex]::Replace($skillRaw, "(?m)^(\s*version:\s*)([0-9]+\.[0-9]+\.[0-9]+)\s*$", ('${1}' + $version))
           Set-Content -Path $skillPath -Value $skillRaw -Encoding utf8
 
-          $binaryMissingPath = "subtitle-extractslator/references/binary-missing.md"
+          $binaryMissingPath = ".github/skills/subtitle-extractslator/references/binary-missing.md"
           $binaryMissingRaw = Get-Content $binaryMissingPath -Raw
           $binaryMissingReleaseBlock = @(
             "<!-- release-links:start -->",
             "- Project URL: [$repoSlug]($projectHome)",
-            "- Releases URL: [Releases]($releasesHome)",
-            "- Windows x64 package ($tag): [$zipNameWinX64]($assetUrlWinX64)",
-            "- Windows ARM64 package ($tag): [$zipNameWinArm64]($assetUrlWinArm64)",
-            "- Linux x64 package ($tag): [$zipNameLinuxX64]($assetUrlLinuxX64)",
-            "- Linux musl x64 package ($tag): [$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
-            "- Linux ARM64 package ($tag): [$zipNameLinuxArm64]($assetUrlLinuxArm64)",
-            "- Linux musl ARM64 package ($tag): [$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
-            "- Linux ARM package ($tag): [$zipNameLinuxArm]($assetUrlLinuxArm)",
-            "- macOS ARM64 package ($tag): [$zipNameOsxArm64]($assetUrlOsxArm64)",
-            "- macOS x64 package ($tag): [$zipNameOsxX64]($assetUrlOsxX64)",
+            "- Stable index: [packages.released.md](https://github.com/${{ github.repository }}/blob/main/packages.released.md)",
+            "- Beta index: [packages.beta.md](https://github.com/${{ github.repository }}/blob/main/packages.beta.md)",
+            "- Runtime fallback .nupkg links are maintained inside the package index pages above.",
             "<!-- release-links:end -->"
           ) -join "`n"
           if ($binaryMissingRaw -notmatch "<!-- release-links:start -->") {
@@ -238,16 +232,11 @@ jobs:
           $readmeEnPath = "README.md"
           $enBlock = @(
             "<!-- release-links:start -->",
-            "- Latest releases: [Releases]($releasesHome)",
-            "- Windows x64 package ($tag): [$zipNameWinX64]($assetUrlWinX64)",
-            "- Windows ARM64 package ($tag): [$zipNameWinArm64]($assetUrlWinArm64)",
-            "- Linux x64 package ($tag): [$zipNameLinuxX64]($assetUrlLinuxX64)",
-            "- Linux musl x64 package ($tag): [$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
-            "- Linux ARM64 package ($tag): [$zipNameLinuxArm64]($assetUrlLinuxArm64)",
-            "- Linux musl ARM64 package ($tag): [$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
-            "- Linux ARM package ($tag): [$zipNameLinuxArm]($assetUrlLinuxArm)",
-            "- macOS ARM64 package ($tag): [$zipNameOsxArm64]($assetUrlOsxArm64)",
-            "- macOS x64 package ($tag): [$zipNameOsxX64]($assetUrlOsxX64)",
+            "- Stable package index: [packages.released.md](https://github.com/${{ github.repository }}/blob/main/packages.released.md)",
+            "- Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/${{ github.repository }}/blob/main/packages.released.zh-CN.md)",
+            "- Beta package index: [packages.beta.md](https://github.com/${{ github.repository }}/blob/main/packages.beta.md)",
+            "- Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/${{ github.repository }}/blob/main/packages.beta.zh-CN.md)",
+            "- Runtime fallback .nupkg links are maintained in the package index pages above.",
             "<!-- release-links:end -->"
           ) -join "`n"
           $enRaw = Get-Content $readmeEnPath -Raw
@@ -260,16 +249,11 @@ jobs:
           $readmeZhPath = "README.zh-CN.md"
           $zhBlock = @(
             "<!-- release-links:start -->",
-            "- Release 总入口：[Releases]($releasesHome)",
-            "- Windows x64 包（$tag）：[$zipNameWinX64]($assetUrlWinX64)",
-            "- Windows ARM64 包（$tag）：[$zipNameWinArm64]($assetUrlWinArm64)",
-            "- Linux x64 包（$tag）：[$zipNameLinuxX64]($assetUrlLinuxX64)",
-            "- Linux musl x64 包（$tag）：[$zipNameLinuxMuslX64]($assetUrlLinuxMuslX64)",
-            "- Linux ARM64 包（$tag）：[$zipNameLinuxArm64]($assetUrlLinuxArm64)",
-            "- Linux musl ARM64 包（$tag）：[$zipNameLinuxMuslArm64]($assetUrlLinuxMuslArm64)",
-            "- Linux ARM 包（$tag）：[$zipNameLinuxArm]($assetUrlLinuxArm)",
-            "- macOS ARM64 包（$tag）：[$zipNameOsxArm64]($assetUrlOsxArm64)",
-            "- macOS x64 包（$tag）：[$zipNameOsxX64]($assetUrlOsxX64)",
+            "- 稳定通道包索引：[packages.released.md](https://github.com/${{ github.repository }}/blob/main/packages.released.md)",
+            "- 稳定通道中文包索引：[packages.released.zh-CN.md](https://github.com/${{ github.repository }}/blob/main/packages.released.zh-CN.md)",
+            "- Beta 通道包索引：[packages.beta.md](https://github.com/${{ github.repository }}/blob/main/packages.beta.md)",
+            "- Beta 通道中文包索引：[packages.beta.zh-CN.md](https://github.com/${{ github.repository }}/blob/main/packages.beta.zh-CN.md)",
+            "- fallback .nupkg 链接统一由上述包索引页维护。",
             "<!-- release-links:end -->"
           ) -join "`n"
           $zhRaw = Get-Content $readmeZhPath -Raw
@@ -279,15 +263,7 @@ jobs:
           $zhRaw = [regex]::Replace($zhRaw, "(?s)<!-- release-links:start -->.*?<!-- release-links:end -->", $zhBlock)
           Set-Content -Path $readmeZhPath -Value $zhRaw -Encoding utf8
 
-      - name: Build all platform binaries
-        shell: pwsh
-        run: |
-          $binRoot = Join-Path $env:RUNNER_TEMP "skill-bin-all"
-          New-Item -ItemType Directory -Path $binRoot -Force | Out-Null
-
-          ./scripts/publish-skill-binaries.ps1 -OutputRoot $binRoot -Configuration Release
-
-      - name: Pack OS-specific skill zips
+      - name: Pack source-only skill zips
         shell: pwsh
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
@@ -300,46 +276,38 @@ jobs:
           $zipNameLinuxArm = "${{ steps.version.outputs.zip_name_linux_arm }}"
           $zipNameOsxArm64 = "${{ steps.version.outputs.zip_name_osx_arm64 }}"
           $zipNameOsxX64 = "${{ steps.version.outputs.zip_name_osx_x64 }}"
-          $binRoot = Join-Path $env:RUNNER_TEMP "skill-bin-all"
           $packageRoot = Join-Path $env:RUNNER_TEMP "skill-package"
 
           $targets = @(
-            @{ Rid = "win-x64"; Binary = "SubtitleExtractslator.Cli.exe"; Zip = $zipNameWinX64 },
-            @{ Rid = "win-arm64"; Binary = "SubtitleExtractslator.Cli.exe"; Zip = $zipNameWinArm64 },
-            @{ Rid = "linux-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxX64 },
-            @{ Rid = "linux-musl-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxMuslX64 },
-            @{ Rid = "linux-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxArm64 },
-            @{ Rid = "linux-musl-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxMuslArm64 },
-            @{ Rid = "linux-arm"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameLinuxArm },
-            @{ Rid = "osx-arm64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameOsxArm64 },
-            @{ Rid = "osx-x64"; Binary = "SubtitleExtractslator.Cli"; Zip = $zipNameOsxX64 }
+            @{ Rid = "win-x64"; Zip = $zipNameWinX64 },
+            @{ Rid = "win-arm64"; Zip = $zipNameWinArm64 },
+            @{ Rid = "linux-x64"; Zip = $zipNameLinuxX64 },
+            @{ Rid = "linux-musl-x64"; Zip = $zipNameLinuxMuslX64 },
+            @{ Rid = "linux-arm64"; Zip = $zipNameLinuxArm64 },
+            @{ Rid = "linux-musl-arm64"; Zip = $zipNameLinuxMuslArm64 },
+            @{ Rid = "linux-arm"; Zip = $zipNameLinuxArm },
+            @{ Rid = "osx-arm64"; Zip = $zipNameOsxArm64 },
+            @{ Rid = "osx-x64"; Zip = $zipNameOsxX64 }
           )
 
           foreach ($target in $targets) {
             $rid = $target.Rid
-            $binaryName = $target.Binary
             $zipName = $target.Zip
-            $binaryPath = Join-Path (Join-Path $binRoot $rid) $binaryName
-
-            if (-not (Test-Path $binaryPath)) {
-              throw "Expected binary not found for ${rid}: $binaryPath"
-            }
-
             $stagingSkillRoot = Join-Path $packageRoot "subtitle-extractslator-$rid"
             $skillRootInZip = Join-Path $stagingSkillRoot "subtitle-extractslator"
             $referencesDir = Join-Path $skillRootInZip "references"
-            $ridBinDir = Join-Path (Join-Path $skillRootInZip "assets/bin") $rid
+            $soWorkflowDir = Join-Path (Join-Path $skillRootInZip "assets") "so-workflow"
 
             if (Test-Path $stagingSkillRoot) {
               Remove-Item $stagingSkillRoot -Recurse -Force
             }
 
             New-Item -ItemType Directory -Path $referencesDir -Force | Out-Null
-            New-Item -ItemType Directory -Path $ridBinDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $soWorkflowDir -Force | Out-Null
 
-            Copy-Item "subtitle-extractslator/SKILL.md" (Join-Path $skillRootInZip "SKILL.md") -Force
-            Copy-Item "subtitle-extractslator/references/*" $referencesDir -Recurse -Force
-            Copy-Item $binaryPath (Join-Path $ridBinDir $binaryName) -Force
+            Copy-Item ".github/skills/subtitle-extractslator/SKILL.md" (Join-Path $skillRootInZip "SKILL.md") -Force
+            Copy-Item ".github/skills/subtitle-extractslator/references/*" $referencesDir -Recurse -Force
+            Copy-Item ".github/skills/subtitle-extractslator/assets/so-workflow/*" $soWorkflowDir -Recurse -Force
 
             $zipPath = Join-Path $env:RUNNER_TEMP $zipName
             if (Test-Path $zipPath) {
@@ -358,7 +326,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add subtitle-extractslator/SKILL.md subtitle-extractslator/references/binary-missing.md README.md README.zh-CN.md
+          git add .github/skills/subtitle-extractslator/SKILL.md .github/skills/subtitle-extractslator/references/binary-missing.md README.md README.zh-CN.md
 
           if (-not (git diff --cached --quiet)) {
             git commit -m "chore(release): update metadata and release links for $tag [skip-release]"

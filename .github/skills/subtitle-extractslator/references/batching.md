@@ -10,12 +10,12 @@ Use with:
 1. `references/supervisor.md`
 2. `references/worker.md`
 
-## Supervisor/Worker Batch Model
+## Queue-Wrapped Single-Item Model
 
-1. Use supervisor/worker roles for all batch-processing scenarios.
-2. If platform supports subagents, supervisor must delegate each bounded batch to worker subagents.
-3. If subagents are unavailable, run the same worker contract inline in the main agent loop.
-4. This model applies to recursive folder runs, resume runs, and mixed workload runs.
+1. Batch processing reuses the same single-item subtitle pipeline for every queued input.
+2. Queue orchestration may wrap the current item with subagent or inline adapters, but it must not define a second subtitle-extraction business path.
+3. The current CLI `translate-batch` behavior is a loop over single-item `TranslateAsync` execution.
+4. Queue-level cooldown, retry, and resume rules still apply to recursive folder runs, resume runs, and mixed workload runs.
 
 ## Centralized Temp State Root
 
@@ -41,7 +41,7 @@ Each run workspace must contain:
 1. Scan requested scope.
 2. Keep only items whose deterministic output `<basename>.<lang>.srt` does not exist.
 3. Write one absolute input path per line to `queue.txt`.
-4. Before each batch, rewrite `in-progress.txt` with current batch only.
+4. Before each working turn, rewrite `in-progress.txt` with the current item or bounded working set.
 5. On success, append the input path to `completed.txt`.
 6. On blocked item, append `path | short reason` to `failed.txt`.
 7. After each batch, rewrite `queue.txt` with remaining pending items only.

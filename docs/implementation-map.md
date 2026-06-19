@@ -145,14 +145,8 @@ The file `SubtitleExtractslator.Cli/RuntimeInfrastructure.cs` contains multiple 
 
 ## 8. Packaging and release automation
 
-- `scripts/publish-skill-binaries.ps1`
-  - Builds and publishes single-file binaries for multiple RIDs into skill assets.
-
-- `.github/workflows/release-skill.yml`
-  - Restore/build/test pipeline.
-  - Semver bump logic from PR labels.
-  - SKILL/README release-link updates.
-  - Multi-platform binary packaging and release artifact creation.
+- `scripts/publish-skill-binaries.ps1`: stages external CLI runtime artifacts outside the skill folder for maintainer verification and package-index publishing tasks.
+- `.github/workflows/release-skill.yml`: restore/build/test pipeline, semver bump logic from PR labels, SKILL/README package-index-link updates, and source-only skill packaging plus release artifact creation.
 
 ## 9. Main extension points for maintainers
 
@@ -178,3 +172,10 @@ Common modification entry points:
 5. Change extraction for bitmap subtitles:
    - decode path in `PgsSupDecoder`
    - OCR branch in `SubtitleOperations`
+
+## 10. SO workflow artifacts
+
+- `.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`: Supporting planning source for governed workflow updates and workflow authoring review.
+- `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`: Canonical deterministic execution authority, authored as workflow JSON and validated by `dotnet so.dll compile`.
+- External audit output root
+  - Stores compile and run/resume audit evidence including Mermaid Markdown, HTML, workflow backups, and event logs.

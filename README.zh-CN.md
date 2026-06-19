@@ -7,6 +7,7 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 这个仓库的核心交付物是 skill 包（提示词、策略、运行资产与使用约定）。CLI 与 MCP 服务端是 skill 的运行时实现层，用于在本地脚本和 agent 环境中稳定执行该 skill。
 
 仓库中的运行形态：
+
 - CLI（本地命令行自动化）
 - MCP stdio 服务器（供 agent / MCP 客户端调用）
 
@@ -20,9 +21,10 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 npx skills add waynebaby/SubtitleExtractslator
 ```
 
-运行时主交付已经切换为 NuGet 包 + portable DLL 入口。
+运行时主交付已经切换为 `SubtitleExtractslator.Cli` NuGet 包 + skill 外部的 portable DLL 入口。
 
 包索引：
+
 - 稳定通道: [packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
 - 稳定通道中文: [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta 通道: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
@@ -37,22 +39,18 @@ dotnet add package SubtitleExtractslator.Cli --version <VERSION>
 guide-first 入口：
 
 ```bash
-dotnet SubtitleExtractslator.Cli.dll --guide
+dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 ```
 
-如果包管理源不可用，请使用下面的 GitHub fallback `.nupkg` 链接。
+以上包索引页是运行时获取的权威入口；若包源不可用，请使用所选包索引页内维护的 fallback `.nupkg` 链接。
 
 <!-- release-links:start -->
+- 稳定通道包索引：[packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
+- 稳定通道中文包索引：[packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
+- Beta 通道包索引：[packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
+- Beta 通道中文包索引：[packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
 - Release 总入口：[Releases](https://github.com/waynebaby/SubtitleExtractslator/releases)
-- Windows x64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-win-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-win-x64.zip)
-- Windows ARM64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-win-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-win-arm64.zip)
-- Linux x64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-linux-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-linux-x64.zip)
-- Linux musl x64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-linux-musl-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-linux-musl-x64.zip)
-- Linux ARM64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-linux-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-linux-arm64.zip)
-- Linux musl ARM64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-linux-musl-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-linux-musl-arm64.zip)
-- Linux ARM 包（v0.1.17）：[subtitle-extractslator-v0.1.17-linux-arm.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-linux-arm.zip)
-- macOS ARM64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-osx-arm64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-osx-arm64.zip)
-- macOS x64 包（v0.1.17）：[subtitle-extractslator-v0.1.17-osx-x64.zip](https://github.com/waynebaby/SubtitleExtractslator/releases/download/v0.1.17/subtitle-extractslator-v0.1.17-osx-x64.zip)
+- fallback `.nupkg` 链接统一由上述包索引页维护。
 <!-- release-links:end -->
 
 ## 先走 Guide-First 入口
@@ -60,13 +58,17 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 如果你的目标是在 agent 中运行此 skill，继续保留 `npx skills add` 作为发现入口，并以 NuGet 运行时与 guide 作为命令真相来源。
 
 1. 从稳定或 Beta 通道安装 NuGet 包。
-2. 先运行 `dotnet SubtitleExtractslator.Cli.dll --guide`。
-3. 按 guide 中的入口命令执行 CLI 或 MCP。
-4. 包源不可用时，使用上面的 fallback `.nupkg` 链接。
+2. 从还原或解包结果里定位绝对 DLL 路径。
+3. 先运行 `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`。
+4. 按 guide 中的入口命令执行 CLI 或 MCP。
+5. 包源不可用时，使用所选包索引页中的 fallback `.nupkg` 链接。
 
 说明：
-- 仓库继续保留 `subtitle-extractslator/` 作为 skill 路由与策略层。
-- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server），主交付是 portable DLL 包。
+
+- 仓库继续保留 `.github/skills/subtitle-extractslator/` 作为 skill 路由与策略层。
+- `.github/skills/subtitle-extractslator/` skill 包本身不携带 `assets/bin/`，保持 binary-free。
+- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server），作为独立 portable DLL 包获取。
+- 对于 SO 增强后的 skill，真正的执行依据是 `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`；`skill-plan.md` 仅是 planner 输入。
 - 构建与打包细节见 `docs/skill-installation-and-build.md`。
 
 ### 使用场景示例（短提示模板）
@@ -82,9 +84,9 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ```text
 /subtitle-extractslator
 
-把 D:\\media\\xxx.mkv 翻译成中文。
+把 D:\media\xxx.mkv 翻译成中文。
 本地模型端口使用 http://127.0.0.1:1234/v1/chat/completions。
-输出 D:\\media\\xxx.zh.srt。
+输出 D:\media\xxx.zh.srt。
 ```
 
 场景 2：递归处理一个文件夹
@@ -93,7 +95,7 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 /subtitle-extractslator
 
 请使用 MCP 模式。
-把 D:\\tv\\Fallout\\S01 递归翻译到中文。
+把 D:\tv\Fallout\S01 递归翻译到中文。
 已有 .zh.srt 的文件直接跳过。
 ```
 
@@ -102,7 +104,7 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ```text
 /subtitle-extractslator
 
-继续上次 D:\\tv\\Fallout 的中文任务。
+继续上次 D:\tv\Fallout 的中文任务。
 从集中临时队列状态恢复，不要重跑已完成项。
 ```
 
@@ -111,7 +113,7 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ```text
 /subtitle-extractslator
 
-把 D:\\subs\\episode01.en.srt 翻译为 zh、ja、es。
+把 D:\subs\episode01.en.srt 翻译为 zh、ja、es。
 保持时间轴和 cue 顺序不变。
 ```
 
@@ -120,7 +122,7 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ```text
 /subtitle-extractslator
 
-探测 D:\\media\\xxx.mkv 是否有内嵌中文字幕轨。
+探测 D:\media\xxx.mkv 是否有内嵌中文字幕轨。
 只返回探测结果。
 ```
 
@@ -136,10 +138,12 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ```
 
 运行说明：
+
 - MCP 模式不提供单个 `translate-batch` 工具。批处理由 agent 在目录层面自行循环，逐个文件调用 MCP tools 实现。
 - 多语言输出同理：由 agent 按目标语言逐次调用 `translate`。
 
 设计说明：
+
 1. 多文件长任务的队列状态采用集中临时目录存放。
 2. 队列状态支持小批次持续推进和中断恢复。
 3. 默认是持续处理到队列清空，或仅剩真实阻塞项。
@@ -156,10 +160,12 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 ## 当前实现范围
 
 运行模式：
+
 - CLI（默认）
 - MCP stdio（`--mode mcp`）
 
 工作流步骤：
+
 1. 探测媒体文件中的字幕轨道。
 2. 查询 OpenSubtitles 候选（配置后走真实 API，未配置可走 mock）。
 3. 本地提取字幕（优先英文，失败时做确定性回退）。
@@ -170,6 +176,7 @@ dotnet SubtitleExtractslator.Cli.dll --guide
 8. 可选：将生成的 AI 字幕回封装进原视频，作为新语言字幕轨道。
 
 翻译策略：
+
 - MCP 模式：仅 sampling（`sampling/createMessage`），sampling 失败直接报错。
 - CLI 模式：仅 external provider（包含自定义 endpoint 访问）。
 
@@ -221,6 +228,7 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --i
 ```
 
 批量输入文件格式（`--input-list`）：
+
 - UTF-8 文本文件。
 - 每行一个媒体/字幕文件路径。
 - 空行和以 `#` 开头的行会被忽略。
@@ -228,6 +236,7 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode cli translate-batch --i
 批量模式仅在 CLI 提供。MCP 模式不提供批量工作流，以避免 MCP 客户端常见的超时问题。
 
 CLI 通用参数：
+
 - `--env "KEY=VALUE;KEY2=VALUE2"`：仅对当前命令注入临时环境变量覆盖。
 - `--help`：打印完整命令帮助。
 
@@ -244,6 +253,7 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 MCP 传输与工具注册使用官方 `ModelContextProtocol` NuGet 包（`AddMcpServer().WithStdioServerTransport().WithTools<...>()`）。
 
 MCP tools：
+
 - `probe`
 - `subtitle_timing_check`
 - `opensubtitles_search`
@@ -286,21 +296,3 @@ dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingl
 dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
 dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

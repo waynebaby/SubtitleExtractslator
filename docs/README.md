@@ -5,14 +5,15 @@ This folder contains maintainer-facing project design and implementation documen
 ## Documentation boundaries
 
 - `docs/`: design decisions, architecture, implementation mapping, maintenance guidance.
-- `subtitle-extractslator/references/`: runtime-facing skill contract and execution references used by agent workflows.
+- `.github/skills/subtitle-extractslator/references/`: runtime-facing skill contract and execution references used by agent workflows.
+- `.github/skills/subtitle-extractslator/assets/so-workflow/`: checked-in planning source, canonical workflow template, and runtime lock; compile/run audit artifacts stay external.
 - `README.md` and `README.zh-CN.md`: repository overview and quick-start usage.
 
 This separation keeps runtime contract docs stable while allowing implementation notes to evolve.
 
 ## Terminology Glossary
 
-Use the canonical terms below across `README*.md`, `docs/*.md`, and `subtitle-extractslator/references/*.md`.
+Use the canonical terms below across `README*.md`, `docs/*.md`, and `.github/skills/subtitle-extractslator/references/*.md`.
 
 | Canonical term | Definition / usage rule | Avoid variants |
 | --- | --- | --- |
@@ -27,6 +28,8 @@ Use the canonical terms below across `README*.md`, `docs/*.md`, and `subtitle-ex
 | queue state files | `queue.txt`, `completed.txt`, `failed.txt`, `in-progress.txt`, `run-notes.md`. | custom filename set |
 | run-to-completion | Continue processing until queue is empty or only hard blockers remain. | per-batch permission loop |
 | hard blocker | Real unresolved item-level blocker recorded in `failed.txt`. | transient error treated as blocker |
+| planning source | `assets/so-workflow/skill-plan.md`; maintainer-facing orchestration intent, reviewed alongside the workflow template but not a public `compile` CLI input. | compile input, canonical runtime contract |
+| workflow template | `assets/so-workflow/so-template.json`; canonical deterministic execution basis after SO enhancement. | plan markdown, draft note |
 
 ## Suggested reading order
 
@@ -44,5 +47,5 @@ Use the canonical terms below across `README*.md`, `docs/*.md`, and `subtitle-ex
 
 - `SubtitleExtractslator.Cli/`: runtime host and core workflow implementation.
 - `SubtitleExtractslator.Tests/`: test suite.
-- `scripts/`: helper scripts, including multi-platform binary publishing.
+- `scripts/`: helper scripts, including external CLI runtime staging outside the skill folder.
 - `.github/workflows/`: CI and release automation.
