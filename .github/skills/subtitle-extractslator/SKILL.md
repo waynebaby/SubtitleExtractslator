@@ -21,6 +21,8 @@ This repository is skill-first: the subtitle skill package is the primary delive
 
 Deterministic orchestration is encoded in the checked-in workflow JSON template and validated by SO runtime 0.2.91-beta (see `Workflow Contract` below). The authoritative runtime lock is `assets/so-workflow/so-package-lock.json`. Runtime contracts remain in `references/` for SO-orchestrated implementation.
 
+Normal governance and maintenance for this skill must stay on the `so.dll` path (`--guide`, `compile`, `run`, `resume`). Do not treat direct edits to `assets/so-workflow/so-template.json` as a routine operating path. Touch that JSON only as a minimal last-resort workaround when execution is completely blocked and the user explicitly authorizes it, then return immediately to `dotnet so.dll compile` and the governed SO path.
+
 ## Installation and Release Links
 
 Use this repository's package index pages as the canonical runtime source. This skill package is binary-free and intentionally does not ship `dll` or `bin` runtime assets.
@@ -44,11 +46,12 @@ SO workflow files in this skill package:
 4. External audit artifacts — Compile validation and run/resume audit evidence must stay outside the skill folder
 
 Workflow modification confirmation loop for maintainers:
-1. Update `assets/so-workflow/skill-plan.md` or `assets/so-workflow/so-template.json`.
-2. Validate `assets/so-workflow/so-template.json` with the locked `0.2.91-beta` SO runtime and an external audit root.
+1. Update `assets/so-workflow/skill-plan.md` first and keep governance changes plan-first.
+2. Validate the current `assets/so-workflow/so-template.json` with the locked `0.2.91-beta` SO runtime and an external audit root.
 3. Review Mermaid, HTML, workflow backup, and `workflow.analysis.json`.
-4. If governance, seam ownership, or route coverage is still unsatisfied, revise and recompile again.
-5. Update this `SKILL.md` only after the compiled workflow is accepted.
+4. If governance, seam ownership, or route coverage is still unsatisfied, revise the plan and recompile again.
+5. Only when execution is completely blocked and the user explicitly permits a minimal workaround may you make the smallest necessary edit to `assets/so-workflow/so-template.json`; then immediately recompile and continue on the `so.dll` path.
+6. Update this `SKILL.md` only after the compiled workflow is accepted.
 
 Official SO guide refresh for governed maintenance and validation:
 
@@ -121,6 +124,8 @@ SO template (`assets/so-workflow/so-template.json`) is the canonical and exclusi
 
 `skill-plan.md` is maintainer-facing planning context. Public `dotnet so.dll compile` validates the existing workflow JSON template; it does not accept `skill-plan.md` as a CLI input.
 
+Routine governed work is plan-first and `so.dll`-validated. Direct edits to `assets/so-workflow/so-template.json` are exception-only and require a completely blocked path plus explicit user permission for a minimal workaround.
+
 **Compilation Authority**: Validate with:
 ```bash
 dotnet so.dll compile \
@@ -164,6 +169,7 @@ dotnet so.dll resume --workflow-file <current>.json --result-file <external-resu
 12. Keep MCP orchestration agent-driven and avoid script-driven tool loops.
 13. Keep `subtitle-extractslator/` binary-free; acquire runtime from this repository's `packages.*.md` absolute URLs.
 14. Never use workflow nodes or steps equivalent to `run a multistep plan`; this pattern is prohibited because it weakens SO governance boundaries and can expose execution-leak paths.
+15. Do not directly edit `assets/so-workflow/so-template.json` as normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
 
 ## Operational Notes
 

@@ -19,16 +19,19 @@ Execution authority policy for this skill:
 - Direct CLI and direct MCP are implementation primitives only and do not count as official skill execution evidence.
 - This target skill has been enhanced by Loom SO and is SO-exclusive governed.
 - CLI-side runtime work in the governed graph should be exposed as explicit external seams (`SubagentCall`, `AskUser`, `WaitResume`) unless a real SO built-in execution surface exists for that node kind.
+- Normal governance work must stay on the `so.dll` path. Do not directly edit `assets/so-workflow/so-template.json` as a routine maintenance step.
+- JSON access is exception-only: use the smallest possible workaround only when execution is completely blocked and the user explicitly permits it, then immediately return to `dotnet so.dll compile` and the governed SO path.
 
 ## Workflow Modification Confirmation Loop
 
 When maintainers modify this governed workflow, use the loop below before promoting the checked-in template:
 
-1. Update `assets/so-workflow/skill-plan.md` or `assets/so-workflow/so-template.json`.
-2. Compile with the locked SO runtime `0.2.91-beta` and an audit root outside the skill folder.
+1. Update `assets/so-workflow/skill-plan.md` first and keep governance changes plan-first.
+2. Compile the current `assets/so-workflow/so-template.json` with the locked SO runtime `0.2.91-beta` and an audit root outside the skill folder.
 3. Review `workflow.analysis.json`, Mermaid, HTML, and workflow JSON backup artifacts.
-4. If route coverage, seam ownership, or output-governance feedback is still unsatisfied, revise the plan or template and recompile.
-5. Update `.github/skills/subtitle-extractslator/SKILL.md` only after the compiled workflow is accepted.
+4. If route coverage, seam ownership, or output-governance feedback is still unsatisfied, revise the plan and recompile.
+5. Only when execution is completely blocked and the user explicitly permits a minimal workaround may you make the smallest necessary edit to `assets/so-workflow/so-template.json`; then immediately recompile and continue on the `so.dll` path.
+6. Update `.github/skills/subtitle-extractslator/SKILL.md` only after the compiled workflow is accepted.
 
 This confirmation loop is maintainer-facing governance. It is not a runtime business branch inside subtitle execution.
 
@@ -168,6 +171,7 @@ Preserve all existing runtime constraints:
 9. **Queue State**: Store in centralized temp directory, never beside media files
 10. **Binary-Free Skill**: Do not ship any `.dll` or `.bin`; acquire from package index
 11. **Governance Hard Ban**: Never use workflow nodes or steps equivalent to `run a multistep plan`; this node style is forbidden because it weakens SO-exclusive governance and can expose execution-leak paths.
+12. **JSON Exception Only**: Do not directly edit `assets/so-workflow/so-template.json` during normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
 
 ## Success Criteria
 
