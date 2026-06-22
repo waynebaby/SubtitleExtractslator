@@ -17,8 +17,8 @@ Execution mode requirement:
 
 1. Read current `in-progress.txt` and relevant `run-notes.md` lines.
 2. Process each assigned item using the skill workflow in strict order.
-3. Respect deterministic output naming.
-4. Verify final output exists before marking item as completed.
+3. Respect deterministic output naming. Keep other artifacts on their normal output paths, but copy the final subtitle beside the source video as `<original_video_basename>.<lang>.srt` unless the user explicitly requested another subtitle destination or name.
+4. Verify that copied subtitle path exists before marking item as completed.
 5. On failure, record short reason and continue remaining items.
 
 ## Failure Handling

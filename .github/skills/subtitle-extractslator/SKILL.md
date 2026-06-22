@@ -139,6 +139,8 @@ dotnet so.dll run --workflow-file <runtime-workflow-copy>.json [--audit-output <
 dotnet so.dll resume --workflow-file <current>.json --result-file <external-result>.json
 ```
 
+Before `dotnet so.dll resume` on any auth-related or other external seam, validate that the current waiting node, the resume result ID, and the active context/output-policy snapshot all point to the same seam completion. Do not reuse stale seam artifacts.
+
 **High-level flow**:
 1. Normalize input (media/SRT, target language, output path).
 2. Route execution mode (MCP vs CLI).
@@ -166,10 +168,13 @@ dotnet so.dll resume --workflow-file <current>.json --result-file <external-resu
 9. Keep OpenSubtitles auth in `login/aquire/status/clear` cache flow.
 10. Switch OpenSubtitles lane to delayed serial mode after any rate-limit signal.
 11. Keep queue state in centralized temp storage, never beside media files.
-12. Keep MCP orchestration agent-driven and avoid script-driven tool loops.
-13. Keep `subtitle-extractslator/` binary-free; acquire runtime from this repository's `packages.*.md` absolute URLs.
-14. Never use workflow nodes or steps equivalent to `run a multistep plan`; this pattern is prohibited because it weakens SO governance boundaries and can expose execution-leak paths.
-15. Do not directly edit `assets/so-workflow/so-template.json` as normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
+12. If probe or extract finds no usable embedded subtitle track, do not stop the batch. Continue deterministic fallback in order: local subtitle discovery, then OpenSubtitles search/download, then translation if needed.
+13. For embedded Chinese subtitle discovery, treat `zh` and `chi` as equivalent fallback preferences before declaring Chinese subtitles unavailable.
+14. Keep normal default output paths for non-subtitle artifacts. For media-file requests, additionally copy the final subtitle beside the source video and name that copied subtitle `<original_video_basename>.<lang>.srt`. Only change that copied subtitle destination or name when the user explicitly requests it.
+15. Keep MCP orchestration agent-driven and avoid script-driven tool loops.
+16. Keep `subtitle-extractslator/` binary-free; acquire runtime from this repository's `packages.*.md` absolute URLs.
+17. Never use workflow nodes or steps equivalent to `run a multistep plan`; this pattern is prohibited because it weakens SO governance boundaries and can expose execution-leak paths.
+18. Do not directly edit `assets/so-workflow/so-template.json` as normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
 
 ## Operational Notes
 
@@ -178,6 +183,7 @@ dotnet so.dll resume --workflow-file <current>.json --result-file <external-resu
 3. For commands and troubleshooting, use `references/cli.md` and `references/troubleshooting.md`.
 4. For long-running folder jobs, use `references/batching.md`, `references/supervisor.md`, and `references/worker.md`.
 5. Platform-specific agent files are optional adapters; runtime behavior is defined by this skill and `references/` contracts.
+6. Local translation or bitmap-OCR HTTP endpoints must pass a real health check before use; startup logs such as `READY` are not sufficient evidence that the endpoint is actually listening and usable.
 
 
 

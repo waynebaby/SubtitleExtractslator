@@ -27,6 +27,11 @@ Quick check:
 1. Resolve `<cli_entry>` from the restored or extracted package.
 2. Run: `<cli_entry> --help`
 
+Endpoint readiness rule:
+
+1. If CLI translation or bitmap OCR depends on a local HTTP endpoint, do not trust process startup text such as `READY` by itself.
+2. Verify the endpoint is actually listening and returns a valid HTTP response before routing translation or OCR traffic to it.
+
 ## Global Options
 
 1. `--env "KEY=VALUE;KEY2=VALUE2"`: temporary environment overrides for current command.
@@ -35,9 +40,12 @@ Quick check:
 ## Output Path Notes
 
 1. `translate` requires explicit `--output`.
-2. `translate-batch` requires explicit `--output-dir`.
-3. `translate-batch` defaults `--output-suffix` to `.<lang>.srt` when omitted.
-4. If you need deterministic paths, set explicit output/output-dir values in commands.
+2. Keep normal default output paths for non-subtitle artifacts.
+3. For media-file requests, after the final subtitle is produced, copy that subtitle beside the source video and name the copied subtitle `<original_video_basename>.<lang>.srt` unless the user explicitly requests another subtitle destination or name.
+4. For governed multi-file media runs, prefer file-by-file orchestration around CLI primitives so each copied subtitle lands beside its source video with deterministic naming.
+5. `translate-batch` requires explicit `--output-dir` when that CLI primitive is invoked directly.
+6. `translate-batch` defaults `--output-suffix` to `.<lang>.srt` when omitted.
+7. If you need deterministic paths, set explicit output/output-dir values in commands.
 
 ## CLI Commands
 
@@ -86,6 +94,11 @@ Platform command rule:
 1. Extract:
 
 - `<cli_entry> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
+
+1. Extract notes:
+
+- If a Chinese embedded track is expected, try `prefer=zh` first and then `prefer=chi` before declaring embedded Chinese unavailable.
+- If no usable embedded track exists, continue with local subtitle discovery and then OpenSubtitles fallback instead of treating extraction failure as a batch-stopping error.
 
 1. Translate (CLI only):
 

@@ -33,6 +33,11 @@ When maintainers modify this governed workflow, use the loop below before promot
 5. Only when execution is completely blocked and the user explicitly permits a minimal workaround may you make the smallest necessary edit to `assets/so-workflow/so-template.json`; then immediately recompile and continue on the `so.dll` path.
 6. Update `.github/skills/subtitle-extractslator/SKILL.md` only after the compiled workflow is accepted.
 
+Resume consistency rule for maintainers:
+1. Before `dotnet so.dll resume`, validate the current waiting node, the resume result ID, and the active context/output-policy snapshot as one unit.
+2. Do not reuse stale auth-validation seam artifacts across different waiting states.
+3. If these surfaces drift, regenerate the result for the current seam rather than patching only one file.
+
 This confirmation loop is maintainer-facing governance. It is not a runtime business branch inside subtitle execution.
 
 ## Goal
@@ -167,11 +172,13 @@ Preserve all existing runtime constraints:
 5. **Serial OpenSubtitles**: No parallel search/download; maintain strict seq serial order
 6. **Rate-Limit Handling**: Switch to delayed retry mode after any 429 response
 7. **Auth Flow**: Use `login → aquire → status → clear` state machine
-8. **MCP-First**: Attempt MCP execution; fall back to CLI only if MCP unavailable
-9. **Queue State**: Store in centralized temp directory, never beside media files
-10. **Binary-Free Skill**: Do not ship any `.dll` or `.bin`; acquire from package index
-11. **Governance Hard Ban**: Never use workflow nodes or steps equivalent to `run a multistep plan`; this node style is forbidden because it weakens SO-exclusive governance and can expose execution-leak paths.
-12. **JSON Exception Only**: Do not directly edit `assets/so-workflow/so-template.json` during normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
+8. **Embedded-Track Absence Is Non-Terminal**: If probe or extract finds no usable embedded track, continue to local subtitle discovery and then OpenSubtitles fallback instead of stopping the batch.
+9. **Chinese Track Alias Rule**: For embedded Chinese subtitle discovery, treat `zh` and `chi` as equivalent fallback preferences before declaring Chinese subtitles unavailable.
+10. **MCP-First**: Attempt MCP execution; fall back to CLI only if MCP unavailable
+11. **Queue State**: Store in centralized temp directory, never beside media files
+12. **Binary-Free Skill**: Do not ship any `.dll` or `.bin`; acquire from package index
+13. **Governance Hard Ban**: Never use workflow nodes or steps equivalent to `run a multistep plan`; this node style is forbidden because it weakens SO-exclusive governance and can expose execution-leak paths.
+14. **JSON Exception Only**: Do not directly edit `assets/so-workflow/so-template.json` during normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
 
 ## Success Criteria
 

@@ -24,6 +24,8 @@ Actions:
 3. In MCP mode, after downloading FFmpeg call `ffmpeg_set_bin_dir` to hot-apply path to current MCP process (and persist to mcp.json by default).
 4. If MCP is not used, set `FFMPEG_BIN_DIR` in environment and retry.
 5. Record or refresh the same absolute path in `references/localpaths.md` for the next run.
+6. If no usable embedded track exists, continue to local subtitle discovery and then OpenSubtitles fallback instead of stopping the whole batch.
+7. For expected Chinese embedded subtitles, retry selection with `chi` if `zh` did not resolve a usable track.
 
 ## OpenSubtitles has no results
 
@@ -46,6 +48,34 @@ Candidate mismatch handling:
 2. Run `subtitle-timing-check --input <mediaFile> --subtitle <subtitleFile.srt>` after candidate download.
 3. Accept candidate only when absolute difference between video duration and subtitle last cue is less than 10 minutes.
 4. If check fails, try next candidate.
+
+## SO auth seam loops or unexpected relogin prompts
+
+Checks:
+
+1. Current `workflow.current.json` waiting node matches the seam you intend to resume.
+2. Resume result file `id` matches the exact seam transition/result expected by the current waiting node.
+3. Active context snapshot still matches the same output policy and auth-validation branch.
+
+Actions:
+
+1. Validate current node, result ID, and context/output-policy snapshot together before `dotnet so.dll resume`.
+2. Do not reuse stale auth seam artifacts from an earlier waiting state.
+3. If one of the three surfaces drifted, regenerate the resume result for the current waiting seam instead of patching only one file.
+
+## Local proxy says READY but requests still fail
+
+Checks:
+
+1. Intended HTTP port is actually listening.
+2. The endpoint returns a real HTTP response on the configured translation/OCR path.
+3. Another local process is not already bound to the same port.
+
+Actions:
+
+1. Run a real health check before routing CLI translation or bitmap OCR traffic to the proxy.
+2. If the port is occupied or the response is invalid, change the endpoint or stop the conflicting listener.
+3. Do not treat startup logs alone as readiness evidence.
 
 ## Output structure changed unexpectedly
 

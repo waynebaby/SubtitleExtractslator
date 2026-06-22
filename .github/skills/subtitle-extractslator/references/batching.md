@@ -21,11 +21,12 @@ Use with:
 
 1. Do not create tracking folders next to media files.
 2. Do not create `.subtitle-extractslator-temp` inside target folders.
-3. Resolve temp root in this order:
+3. Centralized temp state is only for queue tracking. Keep other artifacts on their normal output paths, but copy the final subtitle for each media input beside its source video as `<original_video_basename>.<lang>.srt` unless the user explicitly requests another subtitle destination or name.
+4. Resolve temp root in this order:
 - if `SUBTITLEEXTRACTSLATOR_TEMPDIR` is set, use that path
 - otherwise use OS temp root + `SubtitleExtractslator`
-4. State workspace path is `<temp-root>/agent-runs/<run-id>/`.
-5. `run-id` should be deterministic for the requested scope (for example based on normalized common-root path + target language).
+5. State workspace path is `<temp-root>/agent-runs/<run-id>/`.
+6. `run-id` should be deterministic for the requested scope (for example based on normalized common-root path + target language).
 
 ## Required State Files
 
@@ -39,7 +40,7 @@ Each run workspace must contain:
 ## Queue Lifecycle
 
 1. Scan requested scope.
-2. Keep only items whose deterministic output `<basename>.<lang>.srt` does not exist.
+2. Keep only items whose copied deterministic subtitle `<original_video_basename>.<lang>.srt` does not already exist beside the input media file.
 3. Write one absolute input path per line to `queue.txt`.
 4. Before each working turn, rewrite `in-progress.txt` with the current item or bounded working set.
 5. On success, append the input path to `completed.txt`.
