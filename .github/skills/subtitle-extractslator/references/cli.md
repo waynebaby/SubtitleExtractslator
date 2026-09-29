@@ -4,27 +4,22 @@ This file is skill-facing runtime contract only.
 
 ## Runtime Package Source
 
-1. The `subtitle-extractslator/` skill package is binary-free. Do not expect `./assets/bin/`.
-2. Acquire `SubtitleExtractslator.Cli` from this repository's package index pages:
-
-- stable: `https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md`
-- beta: `https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md`
-
-1. If package feed is unavailable, use the current fallback `.nupkg` link listed in the selected package index page.
-2. After restore or `.nupkg` extraction, locate `lib/net9.0/SubtitleExtractslator.Cli.dll` outside the skill folder.
+1. The `subtitle-extractslator/` skill source is binary-free and does not ship `./assets/bin/` or a skill ZIP.
+2. Before every skill run, execute `assets/bootstrap/restore_runtime.py --channel <metadata.channel>` using Python 3. The helper detects the host RID, checks that channel's latest `SubtitleExtractslator.Cli.<rid>` NuGet version, verifies its SHA-512 sidecar, and prints the absolute native executable path.
+3. The helper downloads only when the versioned local cache is missing. Do not invoke `dotnet restore` or install the .NET runtime for the CLI package.
+4. If NuGet is unavailable, stop with the restore error and use the exact-version `.nupkg` fallback listed in the selected channel index after verifying its SHA-512 sidecar.
 
 ## Runtime Entry
 
 Execution path rules:
 
-1. Use an absolute path to the external runtime package DLL.
-2. Do not scan the skill folder for binaries.
+1. Use the absolute native executable path printed by the bootstrap as `<cli_entry>`.
+2. Do not scan the skill folder for runtime binaries.
 3. Quote paths with spaces.
-4. Refer to `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll"` as `<cli_entry>`.
 
 Quick check:
 
-1. Resolve `<cli_entry>` from the restored or extracted package.
+1. Resolve `<cli_entry>` by running the bootstrap before other CLI work.
 2. Run: `<cli_entry> --help`
 
 Endpoint readiness rule:

@@ -186,7 +186,7 @@ When SO encounters a weave-out, it returns a `<so_property>` JSON payload with:
 ### SubagentCall Points
 
 - `normalize_request`: Populate the initial routing payload instead of relying on implicit in-engine mutation
-- `ensure_cli_runtime`: Verify portable CLI host readiness and bootstrap minimal .NET runtime when needed
+- `ensure_cli_runtime`: Resolve the channel's latest host-RID NativeAOT NuGet package, verify its SHA-512, and bootstrap it before runtime operations
 - `read_localpaths`: Load remembered local runtime paths before probing or extraction
 - `batch_subagent_worker`: Delegate bounded batch work to worker subagent
 - Other CLI-side runtime helpers such as FFmpeg readiness, OpenSubtitles auth/search/download, local extraction, bitmap OCR reconstruction, translation grouping, rolling-memory updates, summary emission, merge, mux, and queue reconciliation
@@ -257,7 +257,7 @@ dotnet $soPath resume `
 
 - Unchanged: All CLI commands documented in `references/cli.md` remain the same
 - Integration: SO delegates CLI-side runtime work through `SubagentCall` seams; the outer skill-runner agent executes the documented CLI command or equivalent deterministic local step, then resumes the workflow with the declared outputs
-- Example: `cli_download_candidate` seam runs `SubtitleExtractslator.Cli.dll opensubtitles-download`, captures `downloaded_subtitle_path` / `timing_check_required`, and resumes the workflow
+- Example: `cli_download_candidate` seam runs `<runtime_executable_path> opensubtitles-download`, captures `downloaded_subtitle_path` / `timing_check_required`, and resumes the workflow
 
 ### MCP Reference (`references/mcp.md`)
 

@@ -4,10 +4,10 @@
 
 Check:
 
-1. Runtime package was acquired from this repository's `packages.released.md` or `packages.beta.md` absolute URL.
-2. The external package contains `lib/net9.0/SubtitleExtractslator.Cli.dll`.
-3. Host environment allows `dotnet` invocation.
-4. Use an absolute DLL path instead of looking under the skill folder.
+1. Python 3 is available and the network can reach `api.nuget.org`.
+2. `SKILL.md` has the intended `metadata.channel` value.
+3. The host maps to a supported RID and the corresponding `SubtitleExtractslator.Cli.<rid>` package exists in that channel.
+4. Run `assets/bootstrap/restore_runtime.py --channel <metadata.channel>` and use its absolute executable path; do not look for DLLs in the skill folder.
 
 ## No subtitle tracks found
 

@@ -7,6 +7,8 @@ obj/
 *.cache
 *.tmp
 *.log
+__pycache__/
+*.py[cod]
 artifacts/
 tmp/
 TestSubtitles/

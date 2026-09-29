@@ -68,10 +68,11 @@ Preserve all existing runtime constraints:
 1. **ConditionBranch**: Determine execution mode
    - If MCP configured and enabled: → MCP path
    - Otherwise: → CLI path
-2. **ToolCall** (MCP mode only): Verify MCP server is reachable
-3. **ToolCall**: Read local path memory from `references/localpaths.md`
-4. **ToolCall** (if media probing/extraction is needed): Validate FFmpeg bin path or ask user for path
-5. **AskUser + ToolCall** (if FFmpeg missing): Collect `ffmpeg` / `ffprobe` bin directory and apply it before probing media
+2. **SubagentCall**: Before any CLI/MCP operation, run `assets/bootstrap/restore_runtime.py` with `metadata.channel`; record the resolved native executable and package version
+3. **ToolCall** (MCP mode only): Verify MCP server is reachable using the resolved native executable
+4. **ToolCall**: Read local path memory from `references/localpaths.md`
+5. **ToolCall** (if media probing/extraction is needed): Validate FFmpeg bin path or ask user for path
+6. **AskUser + ToolCall** (if FFmpeg missing): Collect `ffmpeg` / `ffprobe` bin directory and apply it before probing media
 
 ### Phase 3: Probe Embedded Subtitle Tracks
 1. **ToolCall**: Probe media file for existing subtitle tracks
@@ -159,6 +160,7 @@ Preserve all existing runtime constraints:
 ### SubagentCall Points
 1. **Batch Worker** (batch mode): Delegate bounded sets of translate jobs to worker subagent
 2. **Worker coordination**: Send queue state and per-item translation parameters
+3. **Runtime bootstrap**: Resolve and cache the latest stable/beta NativeAOT package for the current RID, verify SHA-512, and return the executable path before other runtime calls
 
 ### WaitResume Points
 1. **None in current design**: SO runs to completion or weaves out for user/external action
@@ -176,7 +178,7 @@ Preserve all existing runtime constraints:
 9. **Chinese Track Alias Rule**: For embedded Chinese subtitle discovery, treat `zh` and `chi` as equivalent fallback preferences before declaring Chinese subtitles unavailable.
 10. **MCP-First**: Attempt MCP execution; fall back to CLI only if MCP unavailable
 11. **Queue State**: Store in centralized temp directory, never beside media files
-12. **Binary-Free Skill**: Do not ship any `.dll` or `.bin`; acquire from package index
+12. **Binary-Free Skill**: Do not ship any `.dll`, `.bin`, or skill ZIP; acquire the host RID NativeAOT package from NuGet at startup
 13. **Governance Hard Ban**: Never use workflow nodes or steps equivalent to `run a multistep plan`; this node style is forbidden because it weakens SO-exclusive governance and can expose execution-leak paths.
 14. **JSON Exception Only**: Do not directly edit `assets/so-workflow/so-template.json` during normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
 

@@ -15,13 +15,13 @@ SubtitleExtractslator 是一个以 skill 为主体的字幕翻译项目。
 
 ## 下载
 
-快捷安装打包后的 skill 命令：
+从 GitHub 仓库安装 skill 源码：
 
 ```bash
-npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
+npx skills add waynebaby/SubtitleExtractslator --skill subtitle-extractslator
 ```
 
-运行时主交付已经切换为 `SubtitleExtractslator.Cli` NuGet 包 + skill 外部的 portable DLL 入口。
+CLI 运行时以每 RID 独立的 NativeAOT NuGet 包发布。Stable 和 Beta Release 均不发布 skill ZIP。执行 CLI/MCP 或字幕操作前，skill bootstrap 会检查当前通道最新包，并按需恢复本机 RID 包。
 
 包索引：
 
@@ -30,44 +30,42 @@ npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/downl
 - Beta 通道: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta 通道中文: [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
 
-安装示例：
+Bootstrap 示例（从已安装的 skill 目录运行）：
 
 ```bash
-dotnet add package SubtitleExtractslator.Cli --version <VERSION>
+python3 assets/bootstrap/restore_runtime.py --channel stable
 ```
 
-guide-first 入口：
+Bootstrap 会输出绝对 native executable 路径；使用该路径运行 guide：
 
 ```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+<absolute-path>/SubtitleExtractslator.Cli --guide
 ```
 
-以上包索引页是运行时获取的权威入口；若包源不可用，请使用所选包索引页内维护的 fallback `.nupkg` 链接。
+Native CLI 不需要 .NET Runtime。Bootstrap 需要 Python 3 和 NuGet HTTPS 访问；处理媒体时仍需 FFmpeg。包索引列出全部 RID 包 ID 和精确版本回退资产。
 
 <!-- release-links:start -->
 - 稳定通道包索引：[packages.released.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md)
 - 稳定通道中文包索引：[packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta 通道包索引：[packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta 通道中文包索引：[packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- fallback .nupkg 链接统一由上述包索引页维护。
+- 各 RID 回退 `.nupkg` 和 SHA-512 sidecar 由上述包索引页维护。
 <!-- release-links:end -->
 
 ## 先走 Guide-First 入口
 
-如果你的目标是在 agent 中运行此 skill，请改为安装 Releases 中打包好的 skill zip，而不是依赖仓库根目录发现，并以 NuGet 运行时与 guide 作为命令真相来源。
+如果你要在 agent 中运行此 skill，请从仓库安装 skill，并以 bootstrap 恢复出的 NativeAOT 可执行文件作为 CLI/MCP 命令入口。
 
-1. 从稳定或 Beta fallback release 添加打包好的 skill zip。
-2. 从稳定或 Beta 通道安装 NuGet 包。
-3. 从还原或解包结果里定位绝对 DLL 路径。
-4. 先运行 `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`。
-5. 按 guide 中的入口命令执行 CLI 或 MCP。
-6. 包源不可用时，使用所选包索引页中的 fallback `.nupkg` 链接。
+1. 从仓库安装 skill 源码。
+2. 在 CLI/MCP 或字幕操作前运行 `assets/bootstrap/restore_runtime.py --channel <metadata.channel>`。
+3. 使用 bootstrap 输出的绝对可执行文件路径运行 `--guide`。
+4. NuGet 不可用时，使用所选通道回退 Release 中对应 RID/版本的 `.nupkg` 和 `.sha512` 资产。
 
 说明：
 
 - 仓库继续保留 `.github/skills/subtitle-extractslator/` 作为 skill 路由与策略层。
 - `.github/skills/subtitle-extractslator/` skill 包本身不携带 `assets/bin/`，保持 binary-free。
-- `SubtitleExtractslator.Cli/` 是 skill 使用的运行时宿主（CLI + MCP server），作为独立 portable DLL 包获取。
+- `SubtitleExtractslator.Cli/` 是运行时源码；每 RID NativeAOT NuGet 包提供 CLI + MCP 可执行文件。
 - 对于 SO 增强后的 skill，真正的执行依据是 `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json`；`skill-plan.md` 仅是 planner 输入。
 - 构建与打包细节见 `docs/skill-installation-and-build.md`。
 
@@ -282,17 +280,10 @@ MCP 工具返回约定：
 - 仍保留 `OPENSUBTITLES_MOCK=1` 的离线测试分支。
 - 真实 API 集成建议拆分到独立 provider 模块，并补充鉴权与限流处理。
 
-## 单文件发布示例
-
-```powershell
-dotnet publish SubtitleExtractslator.Cli -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true
-
-dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
-
-dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
-```
+## 构建 RID NativeAOT 包
 
 ```bash
-dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
-dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
+pwsh -NoProfile -File ./scripts/pack-rid-runtime.ps1 -Rid linux-arm64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
+
+Release workflow 会构建受支持 RID 矩阵、校验版本集完整性，并发布附带 SHA-512 sidecar 的 NuGet 包。`linux-arm` 当前不在 NativeAOT 包支持范围内。

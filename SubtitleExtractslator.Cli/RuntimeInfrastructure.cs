@@ -1082,7 +1082,7 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         string? body = null;
         using var request = new HttpRequestMessage(HttpMethod.Post, settings.Endpoint)
         {
-            Content = JsonContent.Create(requestPayload)
+            Content = JsonContent.Create(requestPayload, AppJsonContext.Default.JsonObject)
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         CliRuntimeLog.Info("llm", "Applying authorization headers.");
@@ -1231,13 +1231,13 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return body.Length > 0 && !body.Equals("(none)", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static object BuildRequestPayload(LlmSettings settings, string systemPrompt, string indexedInput)
+    private static JsonObject BuildRequestPayload(LlmSettings settings, string systemPrompt, string indexedInput)
     {
         var endpointIsLegacyLocalChat = settings.Endpoint.EndsWith("/api/v1/chat", StringComparison.OrdinalIgnoreCase);
         if (settings.ApiType == "openai" && endpointIsLegacyLocalChat)
         {
             // Keep compatibility with local chat API shape from default LM Studio style config.
-            var payload = new Dictionary<string, object?>
+            var payload = new JsonObject
             {
                 ["model"] = settings.Model,
                 ["system_prompt"] = systemPrompt,
@@ -1255,19 +1255,17 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
 
         return settings.ApiType switch
         {
-            "claude" => new
+            "claude" => new JsonObject
             {
-                model = settings.Model,
-                system = systemPrompt,
-                max_tokens = settings.MaxTokens,
-                messages = new[]
-                {
-                    new
+                ["model"] = settings.Model,
+                ["system"] = systemPrompt,
+                ["max_tokens"] = settings.MaxTokens,
+                ["messages"] = new JsonArray(
+                    new JsonObject
                     {
-                        role = "user",
-                        content = indexedInput
-                    }
-                }
+                        ["role"] = "user",
+                        ["content"] = indexedInput
+                    })
             },
             _ => BuildOpenAiPayload(settings, systemPrompt, indexedInput)
         };
@@ -1284,19 +1282,17 @@ internal sealed class ExternalTranslationProvider : ITranslationProvider
         return reasoning;
     }
 
-    private static Dictionary<string, object?> BuildOpenAiPayload(
+    private static JsonObject BuildOpenAiPayload(
         LlmSettings settings,
         string systemPrompt,
         string indexedInput)
     {
-        var payload = new Dictionary<string, object?>
+        var payload = new JsonObject
         {
             ["model"] = settings.Model,
-            ["messages"] = new object[]
-            {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = indexedInput }
-            },
+            ["messages"] = new JsonArray(
+                new JsonObject { ["role"] = "system", ["content"] = systemPrompt },
+                new JsonObject { ["role"] = "user", ["content"] = indexedInput }),
             ["temperature"] = 0.2
         };
 

@@ -31,8 +31,8 @@ Windows snippet example:
   "servers": {
     "subtitle-extractslator": {
       "type": "stdio",
-      "command": "dotnet",
-      "args": ["C:\\runtime\\SubtitleExtractslator.Cli.dll", "--mode", "mcp"]
+      "command": "C:\\runtime\\SubtitleExtractslator.Cli.exe",
+      "args": ["--mode", "mcp"]
     }
   }
 }
@@ -40,7 +40,7 @@ Windows snippet example:
 
 Cross-platform command path rule:
 
-1. Use `dotnet` plus an absolute `SubtitleExtractslator.Cli.dll` path outside the skill directory.
+1. Run the channel-aware runtime bootstrap first, then use its absolute NativeAOT executable path as the MCP command.
 2. Do not assume `.github/skills` or `.claude/skills` contains runtime binaries.
 3. Package pages are the canonical runtime source; the skill folder only carries contracts and SO artifacts.
 
@@ -59,8 +59,8 @@ Official SO guide refresh for governed maintenance:
 
 Component primitive guide for direct CLI runtime diagnostics:
 
-1. Resolve external package DLL path.
-2. Run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`.
+1. Resolve the current channel's host RID executable with `assets/bootstrap/restore_runtime.py`.
+2. Run `<absolute-path>/SubtitleExtractslator.Cli --guide`.
 
 ## Bitmap Subtitle Branch Internals (CLI)
 

@@ -15,13 +15,13 @@ It is built for end-to-end subtitle processing: detect existing tracks, search c
 
 ## Downloads
 
-Quick install packaged skill command:
+Install the skill source from the repository:
 
 ```bash
-npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
+npx skills add waynebaby/SubtitleExtractslator --skill subtitle-extractslator
 ```
 
-Primary runtime distribution now uses the `SubtitleExtractslator.Cli` NuGet package plus a portable DLL entry outside the skill folder.
+The CLI runtime is published as per-RID NativeAOT NuGet packages. Stable and Beta releases do not publish skill ZIPs. Before running CLI or MCP work, the skill bootstrap checks its channel's latest package and restores the current host RID when needed.
 
 Package indexes:
 
@@ -30,19 +30,19 @@ Package indexes:
 - Beta index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
 
-Install example:
+Bootstrap example (run from the installed skill directory):
 
 ```bash
-dotnet add package SubtitleExtractslator.Cli --version <VERSION>
+python3 assets/bootstrap/restore_runtime.py --channel stable
 ```
 
-Guide-first entry:
+The bootstrap prints an absolute native executable path. Run guide mode with that path:
 
 ```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+<absolute-path>/SubtitleExtractslator.Cli --guide
 ```
 
-Use the package index pages above as the canonical acquisition surface. If package feed is unavailable, use the fallback `.nupkg` link maintained inside the selected package index page.
+The native CLI does not require the .NET runtime. Python 3, NuGet HTTPS access, and FFmpeg for media operations are still required. Package indexes list all RID package IDs and exact-version fallback assets.
 
 ## SkillOrchestrator (SO) Deterministic Orchestration
 
@@ -89,25 +89,23 @@ This skill is now enhanced with **SkillOrchestrator deterministic workflow** sup
 - Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta package index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- Runtime fallback .nupkg links are maintained in the package index pages above.
+- Per-RID runtime fallback packages and SHA-512 sidecars are listed in the package index pages above.
 <!-- release-links:end -->
 
 ## First: Guide-First Runtime Entry
 
-If your goal is to run this as a skill in your own agent, install the packaged skill zip from Releases instead of relying on repo-root discovery, and use NuGet package runtime as command source of truth.
+If your goal is to run this as a skill in your own agent, install the skill from the repository and use the bootstrap-resolved NativeAOT executable as the CLI/MCP command source.
 
-1. Add the packaged skill zip from the stable/beta fallback release.
-2. Install runtime package from stable/beta channel.
-3. Resolve an absolute DLL path from the restored or extracted package.
-4. Run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide` first.
-5. Follow guide command entries for CLI or MCP mode.
-6. If package feed is unavailable, use the fallback `.nupkg` link listed inside the selected package index page.
+1. Install the source skill from the repository.
+2. Run `assets/bootstrap/restore_runtime.py --channel <metadata.channel>` before CLI/MCP or subtitle operations.
+3. Run `--guide` with the absolute executable path printed by the bootstrap.
+4. If NuGet is unavailable, use the matching RID/version `.nupkg` and `.sha512` assets from the selected channel's fallback release.
 
 Notes:
 
 - This repository keeps `.github/skills/subtitle-extractslator/` for skill routing and policy context.
 - The `.github/skills/subtitle-extractslator/` skill package is binary-free and does not ship `assets/bin/`.
-- The `SubtitleExtractslator.Cli/` project is the runtime host used by the skill (CLI + MCP server), delivered as a separate portable DLL package.
+- The `SubtitleExtractslator.Cli/` project is the runtime source; per-RID NativeAOT NuGet packages provide CLI + MCP executables.
 - For the SO-enhanced skill, `.github/skills/subtitle-extractslator/assets/so-workflow/so-template.json` is the execution basis; `skill-plan.md` is compile input only.
 - Build and packaging details are in `docs/skill-installation-and-build.md`.
 
@@ -321,17 +319,10 @@ MCP tool return contract:
 - `subtitle auth login` stores api key, username, and password in local cache for later `aquire` usage.
 - Optional mock branch remains available via `OPENSUBTITLES_MOCK=1` for offline testing.
 
-## Publish single-file examples
-
-```powershell
-dotnet publish SubtitleExtractslator.Cli -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true
-
-dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
-
-dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
-```
+## Build a RID NativeAOT package
 
 ```bash
-dotnet publish SubtitleExtractslator.Cli -c Release -r linux-x64 -p:PublishSingleFile=true -p:SelfContained=true
-dotnet publish SubtitleExtractslator.Cli -c Release -r osx-arm64 -p:PublishSingleFile=true -p:SelfContained=true
+pwsh -NoProfile -File ./scripts/pack-rid-runtime.ps1 -Rid linux-arm64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
+
+The release workflows build the supported RID matrix, validate the complete version set, and publish the resulting NuGet packages with SHA-512 sidecars. `linux-arm` is not currently included in the NativeAOT package set.

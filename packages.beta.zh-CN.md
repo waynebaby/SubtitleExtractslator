@@ -1,29 +1,37 @@
-# SubtitleExtractslator Beta 通道包索引
+# SubtitleExtractslator Beta NativeAOT 包索引
 
-该通道是从 `development` 发布的预发布通道。
+预发布运行时集来自 `development` 分支。Skill 从该分支安装；Beta Release 不发布 skill ZIP。
 
-这个页面是 binary-free `.github/skills/subtitle-extractslator/` skill 包获取运行时的权威入口。
+## 恢复本机运行时
 
-## 安装命令
+Skill 每次启动都会检查此通道最新的预发布版本；仅当本机 RID 包缺失或缓存过期时才下载：
 
 ```bash
-dotnet add package SubtitleExtractslator.Cli --version <beta-version>
+python3 assets/bootstrap/restore_runtime.py --channel beta
 ```
 
-## 安装 Skill 包
+Windows 如没有 `python3`，请使用 `py -3`。Bootstrap 需要 Python 3 和访问 NuGet 的 HTTPS 网络，会验证 SHA-512 sidecar，并输出绝对可执行文件路径。
 
-请使用打包后的 skill zip，不要依赖仓库根目录发现：
+## 运行时包
+
+每个 NuGet 包只包含 `tools/<rid>/` 下对应平台的 NativeAOT 可执行文件：
+
+- `SubtitleExtractslator.Cli.win-x64`
+- `SubtitleExtractslator.Cli.win-arm64`
+- `SubtitleExtractslator.Cli.linux-x64`
+- `SubtitleExtractslator.Cli.linux-arm64`
+- `SubtitleExtractslator.Cli.linux-musl-x64`
+- `SubtitleExtractslator.Cli.linux-musl-arm64`
+- `SubtitleExtractslator.Cli.osx-x64`
+- `SubtitleExtractslator.Cli.osx-arm64`
+
+同一个 Beta 发布集中的 RID 包使用相同预发布版本。`linux-arm`（32 位）尚未通过 NativeAOT 支持验证，因此不包含在发布集中。
+
+## 安装 Skill
 
 ```bash
-npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip
-```
-
-## 运行前先看 guide
-
-在还原或解包 `.nupkg` 后，先定位绝对 DLL 路径，再执行：
-
-```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+git clone --branch development https://github.com/waynebaby/SubtitleExtractslator.git
+npx skills add ./SubtitleExtractslator/.github/skills/subtitle-extractslator
 ```
 
 ## SO 增强后的 Skill 约定
@@ -32,10 +40,8 @@ dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
 2. planner 输入文件：`.github/skills/subtitle-extractslator/assets/so-workflow/skill-plan.md`
 3. 审计产物目录：`.github/skills/subtitle-extractslator/assets/so-workflow/audit/`
 
-## GitHub 回退下载
+## GitHub 回退
 
-仅在包管理源不可用时使用回退通道。
+仅在 NuGet 不可用时使用 Beta 通道移动回退 Release；其中包含精确版本的各 RID `.nupkg` 及对应 `.nupkg.sha512` sidecar：
 
-- Beta 通道最新回退 Release: <https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest>
-- Beta 通道 skill zip: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/subtitle-extractslator-skill.zip>
-- Beta 通道 `.latest.nupkg`: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-beta-latest/SubtitleExtractslator.Cli.latest.nupkg>
+<https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-beta-latest>

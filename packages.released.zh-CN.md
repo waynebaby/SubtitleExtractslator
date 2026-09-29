@@ -1,39 +1,48 @@
-# SubtitleExtractslator 稳定通道包索引
+# SubtitleExtractslator 稳定版 NativeAOT 包索引
 
-该通道是从 `main` 发布的稳定生产线。
+稳定版发布集来自 `main`。Skill 从仓库安装；稳定版 Release 不发布 skill ZIP。
 
-这个页面是 binary-free `.github/skills/subtitle-extractslator/` skill 包获取运行时的权威入口。
+## 恢复本机运行时
 
-## 安装命令
-
-```bash
-dotnet add package SubtitleExtractslator.Cli --version <stable-version>
-```
-
-## 安装 Skill 包
-
-请使用打包后的 skill zip，不要依赖仓库根目录发现：
+Skill 每次启动都会检查此通道的 NuGet 最新版本；仅当本机 RID 包缺失或缓存版本过期时才下载：
 
 ```bash
-npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
+python3 assets/bootstrap/restore_runtime.py --channel stable
 ```
 
-## 运行前先看 guide
+Windows 如没有 `python3`，请使用 `py -3`。Bootstrap 需要 Python 3 和访问 NuGet 的 HTTPS 网络，会验证 SHA-512 sidecar，并输出绝对可执行文件路径。
 
-在还原或解包 `.nupkg` 后，先定位绝对 DLL 路径，再执行：
+## 运行时包
+
+每个 NuGet 包只包含 `tools/<rid>/` 下对应平台的 NativeAOT 可执行文件：
+
+- `SubtitleExtractslator.Cli.win-x64`
+- `SubtitleExtractslator.Cli.win-arm64`
+- `SubtitleExtractslator.Cli.linux-x64`
+- `SubtitleExtractslator.Cli.linux-arm64`
+- `SubtitleExtractslator.Cli.linux-musl-x64`
+- `SubtitleExtractslator.Cli.linux-musl-arm64`
+- `SubtitleExtractslator.Cli.osx-x64`
+- `SubtitleExtractslator.Cli.osx-arm64`
+
+同一个稳定版发布集中的 RID 包使用相同版本。`linux-arm`（32 位）尚未通过 NativeAOT 支持验证，因此不包含在发布集中。
+
+## 安装 Skill
+
+从 GitHub 仓库安装 Skill，不使用 Release 压缩包：
 
 ```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+npx skills add waynebaby/SubtitleExtractslator --skill subtitle-extractslator
 ```
 
-## SO 增强说明
+## SO 执行
 
-SO 增强后的 workflow template 目前仅在 Beta 文档路径中维护。当前 `so-template.json` 合同说明请使用 `packages.beta.md`。
+- 正式运行：`dotnet so.dll run --workflow-file <skill-path>/assets/so-workflow/so-template.json`
+- 正式恢复：`dotnet so.dll resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json`
+- 直接 CLI/MCP 只作为运行时基础能力，不属于正式 skill 执行历史。
 
-## GitHub 回退下载
+## GitHub 回退
 
-仅在包管理源不可用时使用回退通道。
+仅在 NuGet 不可用时使用稳定通道移动回退 Release；其中包含精确版本的各 RID `.nupkg` 及对应 `.nupkg.sha512` sidecar：
 
-- 稳定通道最新回退 Release: <https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest>
-- 稳定通道 skill zip: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip>
-- 稳定通道 `.latest.nupkg`: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg>
+<https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest>

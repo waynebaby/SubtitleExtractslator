@@ -13,11 +13,12 @@ env:
   DOTNET_VERSION: 9.0.x
   PACKAGE_ID: SubtitleExtractslator.Cli
   PROJECT_PATH: SubtitleExtractslator.Cli/SubtitleExtractslator.Cli.csproj
-  SKILL_PACKAGE_NAME: subtitle-extractslator-skill.zip
 
 jobs:
   release-beta:
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
 
     steps:
       - name: Checkout
@@ -86,6 +87,14 @@ jobs:
             exit 1
           fi
 
+      - name: Validate skill channel metadata
+        shell: pwsh
+        run: |
+          $skill = Get-Content ".github/skills/subtitle-extractslator/SKILL.md" -Raw
+          if ($skill -notmatch '(?m)^\s*channel:\s*beta\s*$') {
+            throw "Beta release requires SKILL.md metadata.channel: beta."
+          }
+
       - name: Restore
         run: dotnet restore SubtitleExtractslator.sln
 
@@ -95,32 +104,118 @@ jobs:
       - name: Test
         run: dotnet test SubtitleExtractslator.sln -c Release --no-build
 
-      - name: Pack
-        run: dotnet pack ${{ env.PROJECT_PATH }} -c Release --no-build -o artifacts/nuget /p:PackageVersion=${{ steps.version.outputs.package_version }}
+  package-rid:
+    needs: release-beta
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-2025
+          - rid: win-arm64
+            runner: windows-11-arm
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - rid: linux-musl-x64
+            runner: ubuntu-24.04
+          - rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+          - rid: osx-x64
+            runner: macos-15-intel
+          - rid: osx-arm64
+            runner: macos-15
 
-      - name: Prepare fallback artifacts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install NativeAOT Linux toolchain
+        if: startsWith(matrix.rid, 'linux-')
         shell: bash
         run: |
-          PACKAGE_VERSION="${{ steps.version.outputs.package_version }}"
-          mkdir -p artifacts/fallback
-          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg"
-          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.latest.nupkg"
+          sudo apt-get update
+          sudo apt-get install -y clang lld zlib1g-dev
+          if [[ "${{ matrix.rid }}" == linux-musl-* ]]; then
+            sudo apt-get install -y musl-tools
+          fi
 
-      - name: Prepare skill package artifact
+      - name: Pack RID runtime
+        shell: pwsh
+        run: >-
+          ./scripts/pack-rid-runtime.ps1
+          -Rid '${{ matrix.rid }}'
+          -PackageVersion '${{ needs.release-beta.outputs.package_version }}'
+          -OutputRoot artifacts
+
+      - name: Upload RID package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-${{ matrix.rid }}
+          path: artifacts/nuget/${{ matrix.rid }}/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-beta:
+    needs: [release-beta, package-rid]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download RID packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-*
+          path: artifacts/nuget
+          merge-multiple: true
+
+      - name: Validate release set and create checksums
+        shell: pwsh
+        run: >-
+          ./scripts/prepare-rid-release-set.ps1
+          -PackageVersion '${{ needs.release-beta.outputs.package_version }}'
+
+      - name: Push package set to NuGet
         shell: bash
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          set -euo pipefail
-          SKILL_ROOT="artifacts/skill/subtitle-extractslator"
-          rm -rf artifacts/skill
-          rm -f "artifacts/fallback/${SKILL_PACKAGE_NAME}"
-          mkdir -p "${SKILL_ROOT}/references" "${SKILL_ROOT}/assets/so-workflow"
-          cp .github/skills/subtitle-extractslator/SKILL.md "${SKILL_ROOT}/SKILL.md"
-          cp -R .github/skills/subtitle-extractslator/references/. "${SKILL_ROOT}/references/"
-          cp -R .github/skills/subtitle-extractslator/assets/so-workflow/. "${SKILL_ROOT}/assets/so-workflow/"
-          (
-            cd artifacts/skill
-            zip -qr "../fallback/${SKILL_PACKAGE_NAME}" subtitle-extractslator
-          )
+          if [ -z "${NUGET_API_KEY}" ]; then
+            echo "NUGET_API_KEY is not set, skip NuGet push."
+            exit 0
+          fi
+          for package in artifacts/nuget/*.nupkg; do
+            dotnet nuget push "$package" --api-key "${NUGET_API_KEY}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Remove legacy ZIP and generic package aliases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_tag="nuget-beta-latest"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            while IFS= read -r asset; do
+              case "$asset" in
+                *.nupkg|*.nupkg.sha512|subtitle-extractslator-skill.zip)
+                  gh release delete-asset "$release_tag" "$asset" --yes
+                  ;;
+              esac
+            done < <(gh release view "$release_tag" --json assets --jq '.assets[].name')
+          fi
 
       - name: Publish beta fallback release
         uses: softprops/action-gh-release@v2
@@ -130,17 +225,5 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            artifacts/fallback/${{ env.PACKAGE_ID }}.${{ steps.version.outputs.package_version }}.nupkg
-            artifacts/fallback/${{ env.PACKAGE_ID }}.latest.nupkg
-            artifacts/fallback/${{ env.SKILL_PACKAGE_NAME }}
-
-      - name: Push package to NuGet
-        shell: bash
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          if [ -z "${NUGET_API_KEY}" ]; then
-            echo "NUGET_API_KEY is not set, skip NuGet push."
-            exit 0
-          fi
-          dotnet nuget push artifacts/nuget/*.nupkg --api-key "${NUGET_API_KEY}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.nupkg.sha512

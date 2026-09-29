@@ -42,6 +42,13 @@ internal sealed record OpenSubtitlesAuthState(
     string? UserAgent,
     string UpdatedUtc);
 
+internal sealed record OpenSubtitlesLoginPayload(
+    [property: System.Text.Json.Serialization.JsonPropertyName("username")] string Username,
+    [property: System.Text.Json.Serialization.JsonPropertyName("password")] string Password);
+
+internal sealed record OpenSubtitlesDownloadPayload(
+    [property: System.Text.Json.Serialization.JsonPropertyName("file_id")] string FileId);
+
 internal sealed record AuthCommandResult(
     string Action,
     bool Ok,
@@ -136,3 +143,16 @@ internal sealed record SubtitleGroup(int GroupIndex, List<SubtitleCue> Cues);
 internal sealed record GroupTranslationResult(int GroupIndex, string ParaphraseSummary, string ParaphraseHistory, List<SubtitleCue> Cues);
 
 internal sealed record WorkflowResult(string Status, string Branch, string OutputPath, List<GroupTranslationResult> Groups, string? MuxedOutputPath);
+
+internal sealed record PgsArtifactManifest(
+    string Input,
+    string Output,
+    string SelectedLanguage,
+    string PreferredLanguage,
+    int SubtitleOrder,
+    string CodecName,
+    string SupPath,
+    string PngDirectory,
+    string TimelinePath,
+    int ImageCount,
+    int CueCount);

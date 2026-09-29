@@ -1441,7 +1441,7 @@
     },
     "transition.apply_mcp_setup": {
       "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Outer agent must update or merge the MCP config using dotnet + absolute SubtitleExtractslator.Cli.dll path, preserve unrelated servers, optionally persist FFMPEG_BIN_DIR, and return mcp_configured=true on success.",
+      "designNotes": "SubagentCall seam. The runtime bootstrap must run before this step. Outer agent must update or merge the MCP config using the resolved absolute NativeAOT executable as command and --mode mcp as args, preserve unrelated servers, optionally persist FFMPEG_BIN_DIR, and return mcp_configured=true on success.",
       "id": "transition.apply_mcp_setup",
       "name": "Apply MCP Setup",
       "description": "Delegate MCP configuration update to the outer agent.",
@@ -2142,8 +2142,8 @@
     "state.ensure_cli_runtime": {
       "$kind": "state",
       "id": "state.ensure_cli_runtime",
-      "name": "Ensure CLI Runtime Host",
-      "description": "Ensure the external SubtitleExtractslator CLI host can start. If dotnet is missing, install the minimal .NET 9 runtime required by lib/net9.0 rather than the full SDK.",
+      "name": "Restore Native CLI Runtime",
+      "description": "Before any subtitle operation, run assets/bootstrap/restore_runtime.py with the skill metadata channel. It checks the latest matching NuGet version, restores and SHA-512 verifies the host RID package only when the versioned cache is missing, and returns its absolute native executable path. Do not install the .NET runtime for this CLI.",
       "groups": [
         {
           "id": "group.ensure_cli_runtime",
@@ -2176,10 +2176,10 @@
     },
     "transition.ensure_cli_runtime": {
       "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate runtime-host verification to an outer skill-runner agent. It must confirm that dotnet can host SubtitleExtractslator.Cli.dll, install or reuse the minimal .NET 9 runtime when missing, and resume with dotnet_runtime_available plus any resolved runtime install path.",
+      "designNotes": "SubagentCall seam. This is the first runtime action before CLI/MCP/domain work. The outer skill-runner must invoke assets/bootstrap/restore_runtime.py --channel <metadata.channel>, capture the printed absolute native executable, and resume with runtime_executable_path and runtime_package_version. The helper detects OS/architecture/Linux libc, checks the NuGet channel version on every invocation, verifies the package SHA-512 sidecar, and uses a versioned cache. Do not install .NET for the CLI.",
       "id": "transition.ensure_cli_runtime",
-      "name": "Ensure CLI Runtime Host",
-      "description": "Delegate portable CLI runtime-host verification and minimal .NET runtime bootstrap to an outer skill-runner agent.",
+      "name": "Restore Native CLI Runtime",
+      "description": "Resolve and restore the latest channel-specific NativeAOT NuGet package for this host before starting subtitle work.",
       "targetNodeId": "state.read_localpaths",
       "outputPath": "runtime_host",
       "priority": 100,

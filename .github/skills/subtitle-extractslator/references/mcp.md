@@ -22,9 +22,9 @@ NO SCRIPTS IN MCP.
 
 1. Ask user whether to set up MCP in current workspace.
 2. If agreed, create or update the MCP config file for the active agent client.
-3. On all platforms, use `dotnet` as `servers.subtitle-extractslator.command` and pass an absolute `SubtitleExtractslator.Cli.dll` path in `args`.
+3. Run the runtime bootstrap first, then use the resolved native executable as `servers.subtitle-extractslator.command` and pass `--mode mcp` in `args`.
 4. If config exists, merge/add server entry instead of overwriting unrelated servers.
-5. Always choose a DLL path restored or extracted from `SubtitleExtractslator.Cli` acquired through this repository's `packages.*.md` absolute URLs.
+5. Always use the native executable restored from the RID-specific `SubtitleExtractslator.Cli.<rid>` NuGet package for the skill's selected channel.
 6. Keep skill-side local FFmpeg path memory in `references/localpaths.md`.
 7. After FFmpeg is installed/downloaded locally, call `ffmpeg_set_bin_dir` and then update `references/localpaths.md` so next run can reuse the same path.
 8. The skill package intentionally ships no `assets/bin/` runtime directory.

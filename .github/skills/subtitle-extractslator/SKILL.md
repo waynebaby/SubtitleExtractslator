@@ -1,11 +1,12 @@
 ---
 name: subtitle-extractslator
 description: Probe media subtitle tracks, search OpenSubtitles candidates, extract fallback subtitles, and run grouped context-aware translation while preserving SRT timing and structure. Use when user asks to find subtitle language, reuse existing subtitle tracks, check OpenSubtitles, or produce translated subtitle files with stable rhythm and timeline.
-compatibility: Designed for agent environments (GitHub Copilot, Claude Code, OpenClaw, Codex) with local executable access and FFmpeg available.
+compatibility: Designed for agent environments (GitHub Copilot, Claude Code, OpenClaw, Codex) with Python 3 bootstrap access, native executable launch permissions, network access for NuGet version checks, and FFmpeg available.
 license: MIT
 metadata:
   author: waynebaby
   version: 0.1.19
+  channel: beta
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN
@@ -43,7 +44,8 @@ SO workflow files in this skill package:
 1. `assets/so-workflow/skill-plan.md` — Supporting maintainer-facing orchestration plan
 2. `assets/so-workflow/so-template.json` — Workflow JSON template (execution authority)
 3. `assets/so-workflow/so-package-lock.json` — Authoritative SO runtime version lock
-4. External audit artifacts — Compile validation and run/resume audit evidence must stay outside the skill folder
+4. `assets/bootstrap/restore_runtime.py` — Host RID detection and channel-specific NativeAOT NuGet restore/cache bootstrap
+5. External audit artifacts — Compile validation and run/resume audit evidence must stay outside the skill folder
 
 Workflow modification confirmation loop for maintainers:
 1. Update `assets/so-workflow/skill-plan.md` first and keep governance changes plan-first.
@@ -59,11 +61,13 @@ Official SO guide refresh for governed maintenance and validation:
 dotnet so.dll --guide --lang zh-cn
 ```
 
-Component primitive guide entry (direct CLI runtime diagnostics only):
+Resolve the channel's latest native runtime before CLI or MCP operations. The bootstrap prints the absolute executable path; use that path as `<cli_entry>`:
 
 ```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+python3 assets/bootstrap/restore_runtime.py --channel beta
 ```
+
+On Windows, use `py -3` if `python3` is not on PATH.
 
 Official skill execution entry:
 
