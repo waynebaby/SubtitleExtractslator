@@ -44,6 +44,7 @@ if ($LASTEXITCODE -ne 0) {
 $publishDirWithSeparator = $publishDir.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 & dotnet pack $projectPath `
     --configuration $Configuration `
+    --runtime $Rid `
     --no-build `
     --no-restore `
     --output $packageDir `
