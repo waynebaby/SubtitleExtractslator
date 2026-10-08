@@ -1,0 +1,39 @@
+{
+  "name": "subtitle-extractslator",
+  "inputs": {
+    "input_path": "Required path to a media file or an existing SRT file.",
+    "target_language": "Required target subtitle language code.",
+    "output_path": "Optional explicit subtitle output path; media-file outputs default to a same-directory <video-basename>.<lang>.srt copy.",
+    "execution_mode": "Optional MCP or CLI preference; the selected path must use the skill's deterministic orchestration and runtime contracts.",
+    "ffmpeg_path": "User-owned FFmpeg/ffprobe binary directory when the tools are not discoverable on PATH.",
+    "opensubtitles_credentials": "User-owned OpenSubtitles API key, username, and password supplied only to the login flow when authentication is required.",
+    "batch_scope": "Optional folder, season, or library scope for queue-driven processing."
+  },
+  "outputs": {
+    "final_subtitle": "A structurally valid SRT with source cue order and timestamps preserved.",
+    "media_sidecar_subtitle": "For media inputs, a copy named <original-video-basename>.<lang>.srt beside the source video unless the user requests another destination.",
+    "batch_state": "For multi-file runs, centralized queue, completion, failure, in-progress, and run-note files under the configured temp root.",
+    "run_summary": "Source selection, translation outcome, output paths, and per-item success or failure details."
+  },
+  "default_assumptions": {
+    "execution_authority": "Loom Skill Orchestrator is the only official skill workflow authority; the subtitle CLI and MCP are execution primitives behind explicit workflow seams.",
+    "source_selection_order": [
+      "usable embedded subtitle track",
+      "matching local subtitle file",
+      "OpenSubtitles search and download"
+    ],
+    "embedded_track_fallback": "If no usable embedded track exists, continue to local subtitle discovery and then OpenSubtitles instead of terminating the batch.",
+    "chinese_track_aliases": [
+      "zh",
+      "chi"
+    ],
+    "opensubtitles_search_download": "Search and download remain strictly serial; after rate limiting, use delayed serial retries and preserve the remaining queue.",
+    "authentication": "OpenSubtitles credentials are managed through login/aquire/status/clear cache commands; secrets are never placed in per-call workflow parameters or persisted outputs.",
+    "translation": "Translate in grouped rolling-context batches while preserving cue segmentation, timing, ordering, and identifiers.",
+    "structural_validation": "Stop on malformed SRT output; do not merge or split cues unless the user explicitly requests it.",
+    "batch_state": "Keep queue state in centralized temporary storage, never beside media files; process each item through the same single-item subtitle pipeline.",
+    "subtitle_runtime": "The subtitle CLI is binary-free in the skill package and is restored as an exact host-RID NativeAOT package independently of the SO workflow runtime.",
+    "loom_runtime": "Use the exact SO runtime version and product/RID package in assets/so-workflow/so-package-lock.json; do not float to latest or confuse it with the subtitle CLI package.",
+    "workflow_source": "The checked-in SO workflow JSON is the source template; official run/resume operations use a fresh external workflow copy and keep all audit/runtime files outside the skill folder."
+  }
+}

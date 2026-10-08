@@ -35,8 +35,10 @@ Act as persistent coordinator for:
 Supervisor/worker model applies to all batch-processing scenarios.
 
 Subagent requirement:
-1. If platform supports subagents, supervisor must delegate bounded batches to worker subagents.
-2. If subagents are unavailable, keep the same supervisor/worker contract in a single-agent loop.
+1. If the platform supports subagents, the supervisor delegates bounded batches to worker subagents.
+2. If the exact named worker agent is not registered, apply the Named Agent Fallback in `references/worker.md`: invoke a registered generic subagent as the driver with the full worker contract and the batch inputs. Never substitute a similar role.
+3. If the platform has no subagent support at all, keep the same supervisor/worker contract in a single-agent loop.
+4. A main-agent run for a batch that could have been delegated requires explicit user approval.
 
 Parallel safety constraints:
 1. Parallelize only independent folders or lanes.

@@ -1,11 +1,12 @@
 {
-  "instanceId": "subtitleextractslator-explicit-template-v1",
+  "instanceId": "subtitleextractslator-so-0.3.328-template-v3",
   "nodes": {
     "state.start": {
       "$kind": "state",
       "id": "state.start",
-      "name": "Start",
+      "name": "CK01 - Start",
       "description": "Enter the explicit SubtitleExtractslator SO graph.",
+      "workflowPhase": "01 Intake and routing",
       "groups": [
         {
           "id": "group.start",
@@ -21,8 +22,9 @@
     "state.read_localpaths": {
       "$kind": "state",
       "id": "state.read_localpaths",
-      "name": "Read Local Paths",
+      "name": "CK02 - Read Local Paths",
       "description": "Load skill-side local path memory before runtime resolution.",
+      "workflowPhase": "01 Intake and routing",
       "groups": [
         {
           "id": "group.read_localpaths",
@@ -38,8 +40,9 @@
     "state.execution_profile_gate": {
       "$kind": "state",
       "id": "state.execution_profile_gate",
-      "name": "Check Execution Profile",
+      "name": "CK03 - Check Execution Profile",
       "description": "Only ask for execution profile fields when required routing inputs are still missing.",
+      "workflowPhase": "01 Intake and routing",
       "groups": [
         {
           "id": "group.execution_profile_gate",
@@ -49,7 +52,6 @@
             "transition.execution_profile_missing_request_kind",
             "transition.execution_profile_missing_mode",
             "transition.execution_profile_missing_target_language",
-            "transition.execution_profile_missing_run_id",
             "transition.execution_profile_ready"
           ]
         }
@@ -59,8 +61,9 @@
     "state.ask_execution_profile": {
       "$kind": "state",
       "id": "state.ask_execution_profile",
-      "name": "Ask Execution Profile",
+      "name": "CK04 - Ask Execution Profile",
       "description": "Collect the missing execution profile before routing into single-file or batch processing.",
+      "workflowPhase": "01 Intake and routing",
       "groups": [
         {
           "id": "group.ask_execution_profile",
@@ -76,8 +79,9 @@
     "state.route_request_kind": {
       "$kind": "state",
       "id": "state.route_request_kind",
-      "name": "Route Request Kind",
+      "name": "CK05 - Route Request Kind",
       "description": "Branch between direct single-file orchestration and queue-driven repetition of the same single-item pipeline.",
+      "workflowPhase": "01 Intake and routing",
       "groups": [
         {
           "id": "group.route_request_kind",
@@ -94,9 +98,9 @@
     "state.batch_init": {
       "$kind": "state",
       "id": "state.batch_init",
-      "name": "Initialize Batch Run",
+      "name": "CK06 - Initialize Batch Run",
       "description": "Create or resume the centralized queue workspace under <temp-root>/agent-runs/<run-id>/.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_init",
@@ -107,14 +111,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_build_queue": {
       "$kind": "state",
       "id": "state.batch_build_queue",
-      "name": "Build Or Reconcile Queue",
+      "name": "CK07 - Build Or Reconcile Queue",
       "description": "Populate queue.txt, completed.txt, failed.txt, in-progress.txt, and run-notes.md.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_build_queue",
@@ -125,14 +130,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_dispatch_check": {
       "$kind": "state",
       "id": "state.batch_dispatch_check",
-      "name": "Check Pending Batch Work",
+      "name": "CK08 - Check Pending Batch Work",
       "description": "Continue until queue.txt is empty or only hard blockers remain. Each pending item re-enters the same single-item workflow path.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_dispatch_check",
@@ -144,32 +150,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
-    },
-    "state.batch_route_worker": {
-      "$kind": "state",
-      "id": "state.batch_route_worker",
-      "name": "Prepare Next Single Run",
-      "description": "Load the next pending queue item into the shared single-item pipeline. Batch is a queue wrapper, not a second subtitle business path.",
-      "correlationKeyPath": "run_id",
-      "groups": [
-        {
-          "id": "group.batch_route_worker",
-          "strategy": "firstSuccess",
-          "cancelLosers": true,
-          "transitionIds": [
-            "transition.batch_prepare_single_run"
-          ]
-        }
-      ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_subagent_worker": {
       "$kind": "state",
       "id": "state.batch_subagent_worker",
-      "name": "Run Worker Subagent",
+      "name": "CK10 - Run Worker Subagent",
       "description": "Delegate the bounded batch to a worker subagent while preserving centralized queue state semantics.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_subagent_worker",
@@ -180,14 +169,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_inline_worker": {
       "$kind": "state",
       "id": "state.batch_inline_worker",
-      "name": "Run Inline Worker",
+      "name": "CK11 - Run Inline Worker",
       "description": "Execute the same bounded worker contract inside the main agent loop when subagents are unavailable.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_inline_worker",
@@ -198,14 +188,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_apply_deltas": {
       "$kind": "state",
       "id": "state.batch_apply_deltas",
-      "name": "Apply Worker Deltas",
+      "name": "CK12 - Apply Worker Deltas",
       "description": "Apply Completed/Failed/Notes deltas back into the centralized queue files before continuing.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_apply_deltas",
@@ -216,14 +207,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_cooldown_check": {
       "$kind": "state",
       "id": "state.batch_cooldown_check",
-      "name": "Check Cooldown Or Resume",
+      "name": "CK13 - Check Cooldown Or Resume",
       "description": "Gate delayed serial retries for rate-limited lanes without abandoning the rest of the queue.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_cooldown_check",
@@ -235,14 +227,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.batch_wait_resume": {
       "$kind": "state",
       "id": "state.batch_wait_resume",
-      "name": "Wait For Resume",
+      "name": "CK14 - Wait For Resume",
       "description": "Pause only the affected lane until an external resume signal or cooldown completion arrives.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.batch_wait_resume",
@@ -253,14 +246,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.emit_batch_summary": {
       "$kind": "state",
       "id": "state.emit_batch_summary",
-      "name": "Emit Batch Summary",
+      "name": "CK15 - Emit Batch Summary",
       "description": "Emit final queue state, completed outputs, blockers, and resume-relevant notes.",
-      "correlationKeyPath": "run_id",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
           "id": "group.emit_batch_summary",
@@ -271,13 +265,15 @@
           ]
         }
       ],
-      "waitBehavior": "blockUntilComplete"
+      "waitBehavior": "blockUntilComplete",
+      "correlationKeyPath": "run_id"
     },
     "state.check_mode": {
       "$kind": "state",
       "id": "state.check_mode",
-      "name": "Check Operating Mode",
+      "name": "CK16 - Check Operating Mode",
       "description": "Route CLI and MCP execution according to the explicit execution profile.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.check_mode",
@@ -294,8 +290,9 @@
     "state.mcp_preflight": {
       "$kind": "state",
       "id": "state.mcp_preflight",
-      "name": "Validate MCP Prerequisites",
+      "name": "CK17 - Validate MCP Prerequisites",
       "description": "Apply MCP-first policy, check server configuration, and reuse remembered FFmpeg path when available.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.mcp_preflight",
@@ -311,8 +308,9 @@
     "state.mcp_setup_check": {
       "$kind": "state",
       "id": "state.mcp_setup_check",
-      "name": "Check MCP Setup",
+      "name": "CK18 - Check MCP Setup",
       "description": "When MCP is selected, verify whether the current workspace already has a usable subtitle-extractslator MCP entry.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.mcp_setup_check",
@@ -329,8 +327,9 @@
     "state.ask_mcp_setup": {
       "$kind": "state",
       "id": "state.ask_mcp_setup",
-      "name": "Ask MCP Setup Permission",
+      "name": "CK19 - Ask MCP Setup Permission",
       "description": "Ask whether the workflow may create or update MCP configuration in the current workspace.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.ask_mcp_setup",
@@ -346,8 +345,9 @@
     "state.apply_mcp_setup": {
       "$kind": "state",
       "id": "state.apply_mcp_setup",
-      "name": "Apply MCP Setup",
+      "name": "CK20 - Apply MCP Setup",
       "description": "Delegate MCP config creation or update to the outer agent, preserving unrelated server entries.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.apply_mcp_setup",
@@ -363,8 +363,9 @@
     "state.single_check_input_kind": {
       "$kind": "state",
       "id": "state.single_check_input_kind",
-      "name": "Check Input Kind",
+      "name": "CK21 - Check Input Kind",
       "description": "Distinguish subtitle-only translation from media-driven extraction/search workflow.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.single_check_input_kind",
@@ -381,8 +382,9 @@
     "state.ffmpeg_preflight": {
       "$kind": "state",
       "id": "state.ffmpeg_preflight",
-      "name": "Validate FFmpeg Path",
+      "name": "CK22 - Validate FFmpeg Path",
       "description": "Check whether FFmpeg and ffprobe are already reachable before media probing or extraction.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.ffmpeg_preflight",
@@ -398,8 +400,9 @@
     "state.ffmpeg_path_check": {
       "$kind": "state",
       "id": "state.ffmpeg_path_check",
-      "name": "Check FFmpeg Readiness",
+      "name": "CK23 - Check FFmpeg Readiness",
       "description": "Route directly to media probing when FFmpeg is ready, or ask for a bin directory when runtime tools are still missing.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.ffmpeg_path_check",
@@ -416,8 +419,9 @@
     "state.ask_ffmpeg_path": {
       "$kind": "state",
       "id": "state.ask_ffmpeg_path",
-      "name": "Ask FFmpeg Path",
+      "name": "CK24 - Ask FFmpeg Path",
       "description": "Ask for an FFmpeg bin directory when media operations need runtime tools that are not yet configured.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.ask_ffmpeg_path",
@@ -433,8 +437,9 @@
     "state.apply_ffmpeg_path": {
       "$kind": "state",
       "id": "state.apply_ffmpeg_path",
-      "name": "Apply FFmpeg Path",
+      "name": "CK25 - Apply FFmpeg Path",
       "description": "Apply the chosen FFmpeg bin directory and persist it for later runs when requested.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.apply_ffmpeg_path",
@@ -450,8 +455,9 @@
     "state.probe_media": {
       "$kind": "state",
       "id": "state.probe_media",
-      "name": "Probe Media",
+      "name": "CK26 - Probe Media",
       "description": "Probe embedded subtitle tracks and detect whether the requested target language already exists.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.probe_media",
@@ -467,8 +473,9 @@
     "state.target_track_check": {
       "$kind": "state",
       "id": "state.target_track_check",
-      "name": "Check Existing Target Subtitle",
+      "name": "CK27 - Check Existing Target Subtitle",
       "description": "Exit early when probe shows that the target subtitle already exists.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "groups": [
         {
           "id": "group.target_track_check",
@@ -482,28 +489,12 @@
       ],
       "waitBehavior": "blockUntilComplete"
     },
-    "state.emit_existing_target": {
-      "$kind": "state",
-      "id": "state.emit_existing_target",
-      "name": "Emit Existing Target Result",
-      "description": "Emit the early-exit result when no extraction or translation is needed.",
-      "groups": [
-        {
-          "id": "group.emit_existing_target",
-          "strategy": "firstSuccess",
-          "cancelLosers": true,
-          "transitionIds": [
-            "transition.emit_existing_target"
-          ]
-        }
-      ],
-      "waitBehavior": "blockUntilComplete"
-    },
     "state.validate_opensubtitles_auth": {
       "$kind": "state",
       "id": "state.validate_opensubtitles_auth",
-      "name": "Validate OpenSubtitles Auth",
+      "name": "CK29 - Validate OpenSubtitles Auth",
       "description": "Check whether cached OpenSubtitles credentials are still usable before search or download.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.validate_opensubtitles_auth",
@@ -519,8 +510,9 @@
     "state.opensubtitles_auth_check": {
       "$kind": "state",
       "id": "state.opensubtitles_auth_check",
-      "name": "Check OpenSubtitles Auth",
+      "name": "CK30 - Check OpenSubtitles Auth",
       "description": "Branch between continuing to OpenSubtitles and pausing for an external relogin.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.opensubtitles_auth_check",
@@ -537,8 +529,9 @@
     "state.ask_opensubtitles_auth_relogin": {
       "$kind": "state",
       "id": "state.ask_opensubtitles_auth_relogin",
-      "name": "Request OpenSubtitles Relogin",
+      "name": "CK31 - Request OpenSubtitles Relogin",
       "description": "Pause for an external OpenSubtitles auth login when cached credentials are missing or expired.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.ask_opensubtitles_auth_relogin",
@@ -554,8 +547,9 @@
     "state.opensubtitles_search": {
       "$kind": "state",
       "id": "state.opensubtitles_search",
-      "name": "Search OpenSubtitles",
+      "name": "CK32 - Search OpenSubtitles",
       "description": "Search candidates in strict serial order using primary and normalized query fallbacks.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.opensubtitles_search",
@@ -571,8 +565,9 @@
     "state.opensubtitles_candidate_check": {
       "$kind": "state",
       "id": "state.opensubtitles_candidate_check",
-      "name": "Check OpenSubtitles Candidates",
+      "name": "CK33 - Check OpenSubtitles Candidates",
       "description": "Choose between candidate adoption flow and local extraction fallback.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.opensubtitles_candidate_check",
@@ -589,8 +584,9 @@
     "state.ask_candidate_adoption": {
       "$kind": "state",
       "id": "state.ask_candidate_adoption",
-      "name": "Ask Candidate Adoption",
+      "name": "CK34 - Ask Candidate Adoption",
       "description": "Ask whether to adopt the highest-ranked OpenSubtitles candidate before falling back to local extraction.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.ask_candidate_adoption",
@@ -606,8 +602,9 @@
     "state.adoption_decision": {
       "$kind": "state",
       "id": "state.adoption_decision",
-      "name": "Route Adoption Decision",
+      "name": "CK35 - Route Adoption Decision",
       "description": "Respect the explicit adoption choice and route to download or local extraction.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.adoption_decision",
@@ -624,8 +621,9 @@
     "state.opensubtitles_download_route": {
       "$kind": "state",
       "id": "state.opensubtitles_download_route",
-      "name": "Route Download Execution",
+      "name": "CK36 - Route Download Execution",
       "description": "Use CLI tool flow or MCP-owned call flow for the actual candidate download.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.opensubtitles_download_route",
@@ -642,8 +640,9 @@
     "state.mcp_download_candidate": {
       "$kind": "state",
       "id": "state.mcp_download_candidate",
-      "name": "Download Candidate Via MCP",
+      "name": "CK37 - Download Candidate Via MCP",
       "description": "Delegate MCP-owned OpenSubtitles download with explicit fileId and output path contract.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.mcp_download_candidate",
@@ -659,8 +658,9 @@
     "state.cli_download_candidate": {
       "$kind": "state",
       "id": "state.cli_download_candidate",
-      "name": "Download Candidate Via CLI",
+      "name": "CK38 - Download Candidate Via CLI",
       "description": "Use deterministic CLI download flow with auth-aquire semantics and ranked fallback strategy.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.cli_download_candidate",
@@ -676,8 +676,9 @@
     "state.opensubtitles_timing_gate": {
       "$kind": "state",
       "id": "state.opensubtitles_timing_gate",
-      "name": "Check Whether Timing Validation Is Required",
+      "name": "CK39 - Check Whether Timing Validation Is Required",
       "description": "Only run subtitle timing check when the candidate confidence or request policy requires it.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.opensubtitles_timing_gate",
@@ -694,8 +695,9 @@
     "state.subtitle_timing_check": {
       "$kind": "state",
       "id": "state.subtitle_timing_check",
-      "name": "Run Subtitle Timing Check",
+      "name": "CK40 - Run Subtitle Timing Check",
       "description": "Compare video duration and subtitle last cue end before accepting a low-confidence candidate.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.subtitle_timing_check",
@@ -711,8 +713,9 @@
     "state.timing_check_result": {
       "$kind": "state",
       "id": "state.timing_check_result",
-      "name": "Evaluate Timing Result",
+      "name": "CK41 - Evaluate Timing Result",
       "description": "Accept a candidate with acceptable timing; otherwise advance to the next candidate.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.timing_check_result",
@@ -729,8 +732,9 @@
     "state.advance_candidate_rank": {
       "$kind": "state",
       "id": "state.advance_candidate_rank",
-      "name": "Advance Candidate Rank",
+      "name": "CK42 - Advance Candidate Rank",
       "description": "Move to the next candidate without stopping the whole run when one candidate mismatches.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.advance_candidate_rank",
@@ -746,8 +750,9 @@
     "state.downloaded_language_check": {
       "$kind": "state",
       "id": "state.downloaded_language_check",
-      "name": "Check Downloaded Subtitle Language",
+      "name": "CK43 - Check Downloaded Subtitle Language",
       "description": "When the downloaded subtitle already matches the target language, skip translation and emit output directly.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.downloaded_language_check",
@@ -764,8 +769,9 @@
     "state.write_downloaded_output": {
       "$kind": "state",
       "id": "state.write_downloaded_output",
-      "name": "Accept Downloaded Target Subtitle",
+      "name": "CK44 - Accept Downloaded Target Subtitle",
       "description": "Persist the downloaded target-language subtitle as the final output artifact.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "groups": [
         {
           "id": "group.write_downloaded_output",
@@ -781,8 +787,9 @@
     "state.select_source_subtitle_track": {
       "$kind": "state",
       "id": "state.select_source_subtitle_track",
-      "name": "Select Embedded Source Track",
+      "name": "CK45 - Select Embedded Source Track",
       "description": "Pick the best embedded fallback subtitle track and classify whether it is text or bitmap-based.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.select_source_subtitle_track",
@@ -798,8 +805,9 @@
     "state.source_subtitle_kind_check": {
       "$kind": "state",
       "id": "state.source_subtitle_kind_check",
-      "name": "Check Embedded Source Subtitle Type",
+      "name": "CK46 - Check Embedded Source Subtitle Type",
       "description": "Decide whether the embedded fallback subtitle can be extracted as text directly or must be reconstructed from bitmap images.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.source_subtitle_kind_check",
@@ -816,8 +824,9 @@
     "state.export_bitmap_subtitle_stream": {
       "$kind": "state",
       "id": "state.export_bitmap_subtitle_stream",
-      "name": "Export Bitmap Subtitle Stream",
+      "name": "CK47 - Export Bitmap Subtitle Stream",
       "description": "Export the selected bitmap subtitle track to a SUP stream before frame decoding.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.export_bitmap_subtitle_stream",
@@ -833,8 +842,9 @@
     "state.decode_bitmap_subtitle_frames": {
       "$kind": "state",
       "id": "state.decode_bitmap_subtitle_frames",
-      "name": "Decode Bitmap Subtitle Frames",
+      "name": "CK48 - Decode Bitmap Subtitle Frames",
       "description": "Decode the SUP stream into timestamped cue images so OCR can rebuild a text subtitle timeline.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.decode_bitmap_subtitle_frames",
@@ -850,8 +860,9 @@
     "state.ocr_bitmap_subtitle_frames": {
       "$kind": "state",
       "id": "state.ocr_bitmap_subtitle_frames",
-      "name": "OCR Bitmap Subtitle Frames",
+      "name": "CK49 - OCR Bitmap Subtitle Frames",
       "description": "Run OCR across the timestamped subtitle images and rebuild a text SRT before translation.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.ocr_bitmap_subtitle_frames",
@@ -867,8 +878,9 @@
     "state.local_extract_route": {
       "$kind": "state",
       "id": "state.local_extract_route",
-      "name": "Route Local Extraction",
+      "name": "CK50 - Route Local Extraction",
       "description": "Use CLI tool flow or MCP-owned extract flow for text-based embedded subtitle tracks.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.local_extract_route",
@@ -885,8 +897,9 @@
     "state.mcp_extract_source": {
       "$kind": "state",
       "id": "state.mcp_extract_source",
-      "name": "Extract Source Via MCP",
+      "name": "CK51 - Extract Source Via MCP",
       "description": "Delegate MCP-owned extract flow, including bitmap OCR path when applicable.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.mcp_extract_source",
@@ -902,8 +915,9 @@
     "state.cli_extract_source": {
       "$kind": "state",
       "id": "state.cli_extract_source",
-      "name": "Extract Source Via CLI",
+      "name": "CK52 - Extract Source Via CLI",
       "description": "Run deterministic local extraction with preferred source-language selection.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "groups": [
         {
           "id": "group.cli_extract_source",
@@ -919,8 +933,9 @@
     "state.group_translation_input": {
       "$kind": "state",
       "id": "state.group_translation_input",
-      "name": "Build Translation Groups",
+      "name": "CK53 - Build Translation Groups",
       "description": "Load SRT, group cues, and build translation units from grouped timeline objects.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.group_translation_input",
@@ -936,8 +951,9 @@
     "state.update_translation_memory": {
       "$kind": "state",
       "id": "state.update_translation_memory",
-      "name": "Update Rolling Translation Memory",
+      "name": "CK54 - Update Rolling Translation Memory",
       "description": "Persist grouped context and translation policy state before invoking the translation engine.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.update_translation_memory",
@@ -953,8 +969,9 @@
     "state.route_translation_engine": {
       "$kind": "state",
       "id": "state.route_translation_engine",
-      "name": "Route Translation Engine",
+      "name": "CK55 - Route Translation Engine",
       "description": "Choose MCP translation tool routing or model-owned reasoning depending on the selected mode.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.route_translation_engine",
@@ -971,8 +988,9 @@
     "state.mcp_translate": {
       "$kind": "state",
       "id": "state.mcp_translate",
-      "name": "Translate Via MCP",
+      "name": "CK56 - Translate Via MCP",
       "description": "Delegate translation-only MCP tool calls in strict agent-driven sequence.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.mcp_translate",
@@ -988,8 +1006,9 @@
     "state.model_translate": {
       "$kind": "state",
       "id": "state.model_translate",
-      "name": "Translate Via Model Reasoning",
+      "name": "CK57 - Translate Via Model Reasoning",
       "description": "Perform the non-deterministic language reasoning owned by the outer agent for grouped translation.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.model_translate",
@@ -1005,8 +1024,9 @@
     "state.merge_translation": {
       "$kind": "state",
       "id": "state.merge_translation",
-      "name": "Merge And Write Final SRT",
+      "name": "CK58 - Merge And Write Final SRT",
       "description": "Merge translated groups back into a deterministic cue sequence and write the final SRT output.",
+      "workflowPhase": "07 Translation",
       "groups": [
         {
           "id": "group.merge_translation",
@@ -1022,8 +1042,9 @@
     "state.mux_check": {
       "$kind": "state",
       "id": "state.mux_check",
-      "name": "Check Optional Mux Output",
+      "name": "CK59 - Check Optional Mux Output",
       "description": "Optionally mux the final subtitle into the source media when muxOutputPath is requested.",
+      "workflowPhase": "08 Delivery and completion",
       "groups": [
         {
           "id": "group.mux_check",
@@ -1040,8 +1061,9 @@
     "state.mux_output": {
       "$kind": "state",
       "id": "state.mux_output",
-      "name": "Mux Subtitle Into Media",
+      "name": "CK60 - Mux Subtitle Into Media",
       "description": "Persist optional mux output after the final subtitle file has been written.",
+      "workflowPhase": "08 Delivery and completion",
       "groups": [
         {
           "id": "group.mux_output",
@@ -1057,8 +1079,9 @@
     "state.emit_single_summary": {
       "$kind": "state",
       "id": "state.emit_single_summary",
-      "name": "Emit Single-Run Summary",
+      "name": "CK61 - Emit Single-Run Summary",
       "description": "Emit final output paths, selected branch, and relevant summary artifacts for the current input. Batch requests reuse this per-item summary before queue continuation.",
+      "workflowPhase": "08 Delivery and completion",
       "groups": [
         {
           "id": "group.emit_single_summary",
@@ -1074,47 +1097,109 @@
     "state.done": {
       "$kind": "state",
       "id": "state.done",
-      "name": "Done",
+      "name": "CK62 - Done",
       "description": "Explicit workflow terminus.",
+      "workflowPhase": "08 Delivery and completion",
       "groups": [],
       "waitBehavior": "blockUntilComplete"
     },
     "transition.normalize_request": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.normalizeRequest to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Normalize user intent into deterministic workflow fields before any runtime branch is taken. Writes: request_kind, mode, input_path, target_language, output_path, output_policy, run_id.",
+      "$kind": "command",
       "id": "transition.normalize_request",
       "name": "Normalize Request",
-      "description": "Normalize input, target language, output naming policy, and run-id seed.",
+      "description": "Normalize input, target language, output naming policy, and run-id seed. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.ensure_cli_runtime",
       "outputPath": "normalized_request",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"normalized_request\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.normalize_request",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result",
+            "run_id"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "normalized_request": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.read_localpaths": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.readLocalPaths to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Reads: FFMPEG_BIN_DIR. Writes: ffmpeg_bin_dir.",
+      "$kind": "command",
       "id": "transition.read_localpaths",
       "name": "Read Local Paths",
-      "description": "Load remembered local runtime paths before probing or extraction.",
+      "description": "Load remembered local runtime paths before probing or extraction. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.execution_profile_gate",
       "outputPath": "localpaths_memory",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"localpaths_memory\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.read_localpaths",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "localpaths_memory": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.execution_profile_missing_request_kind": {
       "$kind": "expr",
       "id": "transition.execution_profile_missing_request_kind",
       "name": "Missing Request Kind",
       "description": "Ask for execution profile details when request kind is still missing.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.ask_execution_profile",
-      "outputPath": "execution_profile_gate",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"request_kind\"] == null",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"request_kind\") == null",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.execution_profile_missing_mode": {
@@ -1122,11 +1207,19 @@
       "id": "transition.execution_profile_missing_mode",
       "name": "Missing Mode",
       "description": "Ask for execution profile details when operating mode is still missing.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.ask_execution_profile",
-      "outputPath": "execution_profile_gate",
       "priority": 95,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] == null",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") == null",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.execution_profile_missing_target_language": {
@@ -1134,23 +1227,19 @@
       "id": "transition.execution_profile_missing_target_language",
       "name": "Missing Target Language",
       "description": "Ask for execution profile details when target language is still missing.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.ask_execution_profile",
-      "outputPath": "execution_profile_gate",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"target_language\"] == null",
-      "stepKind": "conditionBranch"
-    },
-    "transition.execution_profile_missing_run_id": {
-      "$kind": "expr",
-      "id": "transition.execution_profile_missing_run_id",
-      "name": "Missing Run Id",
-      "description": "Ask for execution profile details when run correlation is still missing.",
-      "targetNodeId": "state.ask_execution_profile",
-      "outputPath": "execution_profile_gate",
-      "priority": 85,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"run_id\"] == null",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"target_language\") == null",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.execution_profile_ready": {
@@ -1158,36 +1247,81 @@
       "id": "transition.execution_profile_ready",
       "name": "Execution Profile Ready",
       "description": "Continue once the minimum routing profile is already available.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.route_request_kind",
-      "outputPath": "execution_profile_gate",
       "priority": 80,
-      "succeedExpression": "true",
-      "guardExpression": "true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ask_execution_profile": {
-      "$kind": "tbr",
-      "designNotes": "AskUser seam. Collect any missing fields required to continue deterministically: request_kind(single|batch), mode(cli|mcp), input_path or input_list_path, target_language, output_path or output_dir, output_suffix policy, whether MCP setup may modify workspace config, and whether optional mux output is requested. Resume should write normalized fields back into context before entering route_request_kind.",
+      "$kind": "command",
       "id": "transition.ask_execution_profile",
       "name": "Collect Execution Profile",
-      "description": "Ask for the missing execution profile so routing can proceed without implicit assumptions.",
+      "description": "Ask for the missing execution profile so routing can proceed without implicit assumptions. Ask only for the named user-owned answer; the answer returns at the top level of the resume payload.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.route_request_kind",
       "outputPath": "execution_profile",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "askUser"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"execution_profile\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "askUser",
+      "command": {
+        "kind": "nativeCode",
+        "name": "user.ask.ask_execution_profile",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "execution_profile_answer",
+            "request_kind",
+            "mode",
+            "target_language"
+          ],
+          "resumeOutputKey": "execution_profile_answer",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "execution_profile": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.route_batch_request": {
       "$kind": "expr",
       "id": "transition.route_batch_request",
       "name": "Batch Request",
       "description": "Queue-driven repetition of the same single-item subtitle pipeline for folder, season, series, or library processing.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.batch_init",
-      "outputPath": "request_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"request_kind\"] == \"batch\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"request_kind\") == \"batch\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.route_single_request": {
@@ -1195,49 +1329,117 @@
       "id": "transition.route_single_request",
       "name": "Single Request",
       "description": "Single input orchestration path.",
+      "workflowPhase": "01 Intake and routing",
       "targetNodeId": "state.check_mode",
-      "outputPath": "request_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"request_kind\"] != \"batch\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"request_kind\") != \"batch\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_init": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.initializeBatchWorkspace to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Use SUBTITLEEXTRACTSLATOR_TEMPDIR first; else OS temp + SubtitleExtractslator; workspace path is <temp-root>/agent-runs/<run-id>/ Writes: temp_root, run_workspace, run_id.",
+      "$kind": "command",
       "id": "transition.batch_init",
       "name": "Initialize Batch Workspace",
-      "description": "Resolve centralized temp state root and initialize or resume the batch run workspace.",
+      "description": "Resolve centralized temp state root and initialize or resume the batch run workspace. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_build_queue",
       "outputPath": "batch_workspace",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"batch_workspace\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.batch_init",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "batch_workspace": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.batch_build_queue": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.buildOrReconcileQueue to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Keep deterministic output naming and reconcile existing outputs before selecting new work. Writes: queue_count, queue_txt, completed_txt, failed_txt, in_progress_txt, run_notes_md.",
+      "$kind": "command",
       "id": "transition.batch_build_queue",
       "name": "Build Or Reconcile Queue",
-      "description": "Create queue state files and reconcile resume state before worker dispatch.",
+      "description": "Create queue state files and reconcile resume state before worker dispatch. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_dispatch_check",
       "outputPath": "queue_state",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"queue_state\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.batch_build_queue",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "queue_state": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.batch_finished": {
       "$kind": "expr",
       "id": "transition.batch_finished",
       "name": "Batch Queue Empty",
       "description": "Batch run can finish when queue.txt is empty after reconciliation.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.emit_batch_summary",
-      "outputPath": "batch_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"queue_empty\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"queue_empty\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_has_work": {
@@ -1245,11 +1447,19 @@
       "id": "transition.batch_has_work",
       "name": "Batch Has Pending Work",
       "description": "Continue by binding the next pending item into the shared single-item workflow path.",
-      "targetNodeId": "state.batch_route_worker",
-      "outputPath": "batch_route",
+      "workflowPhase": "02 Batch queue",
+      "targetNodeId": "state.batch_select_worker",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"queue_empty\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"queue_empty\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_use_subagent": {
@@ -1257,11 +1467,19 @@
       "id": "transition.batch_use_subagent",
       "name": "Use Worker Subagent",
       "description": "Preferred bounded-batch execution path when the platform supports subagents.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_subagent_worker",
-      "outputPath": "worker_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"subagent_supported\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"subagent_supported\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_use_inline_worker": {
@@ -1269,62 +1487,156 @@
       "id": "transition.batch_use_inline_worker",
       "name": "Use Inline Worker",
       "description": "Fallback bounded-batch execution path when subagents are unavailable.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_inline_worker",
-      "outputPath": "worker_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"subagent_supported\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"subagent_supported\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_subagent_worker": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate a bounded batch selected by the supervisor. Worker must return exact Completed:/Failed:/Notes: deltas and must not redefine queue semantics.",
+      "$kind": "command",
       "id": "transition.batch_subagent_worker",
       "name": "Delegate Worker Batch",
-      "description": "Run the selected bounded batch through a worker subagent.",
+      "description": "Run the selected bounded batch through a worker subagent. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_apply_deltas",
       "outputPath": "worker_batch_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"worker_batch_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.batch_subagent_worker",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "worker_batch_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.batch_inline_worker": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.runInlineWorkerBatch to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Same worker contract as delegated subagent path, but executed inline. Writes: completed_delta, failed_delta, notes_delta.",
+      "$kind": "command",
       "id": "transition.batch_inline_worker",
       "name": "Run Inline Worker",
-      "description": "Execute the bounded worker batch inline while preserving the same delta contract.",
+      "description": "Execute the bounded worker batch inline while preserving the same delta contract. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_apply_deltas",
       "outputPath": "worker_batch_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"worker_batch_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.batch_inline_worker",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "worker_batch_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.batch_apply_deltas": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.applyBatchDeltas to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Update state files before any further batch decision is made. Writes: queue_txt, completed_txt, failed_txt, in_progress_txt, run_notes_md, cooldown_required.",
+      "$kind": "command",
       "id": "transition.batch_apply_deltas",
       "name": "Apply Worker Deltas",
-      "description": "Persist worker deltas back into centralized queue files.",
+      "description": "Persist worker deltas back into centralized queue files. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_cooldown_check",
       "outputPath": "batch_state_update",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"batch_state_update\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.batch_apply_deltas",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "batch_state_update": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.batch_wait_for_resume": {
       "$kind": "expr",
       "id": "transition.batch_wait_for_resume",
       "name": "Need Cooldown",
       "description": "Enter delayed serial mode for a rate-limited lane.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_wait_resume",
-      "outputPath": "batch_resume_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"cooldown_required\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"cooldown_required\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_continue": {
@@ -1332,49 +1644,126 @@
       "id": "transition.batch_continue",
       "name": "Continue Batch",
       "description": "Return to pending-queue dispatch when no cooldown gate is active.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_dispatch_check",
-      "outputPath": "batch_resume_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"cooldown_required\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"cooldown_required\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.batch_wait_resume": {
-      "$kind": "tbr",
-      "designNotes": "WaitResume seam. Resume when cooldown elapsed, external callback arrived, or a human explicitly resumes the affected lane. Resume should preserve run_id and existing queue files.",
+      "$kind": "command",
       "id": "transition.batch_wait_resume",
       "name": "Wait For Cooldown Or Resume Signal",
-      "description": "Pause the affected lane until an external signal allows the batch to continue.",
+      "description": "Pause the affected lane until an external signal allows the batch to continue. Wait for the external signal and resume with its result.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.batch_dispatch_check",
       "outputPath": "resume_signal",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "waitResume"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"resume_signal\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "waitResume",
+      "command": {
+        "kind": "nativeCode",
+        "name": "batch.wait.batch_wait_resume",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "resume_signal": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.emit_batch_summary": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.emitBatchSummary to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Reads: completed_txt, failed_txt, run_notes_md. Writes: batch_summary, result_artifacts.",
+      "$kind": "command",
       "id": "transition.emit_batch_summary",
       "name": "Emit Batch Summary",
-      "description": "Emit the final batch result payload and relevant artifacts.",
+      "description": "Emit the final batch result payload and relevant artifacts. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "02 Batch queue",
       "targetNodeId": "state.done",
-      "outputPath": "batch_result",
+      "outputPath": "run_summary_path",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"run_summary_path\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.emit_batch_summary",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "run_summary_path": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1,
+      "publishesOutputFamilies": [
+        "run_summary_path"
+      ],
+      "satisfiesGateIds": [
+        "gate.run_summary"
+      ],
+      "terminalRoutes": [
+        "success"
+      ]
     },
     "transition.route_mcp_mode": {
       "$kind": "expr",
       "id": "transition.route_mcp_mode",
       "name": "MCP Mode",
       "description": "Use MCP-first policy when mode is explicitly mcp.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.mcp_preflight",
-      "outputPath": "mode_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] == \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") == \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.route_cli_mode": {
@@ -1382,36 +1771,78 @@
       "id": "transition.route_cli_mode",
       "name": "CLI Mode",
       "description": "Use CLI fallback policy when mode is not mcp.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.single_check_input_kind",
-      "outputPath": "mode_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] != \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") != \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mcp_preflight": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.validateMcpPrerequisites to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: ffmpeg_bin_dir, workspace_mcp_config. Writes: mcp_configured, mcp_server_entry.",
+      "$kind": "command",
       "id": "transition.mcp_preflight",
       "name": "Validate MCP Prerequisites",
-      "description": "Check the MCP setup contract and remembered FFmpeg path before continuing.",
+      "description": "Check the MCP setup contract and remembered FFmpeg path before continuing. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.mcp_setup_check",
       "outputPath": "mcp_preflight",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"mcp_preflight\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.mcp_preflight",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "mcp_preflight": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.mcp_ready": {
       "$kind": "expr",
       "id": "transition.mcp_ready",
       "name": "MCP Ready",
       "description": "Existing MCP configuration is usable.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.single_check_input_kind",
-      "outputPath": "mcp_setup_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mcp_configured\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"mcp_configured\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mcp_needs_setup": {
@@ -1419,49 +1850,118 @@
       "id": "transition.mcp_needs_setup",
       "name": "MCP Needs Setup",
       "description": "Workspace MCP configuration must be created or updated.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.ask_mcp_setup",
-      "outputPath": "mcp_setup_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mcp_configured\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"mcp_configured\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ask_mcp_setup": {
-      "$kind": "tbr",
-      "designNotes": "AskUser seam. Ask whether the workflow may create or update the current workspace MCP config. Required fields on resume: mcp_setup_allowed(true|false), mcp_config_path(optional override), mcp_server_name(optional override).",
+      "$kind": "command",
       "id": "transition.ask_mcp_setup",
       "name": "Ask To Configure MCP",
-      "description": "Ask whether MCP configuration may be created or updated for this workspace.",
+      "description": "Ask whether MCP configuration may be created or updated for this workspace. Ask only for the named user-owned answer; the answer returns at the top level of the resume payload.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.apply_mcp_setup",
       "outputPath": "mcp_setup_permission",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "askUser"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"mcp_setup_permission\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "askUser",
+      "command": {
+        "kind": "nativeCode",
+        "name": "user.ask.ask_mcp_setup",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "mcp_setup_choice",
+            null
+          ],
+          "resumeOutputKey": "mcp_setup_choice",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "mcp_setup_permission": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.apply_mcp_setup": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. The runtime bootstrap must run before this step. Outer agent must update or merge the MCP config using the resolved absolute NativeAOT executable as command and --mode mcp as args, preserve unrelated servers, optionally persist FFMPEG_BIN_DIR, and return mcp_configured=true on success.",
+      "$kind": "command",
       "id": "transition.apply_mcp_setup",
       "name": "Apply MCP Setup",
-      "description": "Delegate MCP configuration update to the outer agent.",
+      "description": "Delegate MCP configuration update to the outer agent. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "targetNodeId": "state.single_check_input_kind",
       "outputPath": "mcp_setup_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"mcp_setup_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.apply_mcp_setup",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "mcp_setup_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.single_is_srt": {
       "$kind": "expr",
       "id": "transition.single_is_srt",
       "name": "Input Is SRT",
       "description": "Translation-only path for subtitle input.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.group_translation_input",
-      "outputPath": "input_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"input_extension\"] == \".srt\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"input_extension\") == \".srt\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.single_is_media": {
@@ -1469,36 +1969,78 @@
       "id": "transition.single_is_media",
       "name": "Input Is Media",
       "description": "Media-driven probe/search/extract path.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.ffmpeg_preflight",
-      "outputPath": "input_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"input_extension\"] != \".srt\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"input_extension\") != \".srt\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ffmpeg_preflight": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.validateFfmpegPath to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Check whether ffmpeg and ffprobe are reachable from the remembered bin directory or current PATH. Reads: ffmpeg_bin_dir. Writes: ffmpeg_ready.",
+      "$kind": "command",
       "id": "transition.ffmpeg_preflight",
       "name": "Validate FFmpeg Path",
-      "description": "Check whether media tooling is ready before probing or extracting subtitles from video.",
+      "description": "Check whether media tooling is ready before probing or extracting subtitles from video. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.ffmpeg_path_check",
       "outputPath": "ffmpeg_preflight",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"ffmpeg_preflight\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.ffmpeg_preflight",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "ffmpeg_preflight": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.ffmpeg_ready": {
       "$kind": "expr",
       "id": "transition.ffmpeg_ready",
       "name": "FFmpeg Ready",
       "description": "Continue when FFmpeg and ffprobe are already available.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.probe_media",
-      "outputPath": "ffmpeg_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"ffmpeg_ready\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"ffmpeg_ready\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ffmpeg_missing": {
@@ -1506,62 +2048,157 @@
       "id": "transition.ffmpeg_missing",
       "name": "FFmpeg Missing",
       "description": "Ask for an FFmpeg bin directory when runtime tools are not ready.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.ask_ffmpeg_path",
-      "outputPath": "ffmpeg_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"ffmpeg_ready\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"ffmpeg_ready\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ask_ffmpeg_path": {
-      "$kind": "tbr",
-      "designNotes": "AskUser seam. Collect ffmpeg_bin_dir and whether it should be persisted for future runs when media probing or extraction needs FFmpeg. Resume should write ffmpeg_bin_dir_candidate and persist_ffmpeg_path back to context.",
+      "$kind": "command",
       "id": "transition.ask_ffmpeg_path",
       "name": "Ask For FFmpeg Path",
-      "description": "Ask for an FFmpeg bin directory that contains both ffmpeg and ffprobe.",
+      "description": "Ask for an FFmpeg bin directory that contains both ffmpeg and ffprobe. Ask only for the named user-owned answer; the answer returns at the top level of the resume payload.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.apply_ffmpeg_path",
       "outputPath": "ffmpeg_path_input",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "askUser"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"ffmpeg_path_input\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "askUser",
+      "command": {
+        "kind": "nativeCode",
+        "name": "user.ask.ask_ffmpeg_path",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "ffmpeg_path",
+            null
+          ],
+          "resumeOutputKey": "ffmpeg_path",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "ffmpeg_path_input": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.apply_ffmpeg_path": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.applyFfmpegBinDir to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: ffmpeg_bin_dir_candidate, persist_ffmpeg_path. Writes: ffmpeg_bin_dir, ffmpeg_ready.",
+      "$kind": "command",
       "id": "transition.apply_ffmpeg_path",
       "name": "Apply FFmpeg Path",
-      "description": "Apply and optionally persist the chosen FFmpeg bin directory before resuming media operations.",
+      "description": "Apply and optionally persist the chosen FFmpeg bin directory before resuming media operations. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.probe_media",
       "outputPath": "ffmpeg_path_state",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"ffmpeg_path_state\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.apply_ffmpeg_path",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "ffmpeg_path_state": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.probe_media": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.probe to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, target_language, ffmpeg_bin_dir. Writes: probe_tracks, has_target_subtitle.",
+      "$kind": "command",
       "id": "transition.probe_media",
       "name": "Probe Media",
-      "description": "Probe embedded subtitles and detect whether the target language already exists.",
+      "description": "Probe embedded subtitles and detect whether the target language already exists. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.target_track_check",
       "outputPath": "probe_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"probe_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.probe_media",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "probe_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.target_track_exists": {
       "$kind": "expr",
       "id": "transition.target_track_exists",
       "name": "Target Track Exists",
       "description": "Early completion branch when the target subtitle is already present.",
-      "targetNodeId": "state.emit_existing_target",
-      "outputPath": "target_track_route",
+      "workflowPhase": "04 Media and FFmpeg checks",
+      "targetNodeId": "state.emit_single_summary",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"has_target_subtitle\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"has_target_subtitle\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.target_track_missing": {
@@ -1569,49 +2206,78 @@
       "id": "transition.target_track_missing",
       "name": "Target Track Missing",
       "description": "Continue to auth validation before search/download or extraction flow when no target subtitle exists.",
+      "workflowPhase": "04 Media and FFmpeg checks",
       "targetNodeId": "state.validate_opensubtitles_auth",
-      "outputPath": "target_track_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"has_target_subtitle\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"has_target_subtitle\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
-    "transition.emit_existing_target": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.emitExistingTargetResult to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: target-track-exists Writes: result_branch, result_artifacts.",
-      "id": "transition.emit_existing_target",
-      "name": "Emit Existing Target Result",
-      "description": "Emit a completed result when no further work is required.",
-      "targetNodeId": "state.done",
-      "outputPath": "single_result",
-      "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
-    },
     "transition.opensubtitles_auth_check": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.validateOpenSubtitlesAuth to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Check whether cached OpenSubtitles credentials are usable and return relogin guidance without collecting secrets in workflow. Writes: opensubtitles_auth_ready, opensubtitles_auth_guidance.",
+      "$kind": "command",
       "id": "transition.opensubtitles_auth_check",
       "name": "Validate OpenSubtitles Auth",
-      "description": "Check whether cached OpenSubtitles credentials are ready before continuing.",
+      "description": "Check whether cached OpenSubtitles credentials are ready before continuing. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_auth_check",
       "outputPath": "opensubtitles_auth_state",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"opensubtitles_auth_state\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.opensubtitles_auth_check",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "opensubtitles_auth_state": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.opensubtitles_auth_ready": {
       "$kind": "expr",
       "id": "transition.opensubtitles_auth_ready",
       "name": "OpenSubtitles Auth Ready",
       "description": "Continue to OpenSubtitles search when cached credentials are still usable.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_search",
-      "outputPath": "opensubtitles_auth_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"opensubtitles_auth_ready\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"opensubtitles_auth_ready\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.opensubtitles_auth_missing": {
@@ -1619,49 +2285,118 @@
       "id": "transition.opensubtitles_auth_missing",
       "name": "OpenSubtitles Relogin Required",
       "description": "Pause for an external auth login when cached OpenSubtitles credentials are missing or expired.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.ask_opensubtitles_auth_relogin",
-      "outputPath": "opensubtitles_auth_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"opensubtitles_auth_ready\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"opensubtitles_auth_ready\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ask_opensubtitles_auth_relogin": {
-      "$kind": "tbr",
-      "designNotes": "AskUser seam. Do not collect API key, username, or password. Instruct the user to run `subtitle auth login` out of band, then resume once cached credentials have been refreshed.",
+      "$kind": "command",
       "id": "transition.ask_opensubtitles_auth_relogin",
       "name": "Request OpenSubtitles Relogin",
-      "description": "Ask the user to complete an external OpenSubtitles auth login and then retry auth validation.",
+      "description": "Ask the user to complete an external OpenSubtitles auth login and then retry auth validation. Ask only for the named user-owned answer; the answer returns at the top level of the resume payload.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.validate_opensubtitles_auth",
       "outputPath": "opensubtitles_auth_resume",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "askUser"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"opensubtitles_auth_resume\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "askUser",
+      "command": {
+        "kind": "nativeCode",
+        "name": "user.ask.ask_opensubtitles_auth_relogin",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "opensubtitles_relogin_choice",
+            null
+          ],
+          "resumeOutputKey": "opensubtitles_relogin_choice",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "opensubtitles_auth_resume": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.opensubtitles_search": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.opensubtitlesSearch to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Search primary target-language first, then normalized target-language, then same queries without language filter. Reads: input_path, target_language. Writes: opensubtitles_candidate_count, opensubtitles_candidates, search_query_primary, search_query_normalized.",
+      "$kind": "command",
       "id": "transition.opensubtitles_search",
       "name": "Search OpenSubtitles",
-      "description": "Search OpenSubtitles in strict serial order using deterministic query fallbacks.",
+      "description": "Search OpenSubtitles in strict serial order using deterministic query fallbacks. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_candidate_check",
       "outputPath": "opensubtitles_search_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"opensubtitles_search_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.opensubtitles_search",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "opensubtitles_search_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.opensubtitles_candidates_found": {
       "$kind": "expr",
       "id": "transition.opensubtitles_candidates_found",
       "name": "Candidates Found",
       "description": "Proceed to explicit adoption decision when candidates exist.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.ask_candidate_adoption",
-      "outputPath": "opensubtitles_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"opensubtitles_candidate_count\"] > 0",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<int>(\"opensubtitles_candidate_count\") > 0",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.opensubtitles_candidates_missing": {
@@ -1669,36 +2404,79 @@
       "id": "transition.opensubtitles_candidates_missing",
       "name": "No Candidates",
       "description": "Fall back to embedded subtitle extraction when OpenSubtitles returns no usable candidate.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.select_source_subtitle_track",
-      "outputPath": "opensubtitles_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"opensubtitles_candidate_count\"] == 0",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<int>(\"opensubtitles_candidate_count\") == 0",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.ask_candidate_adoption": {
-      "$kind": "tbr",
-      "designNotes": "AskUser seam. Ask whether to adopt the current highest-ranked OpenSubtitles candidate. Resume should write use_opensubtitles_candidate(true|false), selected_candidate_rank, and optional candidate_notes back to context.",
+      "$kind": "command",
       "id": "transition.ask_candidate_adoption",
       "name": "Ask To Adopt Candidate",
-      "description": "Ask whether the current OpenSubtitles candidate should be used.",
+      "description": "Ask whether the current OpenSubtitles candidate should be used. Ask only for the named user-owned answer; the answer returns at the top level of the resume payload.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.adoption_decision",
       "outputPath": "candidate_adoption",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "askUser"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"candidate_adoption\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "askUser",
+      "command": {
+        "kind": "nativeCode",
+        "name": "user.ask.ask_candidate_adoption",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "candidate_adoption_choice",
+            "use_opensubtitles_candidate"
+          ],
+          "resumeOutputKey": "candidate_adoption_choice",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "candidate_adoption": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.adopt_candidate_yes": {
       "$kind": "expr",
       "id": "transition.adopt_candidate_yes",
       "name": "Adopt Candidate",
       "description": "Use the selected OpenSubtitles candidate.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_download_route",
-      "outputPath": "candidate_adoption_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"use_opensubtitles_candidate\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"use_opensubtitles_candidate\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.adopt_candidate_no": {
@@ -1706,36 +2484,78 @@
       "id": "transition.adopt_candidate_no",
       "name": "Reject Candidate",
       "description": "Use embedded subtitle extraction instead of the OpenSubtitles candidate.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.select_source_subtitle_track",
-      "outputPath": "candidate_adoption_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"use_opensubtitles_candidate\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"use_opensubtitles_candidate\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.select_source_subtitle_track": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.selectEmbeddedSourceSubtitleTrack to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Mirror CLI fallback source-track selection. Prefer a non-target embedded source track, keep its language token, and flag bitmap codecs such as PGS/DVD subtitle for OCR reconstruction. Reads: probe_tracks, target_language. Writes: preferred_source_language, selected_source_subtitle_order, selected_source_language, selected_source_codec, selected_source_is_bitmap.",
+      "$kind": "command",
       "id": "transition.select_source_subtitle_track",
       "name": "Select Embedded Source Track",
-      "description": "Choose the embedded source subtitle track that will be used for fallback extraction.",
+      "description": "Choose the embedded source subtitle track that will be used for fallback extraction. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.source_subtitle_kind_check",
       "outputPath": "selected_source_track",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"selected_source_track\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.select_source_subtitle_track",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "selected_source_track": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.source_subtitle_is_bitmap": {
       "$kind": "expr",
       "id": "transition.source_subtitle_is_bitmap",
       "name": "Bitmap Subtitle Track",
       "description": "Use frame extraction and OCR when the selected embedded source subtitle is image-based.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.export_bitmap_subtitle_stream",
-      "outputPath": "source_subtitle_kind_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"selected_source_is_bitmap\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"selected_source_is_bitmap\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.source_subtitle_is_text": {
@@ -1743,62 +2563,156 @@
       "id": "transition.source_subtitle_is_text",
       "name": "Text Subtitle Track",
       "description": "Use normal embedded subtitle extraction when the selected source track already carries text cues.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.local_extract_route",
-      "outputPath": "source_subtitle_kind_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"selected_source_is_bitmap\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"selected_source_is_bitmap\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.export_bitmap_subtitle_stream": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.exportBitmapSubtitleStream to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, selected_source_subtitle_order, ffmpeg_bin_dir. Writes: bitmap_sup_path, bitmap_artifact_directory.",
+      "$kind": "command",
       "id": "transition.export_bitmap_subtitle_stream",
       "name": "Export Bitmap Subtitle Stream",
-      "description": "Export the selected embedded bitmap subtitle stream to SUP before decoding frame images.",
+      "description": "Export the selected embedded bitmap subtitle stream to SUP before decoding frame images. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.decode_bitmap_subtitle_frames",
       "outputPath": "bitmap_sup_artifact",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"bitmap_sup_artifact\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.export_bitmap_subtitle_stream",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "bitmap_sup_artifact": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.decode_bitmap_subtitle_frames": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.decodeBitmapSubtitleFrames to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Decode the SUP stream into one timestamped image artifact per subtitle cue when the embedded stream is PGS/DVD-style bitmap subtitles. Reads: bitmap_sup_path. Writes: bitmap_png_directory, bitmap_timeline_path, bitmap_frame_count.",
+      "$kind": "command",
       "id": "transition.decode_bitmap_subtitle_frames",
       "name": "Decode Bitmap Subtitle Frames",
-      "description": "Decode timestamped subtitle images from the exported bitmap subtitle stream.",
+      "description": "Decode timestamped subtitle images from the exported bitmap subtitle stream. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.ocr_bitmap_subtitle_frames",
       "outputPath": "bitmap_frame_artifacts",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"bitmap_frame_artifacts\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.decode_bitmap_subtitle_frames",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "bitmap_frame_artifacts": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.ocr_bitmap_subtitle_frames": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.ocrBitmapSubtitleFrames to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Run OCR on the timestamped subtitle images and rebuild a text SRT that preserves cue timing before translation. Reads: bitmap_png_directory, bitmap_timeline_path, selected_source_language. Writes: source_subtitle_path, source_language, ocr_rebuilt_cue_count.",
+      "$kind": "command",
       "id": "transition.ocr_bitmap_subtitle_frames",
       "name": "OCR Bitmap Subtitle Frames",
-      "description": "Rebuild a text subtitle file from the decoded bitmap subtitle images.",
+      "description": "Rebuild a text subtitle file from the decoded bitmap subtitle images. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.group_translation_input",
       "outputPath": "source_subtitle",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"source_subtitle\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.ocr_bitmap_subtitle_frames",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "source_subtitle": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.download_via_mcp": {
       "$kind": "expr",
       "id": "transition.download_via_mcp",
       "name": "Download Via MCP",
       "description": "MCP-owned OpenSubtitles download path.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.mcp_download_candidate",
-      "outputPath": "download_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] == \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") == \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.download_via_cli": {
@@ -1806,49 +2720,117 @@
       "id": "transition.download_via_cli",
       "name": "Download Via CLI",
       "description": "CLI-owned OpenSubtitles download path.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.cli_download_candidate",
-      "outputPath": "download_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] != \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") != \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mcp_download_candidate": {
-      "$kind": "tbr",
-      "designNotes": "McpCall seam. Outer agent must call MCP opensubtitles_download with fileId from the prior search result and explicit output path. Auth must still use subtitle auth aquire semantics.",
+      "$kind": "command",
       "id": "transition.mcp_download_candidate",
       "name": "Download Candidate Through MCP",
-      "description": "Delegate OpenSubtitles candidate download to MCP tool execution.",
+      "description": "Delegate OpenSubtitles candidate download to MCP tool execution. The external tool result returns through the resume payload.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_timing_gate",
       "outputPath": "downloaded_subtitle",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "mcpCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"downloaded_subtitle\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "mcpCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "mcp.call.mcp_download_candidate",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "downloaded_subtitle": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.cli_download_candidate": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.opensubtitlesDownload to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, target_language, selected_candidate_rank, selected_candidate_file_id, output_path. Writes: downloaded_subtitle_path, downloaded_is_target_language, timing_check_required.",
+      "$kind": "command",
       "id": "transition.cli_download_candidate",
       "name": "Download Candidate Through CLI",
-      "description": "Run deterministic CLI OpenSubtitles download for the selected candidate.",
+      "description": "Run deterministic CLI OpenSubtitles download for the selected candidate. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_timing_gate",
       "outputPath": "downloaded_subtitle",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"downloaded_subtitle\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.cli_download_candidate",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "downloaded_subtitle": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.need_timing_check": {
       "$kind": "expr",
       "id": "transition.need_timing_check",
       "name": "Need Timing Check",
       "description": "Timing validation is required before accepting the downloaded subtitle.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.subtitle_timing_check",
-      "outputPath": "timing_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"timing_check_required\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"timing_check_required\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.skip_timing_check": {
@@ -1856,36 +2838,78 @@
       "id": "transition.skip_timing_check",
       "name": "Skip Timing Check",
       "description": "Proceed directly when no timing validation is required.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.downloaded_language_check",
-      "outputPath": "timing_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"timing_check_required\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"timing_check_required\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.subtitle_timing_check": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.subtitleTimingCheck to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, downloaded_subtitle_path. Writes: timing_ok, timing_verdict.",
+      "$kind": "command",
       "id": "transition.subtitle_timing_check",
       "name": "Run Subtitle Timing Check",
-      "description": "Compare subtitle timing with source media before accepting a low-confidence candidate.",
+      "description": "Compare subtitle timing with source media before accepting a low-confidence candidate. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.timing_check_result",
       "outputPath": "timing_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"timing_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.subtitle_timing_check",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "timing_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.timing_ok": {
       "$kind": "expr",
       "id": "transition.timing_ok",
       "name": "Timing Acceptable",
       "description": "Accept the candidate when timing is close enough.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.downloaded_language_check",
-      "outputPath": "timing_verdict_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"timing_ok\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"timing_ok\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.timing_bad": {
@@ -1893,36 +2917,78 @@
       "id": "transition.timing_bad",
       "name": "Timing Rejected",
       "description": "Advance to the next candidate when the timing check fails.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.advance_candidate_rank",
-      "outputPath": "timing_verdict_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"timing_ok\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"timing_ok\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.advance_candidate_rank": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.advanceOpenSubtitlesCandidateRank to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Try the next candidate; do not stop the whole run because one candidate mismatched. Writes: selected_candidate_rank, selected_candidate_file_id.",
+      "$kind": "command",
       "id": "transition.advance_candidate_rank",
       "name": "Advance Candidate Rank",
-      "description": "Move to the next OpenSubtitles candidate after a failed timing validation.",
+      "description": "Move to the next OpenSubtitles candidate after a failed timing validation. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.opensubtitles_download_route",
       "outputPath": "candidate_rank_state",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"candidate_rank_state\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.advance_candidate_rank",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "candidate_rank_state": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.downloaded_is_target_language": {
       "$kind": "expr",
       "id": "transition.downloaded_is_target_language",
       "name": "Downloaded Subtitle Already Target Language",
       "description": "Downloaded subtitle can be emitted directly without translation.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.write_downloaded_output",
-      "outputPath": "downloaded_language_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"downloaded_is_target_language\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"downloaded_is_target_language\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.downloaded_needs_translation": {
@@ -1930,36 +2996,78 @@
       "id": "transition.downloaded_needs_translation",
       "name": "Downloaded Subtitle Needs Translation",
       "description": "Continue into grouped translation when the downloaded subtitle is not already the target language.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.group_translation_input",
-      "outputPath": "downloaded_language_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"downloaded_is_target_language\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"downloaded_is_target_language\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.write_downloaded_output": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.acceptDownloadedTargetSubtitle to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: opensubtitles-target-language Reads: downloaded_subtitle_path, output_path. Writes: result_branch, result_artifacts.",
+      "$kind": "command",
       "id": "transition.write_downloaded_output",
       "name": "Accept Downloaded Target Subtitle",
-      "description": "Persist the downloaded target-language subtitle as the final output.",
+      "description": "Persist the downloaded target-language subtitle as the final output. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "05 OpenSubtitles search and download",
       "targetNodeId": "state.emit_single_summary",
       "outputPath": "single_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"single_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.write_downloaded_output",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "single_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.extract_via_mcp": {
       "$kind": "expr",
       "id": "transition.extract_via_mcp",
       "name": "Extract Via MCP",
       "description": "MCP-owned extraction route.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.mcp_extract_source",
-      "outputPath": "extract_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] == \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") == \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.extract_via_cli": {
@@ -1967,75 +3075,195 @@
       "id": "transition.extract_via_cli",
       "name": "Extract Via CLI",
       "description": "CLI-owned extraction route.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.cli_extract_source",
-      "outputPath": "extract_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] != \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") != \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mcp_extract_source": {
-      "$kind": "tbr",
-      "designNotes": "McpCall seam. Outer agent must invoke MCP extract in strict sequence, reuse or persist FFmpeg bin dir, and return extracted subtitle path plus detected source language.",
+      "$kind": "command",
       "id": "transition.mcp_extract_source",
       "name": "Extract Source Through MCP",
-      "description": "Delegate source subtitle extraction to MCP tool flow.",
+      "description": "Delegate source subtitle extraction to MCP tool flow. The external tool result returns through the resume payload.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.group_translation_input",
       "outputPath": "source_subtitle",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "mcpCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"source_subtitle\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "mcpCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "mcp.call.mcp_extract_source",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "source_subtitle": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.cli_extract_source": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.extract to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, preferred_source_language, ffmpeg_bin_dir. Writes: source_subtitle_path, source_language.",
+      "$kind": "command",
       "id": "transition.cli_extract_source",
       "name": "Extract Source Through CLI",
-      "description": "Extract the preferred source subtitle locally through CLI runtime.",
+      "description": "Extract the preferred source subtitle locally through CLI runtime. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "06 Embedded and bitmap sources",
       "targetNodeId": "state.group_translation_input",
       "outputPath": "source_subtitle",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"source_subtitle\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.cli_extract_source",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "source_subtitle": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.group_translation_input": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.buildTranslationGroups to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: source_subtitle_path, input_path, target_language. Writes: cue_count, group_count, translation_units, grouping_policy.",
+      "$kind": "command",
       "id": "transition.group_translation_input",
       "name": "Build Translation Groups",
-      "description": "Load SRT, group cues, and build translation units for deterministic merging later.",
+      "description": "Load SRT, group cues, and build translation units for deterministic merging later. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.update_translation_memory",
       "outputPath": "translation_groups",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"translation_groups\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.group_translation_input",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "translation_groups": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.update_translation_memory": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.updateRollingTranslationMemory to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Contract: Preserve grouped context across translation and resume boundaries. Writes: rolling_translation_memory, translation_context_window.",
+      "$kind": "command",
       "id": "transition.update_translation_memory",
       "name": "Update Rolling Translation Memory",
-      "description": "Persist grouped translation context before invoking the active translation engine.",
+      "description": "Persist grouped translation context before invoking the active translation engine. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.route_translation_engine",
       "outputPath": "translation_memory",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"translation_memory\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.update_translation_memory",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "translation_memory": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.translate_via_mcp": {
       "$kind": "expr",
       "id": "transition.translate_via_mcp",
       "name": "Translate Via MCP",
       "description": "MCP translation-only path.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.mcp_translate",
-      "outputPath": "translation_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] == \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") == \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.translate_via_model": {
@@ -2043,62 +3271,162 @@
       "id": "transition.translate_via_model",
       "name": "Translate Via Model",
       "description": "Outer-agent model reasoning path used by CLI translation flow.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.model_translate",
-      "outputPath": "translation_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mode\"] != \"mcp\"",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<string>(\"mode\") != \"mcp\"",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mcp_translate": {
-      "$kind": "tbr",
-      "designNotes": "McpCall seam. Outer agent must invoke MCP translate in strict sequence, preserve sampling-only behavior, and return translated groups or explicit failure without external endpoint fallback.",
+      "$kind": "command",
       "id": "transition.mcp_translate",
       "name": "Translate Through MCP",
-      "description": "Delegate grouped translation to MCP translation-only tooling.",
+      "description": "Delegate grouped translation to MCP translation-only tooling. The external tool result returns through the resume payload.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.merge_translation",
       "outputPath": "translated_groups",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "mcpCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"translated_groups\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "mcpCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "mcp.call.mcp_translate",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "translated_groups": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.model_translate": {
-      "$kind": "tbr",
-      "designNotes": "ModelThink seam. Outer agent owns the non-deterministic language reasoning for grouped translation. Preserve grouped context window, target language, and output naming policy when resuming.",
+      "$kind": "command",
       "id": "transition.model_translate",
       "name": "Translate Through Model Reasoning",
       "description": "Delegate grouped translation reasoning to the outer agent model.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.merge_translation",
       "outputPath": "translated_groups",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "modelThink"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"translated_groups\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "modelThink",
+      "command": {
+        "kind": "nativeCode",
+        "name": "model.review.model_translate",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "translated_groups": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.merge_translation": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.mergeTranslatedGroups to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: translated_groups, output_path. Writes: final_subtitle_path, result_branch.",
+      "$kind": "command",
       "id": "transition.merge_translation",
       "name": "Merge Translated Groups",
-      "description": "Merge translated groups and write the final SRT output.",
+      "description": "Merge translated groups and write the final SRT output. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "07 Translation",
       "targetNodeId": "state.mux_check",
-      "outputPath": "merge_result",
+      "outputPath": "final_subtitle_path",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"final_subtitle_path\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.merge_translation",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "final_subtitle_path": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1,
+      "publishesOutputFamilies": [
+        "final_subtitle_path"
+      ],
+      "satisfiesGateIds": [
+        "gate.final_subtitle"
+      ]
     },
     "transition.need_mux_output": {
       "$kind": "expr",
       "id": "transition.need_mux_output",
       "name": "Mux Requested",
       "description": "Optional mux output path has been requested.",
+      "workflowPhase": "08 Delivery and completion",
       "targetNodeId": "state.mux_output",
-      "outputPath": "mux_route",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mux_requested\"] == true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"mux_requested\") == true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.skip_mux_output": {
@@ -2106,44 +3434,114 @@
       "id": "transition.skip_mux_output",
       "name": "No Mux Requested",
       "description": "Skip muxing when no mux output is requested.",
+      "workflowPhase": "08 Delivery and completion",
       "targetNodeId": "state.emit_single_summary",
-      "outputPath": "mux_route",
       "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"mux_requested\"] != true",
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "context.Get<bool>(\"mux_requested\") != true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
       "stepKind": "conditionBranch"
     },
     "transition.mux_output": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate subtitle.muxSubtitleIntoVideo to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Reads: input_path, final_subtitle_path, mux_output_path, target_language. Writes: muxed_output_path.",
+      "$kind": "command",
       "id": "transition.mux_output",
       "name": "Mux Subtitle Into Media",
-      "description": "Persist the optional muxed media artifact.",
+      "description": "Persist the optional muxed media artifact. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "08 Delivery and completion",
       "targetNodeId": "state.emit_single_summary",
       "outputPath": "mux_result",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"mux_result\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.mux_output",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "mux_result": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
     },
     "transition.emit_single_summary": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.emitSingleSummary to an outer skill-runner agent instead of assuming SO will execute the custom command transition internally. Reads: result_branch, final_subtitle_path, muxed_output_path. Writes: single_summary, result_artifacts.",
+      "$kind": "command",
       "id": "transition.emit_single_summary",
       "name": "Emit Single Summary",
-      "description": "Emit the current single-item result payload and related artifacts before final completion or batch continuation.",
-      "targetNodeId": "state.single_completion_route",
-      "outputPath": "single_result",
+      "description": "Emit the current single-item result payload and related artifacts before final completion or batch continuation. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "08 Delivery and completion",
+      "targetNodeId": "state.done",
+      "outputPath": "run_summary_path",
       "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"run_summary_path\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.emit_single_summary",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "run_summary_path": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1,
+      "publishesOutputFamilies": [
+        "run_summary_path"
+      ],
+      "satisfiesGateIds": [
+        "gate.run_summary"
+      ],
+      "terminalRoutes": [
+        "success"
+      ]
     },
     "state.ensure_cli_runtime": {
       "$kind": "state",
       "id": "state.ensure_cli_runtime",
-      "name": "Restore Native CLI Runtime",
+      "name": "CK63 - Restore Native CLI Runtime",
       "description": "Before any subtitle operation, run assets/bootstrap/restore_runtime.py with the skill metadata channel. It checks the latest matching NuGet version, restores and SHA-512 verifies the host RID package only when the versioned cache is missing, and returns its absolute native executable path. Do not install the .NET runtime for this CLI.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
       "groups": [
         {
           "id": "group.ensure_cli_runtime",
@@ -2156,96 +3554,191 @@
       ],
       "waitBehavior": "blockUntilComplete"
     },
-    "state.single_completion_route": {
+    "transition.ensure_cli_runtime": {
+      "$kind": "command",
+      "id": "transition.ensure_cli_runtime",
+      "name": "Restore Native CLI Runtime",
+      "description": "Resolve and restore the latest channel-specific NativeAOT NuGet package for this host before starting subtitle work. Named subagent fallback: if the exact named subagent is not registered on this host and on-the-fly registration is not supported, do not use a similar role. Start a generic subagent guided by references/worker.md (its full contents, every batch input, and the reference context) and require the declared output. A read-only role is not valid here. If no capable driver can run, stop and report a plain-language blocker.",
+      "workflowPhase": "03 Mode, MCP, and CLI runtime",
+      "targetNodeId": "state.read_localpaths",
+      "outputPath": "runtime_host",
+      "priority": 100,
+      "guardExpression": {
+        "kind": "predicate",
+        "source": "true",
+        "resultType": "bool"
+      },
+      "succeedExpression": {
+        "kind": "predicate",
+        "source": "context.Get<object>(\"runtime_host\") != null",
+        "resultType": "bool"
+      },
+      "stepKind": "subagentCall",
+      "command": {
+        "kind": "nativeCode",
+        "name": "subagent.worker.ensure_cli_runtime",
+        "environmentKey": "",
+        "parameters": {
+          "requiredInputs": [
+            "result"
+          ],
+          "resumeOutputKey": "result",
+          "projectionMode": "canonical",
+          "outputBindings": {
+            "runtime_host": "$result"
+          }
+        },
+        "currentRetryCount": 0
+      },
+      "currentRetryCount": 0,
+      "maxRetry": 1
+    },
+    "state.batch_select_worker": {
       "$kind": "state",
-      "id": "state.single_completion_route",
-      "name": "Route Completion",
-      "description": "After each single-item summary, either finish the request or return the result to the batch queue loop.",
+      "id": "state.batch_select_worker",
+      "name": "CK - Choose Worker Route",
+      "description": "Choose the bounded-batch worker route from platform capability: subagent route when subagents are supported, otherwise inline.",
+      "workflowPhase": "02 Batch queue",
       "groups": [
         {
-          "id": "group.single_completion_route",
+          "id": "group.batch_select_worker",
           "strategy": "firstSuccess",
           "cancelLosers": true,
           "transitionIds": [
-            "transition.complete_batch_item",
-            "transition.complete_single_request"
+            "transition.batch_use_subagent",
+            "transition.batch_use_inline_worker"
           ]
         }
       ],
       "waitBehavior": "blockUntilComplete"
-    },
-    "transition.ensure_cli_runtime": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. This is the first runtime action before CLI/MCP/domain work. The outer skill-runner must invoke assets/bootstrap/restore_runtime.py --channel <metadata.channel>, capture the printed absolute native executable, and resume with runtime_executable_path and runtime_package_version. The helper detects OS/architecture/Linux libc, checks the NuGet channel version on every invocation, verifies the package SHA-512 sidecar, and uses a versioned cache. Do not install .NET for the CLI.",
-      "id": "transition.ensure_cli_runtime",
-      "name": "Restore Native CLI Runtime",
-      "description": "Resolve and restore the latest channel-specific NativeAOT NuGet package for this host before starting subtitle work.",
-      "targetNodeId": "state.read_localpaths",
-      "outputPath": "runtime_host",
-      "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
-    },
-    "transition.batch_prepare_single_run": {
-      "$kind": "tbr",
-      "designNotes": "SubagentCall seam. Delegate workflow.prepareNextSingleRun to an outer skill-runner agent instead of relying on an SO built-in tool lookup. Contract: Load one pending queue item and map it into the same single-item subtitle pipeline used by direct translate and translate-batch CLI execution. Writes: current_batch_item, input_path, output_path, input_extension.",
-      "id": "transition.batch_prepare_single_run",
-      "name": "Prepare Next Single Run",
-      "description": "Bind the next pending queue item into the shared single-item orchestration path.",
-      "targetNodeId": "state.check_mode",
-      "outputPath": "current_batch_item",
-      "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "true",
-      "stepKind": "subagentCall"
-    },
-    "transition.complete_batch_item": {
-      "$kind": "expr",
-      "id": "transition.complete_batch_item",
-      "name": "Continue Batch Queue",
-      "description": "Return the current single-item result to the batch queue loop.",
-      "targetNodeId": "state.batch_apply_deltas",
-      "outputPath": "completion_route",
-      "priority": 100,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"request_kind\"] == \"batch\"",
-      "stepKind": "conditionBranch"
-    },
-    "transition.complete_single_request": {
-      "$kind": "expr",
-      "id": "transition.complete_single_request",
-      "name": "Finish Single Request",
-      "description": "Finish immediately when the request was not queue-driven.",
-      "targetNodeId": "state.done",
-      "outputPath": "completion_route",
-      "priority": 90,
-      "succeedExpression": "true",
-      "guardExpression": "context[\"request_kind\"] != \"batch\"",
-      "stepKind": "conditionBranch"
     }
+  },
+  "templateKind": "so-governed-target-skill",
+  "taskType": "subtitle_extraction_translation",
+  "workflowKind": "target_skill_business",
+  "caseId": "subtitle-extractslator",
+  "runId": "template:subtitle-extractslator",
+  "runtimeBinding": "dotnet-so",
+  "runtimeVersion": "0.3.328",
+  "expressionBinding": {
+    "language": "csharp",
+    "languageVersion": "12",
+    "contractId": "loom.expression.csharp",
+    "contractVersion": "1",
+    "requiredExpressionCapabilities": [],
+    "compileFeedbackContract": "detailedCompileFeedbackV1"
+  },
+  "validation": {
+    "gates": {
+      "gate.final_subtitle": {
+        "description": "A structurally valid final subtitle file exists for the requested target language.",
+        "passExpression": {
+          "kind": "predicate",
+          "source": "context.Get<string>(\"final_subtitle_path\") != null",
+          "resultType": "bool"
+        },
+        "requiredOutputFamilies": [
+          "final_subtitle_path"
+        ],
+        "requiredMachineReadableOutputFamilies": [],
+        "requiredHumanReviewableOutputFamilies": [],
+        "valueSemantics": {
+          "final_subtitle_path": "nonEmptyString"
+        },
+        "instanceBinding": "current_workflow_instance",
+        "failureGuidance": {
+          "summary": "The final subtitle file has not been written, so the run cannot be counted as finished.",
+          "nextAction": "Do not hand over a partial subtitle. Ask the user only for a missing input choice, then run the merge step again so one structurally valid SRT file is written.",
+          "evidenceReferences": [
+            {
+              "path": "assets/so-workflow/contract.json",
+              "startLine": 13,
+              "endLine": 13,
+              "quote": "\"final_subtitle\": \"A structurally valid SRT with source cue order and timestamps preserved.\""
+            },
+            {
+              "path": "assets/so-workflow/contract.json",
+              "startLine": 33,
+              "endLine": 33,
+              "quote": "\"structural_validation\": \"Stop on malformed SRT output; do not merge or split cues unless the user explicitly requests it.\""
+            }
+          ]
+        }
+      },
+      "gate.run_summary": {
+        "description": "A run summary with source selection, outcome, and output paths exists when the run ends.",
+        "passExpression": {
+          "kind": "predicate",
+          "source": "context.Get<string>(\"run_summary_path\") != null",
+          "resultType": "bool"
+        },
+        "requiredOutputFamilies": [
+          "run_summary_path"
+        ],
+        "requiredMachineReadableOutputFamilies": [],
+        "requiredHumanReviewableOutputFamilies": [],
+        "valueSemantics": {
+          "run_summary_path": "nonEmptyString"
+        },
+        "instanceBinding": "current_workflow_instance",
+        "failureGuidance": {
+          "summary": "The run ended without a recorded run summary, so the result cannot be reviewed.",
+          "nextAction": "Run the summary step again on the same run before ending, then confirm the summary path is recorded.",
+          "evidenceReferences": [
+            {
+              "path": "assets/so-workflow/contract.json",
+              "startLine": 16,
+              "endLine": 16,
+              "quote": "\"run_summary\": \"Source selection, translation outcome, output paths, and per-item success or failure details.\""
+            }
+          ]
+        }
+      }
+    },
+    "routes": {
+      "success": {
+        "requiredTerminalGateIds": [
+          "gate.run_summary"
+        ],
+        "requiredBlockedGateIds": []
+      }
+    },
+    "declaredUserOwnedFields": [
+      "input_path",
+      "target_language",
+      "output_path",
+      "execution_mode",
+      "ffmpeg_path",
+      "batch_scope",
+      "opensubtitles_credentials",
+      "execution_profile_answer",
+      "mcp_setup_choice",
+      "opensubtitles_relogin_choice",
+      "candidate_adoption_choice",
+      "request_kind",
+      "mode",
+      "use_opensubtitles_candidate"
+    ],
+    "reservedRuntimeOwnedFields": [
+      "workflow_file",
+      "event_log_file",
+      "audit_output",
+      "instance_id",
+      "case_id",
+      "run_id",
+      "runtime_version",
+      "compile_feedback_path",
+      "artifact_paths",
+      "queue_state_paths",
+      "gate_evaluation"
+    ]
   },
   "startNodeId": "state.start",
   "currentNodeId": "state.start",
   "endNodeId": "state.done",
   "status": "readyToStart",
-  "context": {
-    "source": "subtitle-extractslator-repo",
-    "template_kind": "explicit-workflow-graph",
-    "merged_context": "Single-file path mirrors WorkflowOrchestrator.RunWorkflowAsync: probe, target-exists early exit, OpenSubtitles search/adopt or local extract, grouped translation, optional mux, artifact emit. Batch path wraps that same single-file path with centralized queue files under <temp-root>/agent-runs/<run-id>/, queue-level cooldown/resume handling, and per-item result write-back instead of a separate subtitle business graph.",
-    "request_kind": null,
-    "mode": null,
-    "input_extension": null,
-    "queue_empty": false,
-    "mcp_configured": false,
-    "opensubtitles_candidate_count": 0,
-    "timing_check_required": false,
-    "downloaded_is_target_language": false,
-    "mux_requested": false,
-    "cooldown_required": false,
-    "subagent_supported": false
-  },
+  "context": {},
   "history": [],
-  "version": 1,
+  "version": 0,
   "activeWaitGroups": []
 }
