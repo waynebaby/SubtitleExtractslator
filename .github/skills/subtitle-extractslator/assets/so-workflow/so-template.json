@@ -1,5 +1,5 @@
 {
-  "instanceId": "subtitleextractslator-so-0.3.328-template-v3",
+  "instanceId": "subtitleextractslator-so-0.3.328-template-v5",
   "nodes": {
     "state.start": {
       "$kind": "state",
@@ -1130,7 +1130,9 @@
         "parameters": {
           "requiredInputs": [
             "result",
-            "run_id"
+            "run_id",
+            "input_extension",
+            "mux_requested"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -1370,7 +1372,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "subagent_supported"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -1606,7 +1609,9 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "cooldown_required",
+            "queue_empty"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -1812,7 +1817,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "mcp_configured"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2010,7 +2016,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "ffmpeg_ready"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2168,7 +2175,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "has_target_subtitle"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2247,7 +2255,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "opensubtitles_auth_ready"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2366,7 +2375,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "opensubtitles_candidate_count"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2525,7 +2535,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "selected_source_is_bitmap"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2761,7 +2772,9 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "downloaded_is_target_language",
+            "timing_check_required"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2800,7 +2813,9 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "downloaded_is_target_language",
+            "timing_check_required"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
@@ -2879,7 +2894,8 @@
         "environmentKey": "",
         "parameters": {
           "requiredInputs": [
-            "result"
+            "result",
+            "timing_ok"
           ],
           "resumeOutputKey": "result",
           "projectionMode": "canonical",
