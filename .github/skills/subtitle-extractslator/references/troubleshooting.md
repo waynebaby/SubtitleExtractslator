@@ -59,7 +59,7 @@ Checks:
 
 Actions:
 
-1. Validate current node, result ID, and context/output-policy snapshot together before `dotnet so.dll resume`.
+1. Validate current node, result ID, and context/output-policy snapshot together before `so.exe resume`.
 2. Do not reuse stale auth seam artifacts from an earlier waiting state.
 3. If one of the three surfaces drifted, regenerate the resume result for the current waiting seam instead of patching only one file.
 

@@ -18,11 +18,11 @@ metadata:
 
 This repository is skill-first: the subtitle skill package is the primary deliverable, and execution authority is governed by Loom SO.
 
-**This skill has been enhanced by Loom SO and is now SO-exclusive governed (Beta channel, locked to 0.2.91-beta).** Only `dotnet so.dll run` and `dotnet so.dll resume` count as official skill runs and official skill execution history. Direct CLI and direct MCP are runtime primitives for component operations only.
+**This skill has been enhanced by Loom SO and is now SO-exclusive governed (Released channel, locked to 0.3.328).** Only `so.exe run` and `so.exe resume` on Windows (`so run` and `so resume` on Unix) count as official skill runs and official skill execution history. Direct CLI and direct MCP are runtime primitives for component operations only.
 
-Deterministic orchestration is encoded in the checked-in workflow JSON template and validated by SO runtime 0.2.91-beta (see `Workflow Contract` below). The authoritative runtime lock is `assets/so-workflow/so-package-lock.json`. Runtime contracts remain in `references/` for SO-orchestrated implementation.
+Deterministic orchestration is encoded in the checked-in workflow JSON template and validated by SO runtime 0.3.328 (see `Workflow Contract` below). The checked-in template compiles on that runtime; end-to-end runs still need real external results and inputs. The authoritative runtime lock is `assets/so-workflow/so-package-lock.json`. Runtime contracts remain in `references/` for SO-orchestrated implementation.
 
-Normal governance and maintenance for this skill must stay on the `so.dll` path (`--guide`, `compile`, `run`, `resume`). Do not treat direct edits to `assets/so-workflow/so-template.json` as a routine operating path. Touch that JSON only as a minimal last-resort workaround when execution is completely blocked and the user explicitly authorizes it, then return immediately to `dotnet so.dll compile` and the governed SO path.
+Normal governance and maintenance for this skill must stay on the direct apphost path (`--guide`, `compile`, `run`, `resume`). Do not treat direct edits to `assets/so-workflow/so-template.json` as a routine operating path. Touch that JSON only as a minimal last-resort workaround when execution is completely blocked and the user explicitly authorizes it, then return immediately to `so.exe compile` and the governed SO path.
 
 ## Installation and Release Links
 
@@ -33,32 +33,32 @@ Use this repository's package index pages as the canonical runtime source. This 
 - Stable package index (zh-CN): [packages.released.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.zh-CN.md)
 - Beta package index: [packages.beta.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md)
 - Beta package index (zh-CN): [packages.beta.zh-CN.md](https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.zh-CN.md)
-- SO package index (Current Beta source of truth): [Techne Loom packages.beta.md](https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md)
-- SO guide (Current Beta source of truth, zh-CN): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/development/docs/zh-cn/reference/products/so-guide.md)
+- SO package index (Current source of truth): [Techne Loom packages.beta.md](https://github.com/waynebaby/Techne-Loom/blob/development/packages.beta.md)
+- SO guide (Current source of truth, zh-CN): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/development/docs/zh-cn/reference/products/so-guide.md)
 - SO package index (Released reference): [Techne Loom packages.released.md](https://github.com/waynebaby/Techne-Loom/blob/main/packages.released.md)
 - SO guide (Released reference): [Techne Loom so-guide.md](https://github.com/waynebaby/Techne-Loom/blob/main/docs/en/reference/products/so-guide.md)
 - Runtime fallback `.nupkg` links are maintained inside the package index pages above.
 - Runtime missing diagnosis and fallback guide: `references/binary-missing.md`
 
 SO workflow files in this skill package:
-1. `assets/so-workflow/skill-plan.md` — Supporting maintainer-facing orchestration plan
+1. Per-run plan — runtime-owned under the execution output root; not shipped with this skill
 2. `assets/so-workflow/so-template.json` — Workflow JSON template (execution authority)
 3. `assets/so-workflow/so-package-lock.json` — Authoritative SO runtime version lock
 4. `assets/bootstrap/restore_runtime.py` — Host RID detection and channel-specific NativeAOT NuGet restore/cache bootstrap
 5. External audit artifacts — Compile validation and run/resume audit evidence must stay outside the skill folder
 
 Workflow modification confirmation loop for maintainers:
-1. Update `assets/so-workflow/skill-plan.md` first and keep governance changes plan-first.
-2. Validate the current `assets/so-workflow/so-template.json` with the locked `0.2.91-beta` SO runtime and an external audit root.
+1. Write the per-run plan under the execution output root first and keep governance changes plan-first; do not add a plan file to this skill.
+2. Validate the current `assets/so-workflow/so-template.json` with the locked `0.3.328` SO apphost (`so.exe` on Windows, `so` on Unix) and an external audit root. Compile a copy outside the skill folder, never the checked-in file.
 3. Review Mermaid, HTML, workflow backup, and `workflow.analysis.json`.
 4. If governance, seam ownership, or route coverage is still unsatisfied, revise the plan and recompile again.
-5. Only when execution is completely blocked and the user explicitly permits a minimal workaround may you make the smallest necessary edit to `assets/so-workflow/so-template.json`; then immediately recompile and continue on the `so.dll` path.
+5. Only when execution is completely blocked and the user explicitly permits a minimal workaround may you make the smallest necessary edit to `assets/so-workflow/so-template.json`; then immediately recompile and continue on the direct apphost path.
 6. Update this `SKILL.md` only after the compiled workflow is accepted.
 
 Official SO guide refresh for governed maintenance and validation:
 
 ```bash
-dotnet so.dll --guide --lang zh-cn
+so.exe --guide
 ```
 
 Resolve the channel's latest native runtime before CLI or MCP operations. The bootstrap prints the absolute executable path; use that path as `<cli_entry>`:
@@ -72,8 +72,8 @@ On Windows, use `py -3` if `python3` is not on PATH.
 Official skill execution entry:
 
 ```bash
-dotnet so.dll run --workflow-file <runtime-workflow-copy>.json
-dotnet so.dll resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json
+so.exe run --workflow-file <runtime-workflow-copy>.json
+so.exe resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json
 ```
 
 Primary goals:
@@ -126,24 +126,24 @@ Read these reference files for operational details:
 
 SO template (`assets/so-workflow/so-template.json`) is the canonical and exclusive deterministic execution model. Official skill runs and official skill history are SO-owned.
 
-`skill-plan.md` is maintainer-facing planning context. Public `dotnet so.dll compile` validates the existing workflow JSON template; it does not accept `skill-plan.md` as a CLI input.
+The per-run plan is maintainer-side context outside this skill. Public `so.exe compile` validates the existing workflow JSON template; it does not accept a plan file as a CLI input.
 
-Routine governed work is plan-first and `so.dll`-validated. Direct edits to `assets/so-workflow/so-template.json` are exception-only and require a completely blocked path plus explicit user permission for a minimal workaround.
+Routine governed work is plan-first and apphost-validated. Direct edits to `assets/so-workflow/so-template.json` are exception-only and require a completely blocked path plus explicit user permission for a minimal workaround.
 
 **Compilation Authority**: Validate with:
 ```bash
-dotnet so.dll compile \
+so.exe compile \
   --workflow-file assets/so-workflow/so-template.json \
   [--audit-output <external-audit-root>]
 ```
 
 **Execution**: Run via SO runtime against a runtime copy outside the skill folder:
 ```bash
-dotnet so.dll run --workflow-file <runtime-workflow-copy>.json [--audit-output <external-audit-root>]
-dotnet so.dll resume --workflow-file <current>.json --result-file <external-result>.json
+so.exe run --workflow-file <runtime-workflow-copy>.json [--audit-output <external-audit-root>]
+so.exe resume --workflow-file <current>.json --result-file <external-result>.json
 ```
 
-Before `dotnet so.dll resume` on any auth-related or other external seam, validate that the current waiting node, the resume result ID, and the active context/output-policy snapshot all point to the same seam completion. Do not reuse stale seam artifacts.
+Before `so.exe resume` on any auth-related or other external seam, validate that the current waiting node, the resume result ID, and the active context/output-policy snapshot all point to the same seam completion. Do not reuse stale seam artifacts.
 
 **High-level flow**:
 1. Normalize input (media/SRT, target language, output path).
@@ -158,6 +158,13 @@ Before `dotnet so.dll resume` on any auth-related or other external seam, valida
 - `McpCall`: probe, extract, search, download, translate tools
 - `WaitResume`: batch cooldown, external async triggers
 - `SubagentCall`: worker batch delegation
+
+**Named subagent fallback** (`SubagentCall` worker seam):
+1. Invoke the worker subagent by its exact name first.
+2. If the host reports that the exact name is not registered, do not substitute a similar role. Invoke an available registered generic subagent as the driver, passing the exact file path `references/worker.md`, its full contents, every batch input, and the reference context. The driver must perform the worker contract and return its handoff.
+3. A read-only or exploration-only role is not valid for the worker, because the worker writes subtitle outputs and centralized queue state.
+4. If no capable driver can run, stop with a concrete blocker and keep the failed evidence. A main-agent fallback requires explicit user approval.
+5. Only a platform with no subagent support at all runs the bounded worker inline, as described in [worker playbook](references/worker.md).
 
 ## Guardrails
 
@@ -178,7 +185,8 @@ Before `dotnet so.dll resume` on any auth-related or other external seam, valida
 15. Keep MCP orchestration agent-driven and avoid script-driven tool loops.
 16. Keep `subtitle-extractslator/` binary-free; acquire runtime from this repository's `packages.*.md` absolute URLs.
 17. Never use workflow nodes or steps equivalent to `run a multistep plan`; this pattern is prohibited because it weakens SO governance boundaries and can expose execution-leak paths.
-18. Do not directly edit `assets/so-workflow/so-template.json` as normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `dotnet so.dll compile` and continued SO-governed execution.
+18. Do not directly edit `assets/so-workflow/so-template.json` as normal maintenance. Only when the governed path is completely blocked and the user explicitly allows it may a minimal workaround be applied, followed immediately by `so.exe compile` and continued SO-governed execution.
+19. When a named worker subagent is not registered, use the generic driver fallback in `references/worker.md`. Never substitute a similar role or run the batch inline without explicit user approval.
 
 ## Operational Notes
 

@@ -2,7 +2,7 @@
 
 Use this reference when NativeAOT runtime restore fails or the platform executable is unavailable. The skill source is binary-free; do not copy runtime binaries into the skill folder.
 
-For SO-governed guide refresh and workflow maintenance, use `dotnet so.dll --guide [--lang <language>]` from the selected SO runtime. The subtitle CLI itself is a RID-specific NativeAOT executable and does not require the .NET runtime.
+For SO-governed guide refresh and workflow maintenance, run the extracted SO apphost directly: `so.exe --guide` on Windows or `so --guide` on Unix. The subtitle CLI itself is a RID-specific NativeAOT executable and does not require the .NET runtime.
 
 ## Official Source
 
