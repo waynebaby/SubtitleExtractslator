@@ -5,7 +5,7 @@ The prerelease runtime set is published from `development`. Install the skill so
 ## Version
 
 <!-- package-version-block:start -->
-- Current latest published Beta NativeAOT runtime version: `0.2.1-beta`.
+- Current latest published Beta NativeAOT runtime version: `0.2.2-beta`.
 - Beta selects the next patch after the highest numeric version across stable/Beta RID packages and appends exactly `-beta`; alpha, preview, and RC suffixes are not used.
 <!-- package-version-block:end -->
 

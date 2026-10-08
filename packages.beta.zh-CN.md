@@ -5,7 +5,7 @@
 ## 版本规则
 
 <!-- package-version-block:start -->
-- 当前最新已发布的 Beta NativeAOT runtime 版本是 `0.2.1-beta`。
+- 当前最新已发布的 Beta NativeAOT runtime 版本是 `0.2.2-beta`。
 - Beta 使用全部 stable/Beta RID 包中的最高数值版本递增 patch，并且只追加精确后缀 `-beta`；不使用 alpha、preview 或 RC。
 <!-- package-version-block:end -->
 
