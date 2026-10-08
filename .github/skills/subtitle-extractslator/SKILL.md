@@ -5,8 +5,8 @@ compatibility: Designed for agent environments (GitHub Copilot, Claude Code, Ope
 license: MIT
 metadata:
   author: waynebaby
-  version: 0.2.2-beta
-  channel: beta
+  version: 0.2.2
+  channel: stable
   mcp-server: subtitle-extractslator
   category: subtitle-translation
   language: zh-CN

@@ -5,8 +5,8 @@
 ## 版本规则
 
 <!-- package-version-block:start -->
-- per-RID NativeAOT 稳定包集合尚未首次发布；首个候选版本沿用共享数值 high-water 基线递增。
-- Stable 会在所有 stable/Beta RID 包的最高数值版本上递增 patch；`main` 不追加 prerelease 后缀。
+- 当前最新已发布的 stable NativeAOT runtime 版本是 `0.2.2`。
+- Stable 使用全部 stable/Beta RID 包中的最高数值版本递增 patch；`main` 输出纯数字版本，不加预发布后缀。
 <!-- package-version-block:end -->
 
 ## 恢复本机运行时
