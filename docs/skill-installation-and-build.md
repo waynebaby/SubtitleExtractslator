@@ -39,6 +39,15 @@ The runtime package IDs follow `SubtitleExtractslator.Cli.<rid>` and are publish
 
 `linux-arm` (32-bit) is not included in NativeAOT releases.
 
+## NuGet Trusted Publishing
+
+The stable and Beta workflows use GitHub OIDC through `NuGet/login@v1`; they do not read a long-lived `NUGET_API_KEY` secret. Before enabling package pushes, register trusted publishers on NuGet.org for `waynebaby/SubtitleExtractslator`:
+
+- Stable workflow: `.github/workflows/release-nuget-stable.yml`, GitHub environment `release-main`.
+- Beta workflow: `.github/workflows/release-nuget-beta.yml`, GitHub environment `release-development`.
+
+Both publish jobs request `id-token: write`. GitHub Release fallback assets remain available, but a missing or invalid OIDC trust configuration fails the publish job before fallback assets are replaced.
+
 Package indexes:
 
    - `https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md`
