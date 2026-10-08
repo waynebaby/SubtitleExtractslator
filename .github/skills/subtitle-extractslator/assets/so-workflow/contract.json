@@ -4,7 +4,7 @@
     "input_path": "Required path to a media file or an existing SRT file.",
     "target_language": "Required target subtitle language code.",
     "output_path": "Optional explicit subtitle output path; media-file outputs default to a same-directory <video-basename>.<lang>.srt copy.",
-    "execution_mode": "Optional MCP or CLI preference; the selected path must use the skill's deterministic orchestration and runtime contracts.",
+    "mode": "Optional MCP or CLI preference; the selected path must use the skill's deterministic orchestration and runtime contracts.",
     "ffmpeg_path": "User-owned FFmpeg/ffprobe binary directory when the tools are not discoverable on PATH.",
     "opensubtitles_credentials": "User-owned OpenSubtitles API key, username, and password supplied only to the login flow when authentication is required.",
     "batch_scope": "Optional folder, season, or library scope for queue-driven processing."

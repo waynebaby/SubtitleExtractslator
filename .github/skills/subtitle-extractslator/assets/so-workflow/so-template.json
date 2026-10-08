@@ -3723,7 +3723,6 @@
       "input_path",
       "target_language",
       "output_path",
-      "execution_mode",
       "ffmpeg_path",
       "batch_scope",
       "opensubtitles_credentials",
