@@ -1,8 +1,8 @@
 # Binary Missing Recovery
 
-Use this reference when runtime package restore fails or portable DLL runtime is unavailable. The `subtitle-extractslator/` skill package is binary-free and should not be repaired by copying binaries into the skill folder.
+Use this reference when NativeAOT runtime restore fails or the platform executable is unavailable. The skill source is binary-free; do not copy runtime binaries into the skill folder.
 
-This file validates the direct `SubtitleExtractslator.Cli.dll` primitive runtime only. For SO-governed guide refresh and official workflow maintenance, use `dotnet so.dll --guide [--lang <language>]` from the selected SO runtime instead.
+For SO-governed guide refresh and workflow maintenance, run the extracted SO apphost directly: `so.exe --guide` on Windows or `so --guide` on Unix. The subtitle CLI itself is a RID-specific NativeAOT executable and does not require the .NET runtime.
 
 ## Official Source
 
@@ -17,28 +17,26 @@ Use package channels first. Use the fallback `.nupkg` listed in the chosen packa
 
 ## Verify Runtime Integrity
 
-1. Confirm `SubtitleExtractslator.Cli` was restored or downloaded from the selected package index page.
-1. Confirm the external runtime package contains `lib/net9.0/SubtitleExtractslator.Cli.dll`.
-1. Run the component runtime guide command: `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`.
+1. Run `assets/bootstrap/restore_runtime.py --channel <metadata.channel>` using Python 3.
+1. Confirm the resolved package ID matches the detected host RID, for example `SubtitleExtractslator.Cli.win-arm64`.
+1. Confirm the package contains `tools/<rid>/SubtitleExtractslator.Cli[.exe]` and its SHA-512 sidecar verified.
+1. Run the resolved native executable with `--guide`.
 1. If guide output succeeds, runtime is considered healthy.
 
-## If `dotnet` Is Missing
+## If Python or Network Access Is Missing
 
-1. `SubtitleExtractslator.Cli.dll` targets `net9.0`, so the smallest valid host is the `.NET 9 Runtime` for the current platform and architecture.
-1. Install the runtime only. Do not install the full SDK unless you also need `dotnet add package`, `dotnet build`, or `dotnet publish`.
-1. Prefer the smallest execution-only path first:
-1. runtime installer for `.NET 9 Runtime`
-1. extracted portable runtime already approved by your environment
-1. After runtime install, re-run `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide` before any probe/extract/translate command.
+1. The bootstrap requires Python 3 and outbound HTTPS access to `api.nuget.org` to check the channel version.
+1. If Python is unavailable, install Python 3 or manually download the exact host-RID `.nupkg` and matching `.sha512` asset from the selected fallback release.
+1. Verify the SHA-512 sidecar before extracting `tools/<rid>/` outside the skill folder.
+1. Do not install the .NET runtime or SDK to execute the NativeAOT CLI.
 
 ## Recovery Flow
 
-1. Retry package restore from stable/beta index instructions.
-1. If feed is unavailable, use the current fallback `.nupkg` link listed in the selected package index page.
-1. If `dotnet` is missing, install the minimal `.NET 9 Runtime` first; avoid the SDK for execution-only recovery.
-1. Restore or extract the package outside the skill folder.
-1. Re-run the component runtime guide command: `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide`.
-1. Re-run a minimal command (`probe` or `translate`) to validate runtime availability.
+1. Confirm the skill's `metadata.channel` is `stable` or `beta` and the host maps to a supported RID.
+1. Retry `assets/bootstrap/restore_runtime.py --channel <metadata.channel>`.
+1. If NuGet is unavailable, use the exact RID/version `.nupkg` and `.sha512` fallback assets listed for the matching channel.
+1. Verify the sidecar, then extract the package's `tools/<rid>/` payload outside the skill folder.
+1. Run the native executable with `--guide`, then retry a minimal `probe` or `subtitle auth status` command.
 1. If FFmpeg is still missing, follow `references/localpaths.md` and set `FFMPEG_BIN_DIR`.
 
 

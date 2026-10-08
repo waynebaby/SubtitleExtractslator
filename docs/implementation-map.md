@@ -145,8 +145,11 @@ The file `SubtitleExtractslator.Cli/RuntimeInfrastructure.cs` contains multiple 
 
 ## 8. Packaging and release automation
 
-- `scripts/publish-skill-binaries.ps1`: stages external CLI runtime artifacts outside the skill folder for maintainer verification and package-index publishing tasks.
-- `.github/workflows/release-skill.yml`: restore/build/test pipeline, semver bump logic from PR labels, SKILL/README package-index-link updates, and source-only skill packaging plus release artifact creation.
+- `scripts/pack-rid-runtime.ps1`: publishes NativeAOT for one RID and packs its native executable into a RID-specific NuGet package.
+- `scripts/prepare-rid-release-set.ps1`: validates RID package IDs, shared release version, executable payloads, and produces SHA-512 sidecars.
+- `scripts/ResolveSharedPackageVersion.py` + `release-set.json`: selects the next patch above the highest stable/Beta RID package version and legacy high-water; Beta appends only `-beta`.
+- `scripts/update_package_index_version.py`: refreshes the exact stable or Beta package version block after publication.
+- `.github/workflows/release-nuget-stable.yml`, `.github/workflows/release-nuget-beta.yml`: build and publish the NativeAOT RID package release sets through NuGet OIDC Trusted Publishing, with separate `release-main`/`release-development` environments.
 
 ## 9. Main extension points for maintainers
 

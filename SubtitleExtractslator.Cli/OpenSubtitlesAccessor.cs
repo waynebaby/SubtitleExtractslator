@@ -186,15 +186,11 @@ internal sealed class OpenSubtitlesAccessor
                 "OpenSubtitles sk auth is missing username or password.");
         }
 
-        var loginPayload = new
-        {
-            username = _settings.Username,
-            password = _settings.Password
-        };
-        var loginPayloadText = JsonSerializer.Serialize(loginPayload);
+        var loginPayload = new OpenSubtitlesLoginPayload(_settings.Username, _settings.Password);
+        var loginPayloadText = JsonSerializer.Serialize(loginPayload, AppJsonContext.Default.OpenSubtitlesLoginPayload);
         using var req = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri("/login"))
         {
-            Content = JsonContent.Create(loginPayload)
+            Content = JsonContent.Create(loginPayload, AppJsonContext.Default.OpenSubtitlesLoginPayload)
         };
         ApplyHeaders(req, includeAuth: false);
 
@@ -253,11 +249,11 @@ internal sealed class OpenSubtitlesAccessor
                 "OpenSubtitles /download requires Authorization bearer token.");
         }
 
-        var downloadPayload = new { file_id = fileId };
-        var downloadPayloadText = JsonSerializer.Serialize(downloadPayload);
+        var downloadPayload = new OpenSubtitlesDownloadPayload(fileId);
+        var downloadPayloadText = JsonSerializer.Serialize(downloadPayload, AppJsonContext.Default.OpenSubtitlesDownloadPayload);
         using var req = new HttpRequestMessage(HttpMethod.Post, BuildEndpointUri("/download"))
         {
-            Content = JsonContent.Create(downloadPayload)
+            Content = JsonContent.Create(downloadPayload, AppJsonContext.Default.OpenSubtitlesDownloadPayload)
         };
         ApplyHeaders(req, includeAuth: true);
 

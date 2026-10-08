@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - development
+    paths-ignore:
+      - .github/skills/subtitle-extractslator/SKILL.md
+      - packages.beta.md
+      - packages.beta.zh-CN.md
   workflow_dispatch:
 
 permissions:
@@ -11,13 +15,13 @@ permissions:
 
 env:
   DOTNET_VERSION: 9.0.x
-  PACKAGE_ID: SubtitleExtractslator.Cli
-  PROJECT_PATH: SubtitleExtractslator.Cli/SubtitleExtractslator.Cli.csproj
-  SKILL_PACKAGE_NAME: subtitle-extractslator-skill.zip
 
 jobs:
   release-beta:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip-release]') }}
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
 
     steps:
       - name: Checkout
@@ -31,60 +35,48 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Setup GitVersion
-        uses: gittools/actions/gitversion/setup@v4
+        uses: gittools/actions/gitversion/setup@v4.5.0
         with:
-          versionSpec: 6.1.x
+          versionSpec: 6.7.x
 
-      - name: Determine version
+      - name: Determine branch metadata
         id: gitversion
-        shell: bash
-        run: |
-          set -euo pipefail
-          gitversion_output="$(mktemp "${RUNNER_TEMP}/gitversion.XXXXXX")"
-          trap 'rm -f "${gitversion_output}"' EXIT
-          dotnet-gitversion /output file /outputfile "${gitversion_output}"
-          python - <<'PY' "${gitversion_output}" >> "$GITHUB_OUTPUT"
-          import json
-          import sys
-          from pathlib import Path
+        uses: gittools/actions/gitversion/execute@v4.5.0
 
-          output = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
-          def get_value(*keys):
-              for key in keys:
-                  if key not in output:
-                      continue
-                  value = output[key]
-                  if value is None:
-                      continue
-                  if not isinstance(value, str):
-                      raise TypeError(f"GitVersion value '{key}' must be a string, got {type(value).__name__}")
-                  value = value.strip()
-                  if not value:
-                      raise ValueError(f"GitVersion value '{key}' was empty")
-                  return value
-              raise KeyError(f"Missing GitVersion value. Tried: {', '.join(keys)}")
+      - name: Test shared version resolver
+        run: python -B -m unittest discover -s scripts -p "test_release_versions.py" -v
 
-          # Prefer GitVersion's dedicated NuGet fields first, then fall back to semver fields
-          # that are present in newer output schemas.
-          print(f"majorMinorPatch={get_value('MajorMinorPatch')}")
-          print(f"nuGetVersionV2={get_value('NuGetVersionV2', 'NuGetVersion', 'SemVer', 'FullSemVer')}")
-          PY
-
-      - name: Resolve beta package version
+      - name: Resolve monotonic beta package version
         id: version
         shell: bash
+        env:
+          GITVERSION_BRANCH: ${{ steps.gitversion.outputs.branchName }}
+          PRE_RELEASE_LABEL: ${{ steps.gitversion.outputs.preReleaseLabel }}
         run: |
-          echo "PACKAGE_VERSION=${{ steps.gitversion.outputs.nuGetVersionV2 }}" >> "$GITHUB_ENV"
-          echo "package_version=${{ steps.gitversion.outputs.nuGetVersionV2 }}" >> "$GITHUB_OUTPUT"
-
-      - name: Guard prerelease suffix
-        shell: bash
-        run: |
-          PACKAGE_VERSION="${{ steps.version.outputs.package_version }}"
-          if [[ "${PACKAGE_VERSION}" != *-* ]]; then
-            echo "Development branch must produce prerelease NuGet versions. Got: ${PACKAGE_VERSION}" >&2
+          set -euo pipefail
+          if [ "${GITHUB_REF_NAME}" != "development" ] || [ "${GITVERSION_BRANCH}" != "development" ]; then
+            echo "Beta release requires the development branch; ref=${GITHUB_REF_NAME}, GitVersion=${GITVERSION_BRANCH}." >&2
             exit 1
           fi
+          if [ "${PRE_RELEASE_LABEL}" != "beta" ]; then
+            echo "Development release requires the exact GitVersion prerelease label 'beta'; got '${PRE_RELEASE_LABEL}'." >&2
+            exit 1
+          fi
+          PACKAGE_VERSION="$(python scripts/ResolveSharedPackageVersion.py --release-set-file release-set.json --channel beta)"
+          if ! printf '%s' "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-beta$'; then
+            echo "Shared beta package version is invalid: $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "SelectedPackageVersion=$PACKAGE_VERSION"
+
+      - name: Validate skill channel metadata
+        shell: pwsh
+        run: |
+          $skill = Get-Content ".github/skills/subtitle-extractslator/SKILL.md" -Raw
+          if ($skill -notmatch '(?m)^\s*channel:\s*(stable|beta)\s*$') {
+            throw "SKILL.md metadata.channel must be stable or beta before branch normalization."
+          }
 
       - name: Restore
         run: dotnet restore SubtitleExtractslator.sln
@@ -95,32 +87,122 @@ jobs:
       - name: Test
         run: dotnet test SubtitleExtractslator.sln -c Release --no-build
 
-      - name: Pack
-        run: dotnet pack ${{ env.PROJECT_PATH }} -c Release --no-build -o artifacts/nuget /p:PackageVersion=${{ steps.version.outputs.package_version }}
+  package-rid:
+    needs: release-beta
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-2025
+          - rid: win-arm64
+            runner: windows-11-arm
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - rid: linux-musl-x64
+            runner: ubuntu-24.04
+          - rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+          - rid: osx-x64
+            runner: macos-15-intel
+          - rid: osx-arm64
+            runner: macos-15
 
-      - name: Prepare fallback artifacts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install NativeAOT Linux toolchain
+        if: startsWith(matrix.rid, 'linux-')
         shell: bash
         run: |
-          PACKAGE_VERSION="${{ steps.version.outputs.package_version }}"
-          mkdir -p artifacts/fallback
-          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg"
-          cp "artifacts/nuget/${PACKAGE_ID}.${PACKAGE_VERSION}.nupkg" "artifacts/fallback/${PACKAGE_ID}.latest.nupkg"
+          sudo apt-get update
+          sudo apt-get install -y clang lld zlib1g-dev
+          if [[ "${{ matrix.rid }}" == linux-musl-* ]]; then
+            sudo apt-get install -y musl-tools
+          fi
 
-      - name: Prepare skill package artifact
+      - name: Pack RID runtime
+        shell: pwsh
+        run: >-
+          ./scripts/pack-rid-runtime.ps1
+          -Rid '${{ matrix.rid }}'
+          -PackageVersion '${{ needs.release-beta.outputs.package_version }}'
+          -OutputRoot artifacts
+
+      - name: Upload RID package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-${{ matrix.rid }}
+          path: artifacts/nuget/${{ matrix.rid }}/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-beta:
+    needs: [release-beta, package-rid]
+    runs-on: ubuntu-latest
+    environment: release-development
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download RID packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-*
+          path: artifacts/nuget
+          merge-multiple: true
+
+      - name: Validate release set and create checksums
+        shell: pwsh
+        run: >-
+          ./scripts/prepare-rid-release-set.ps1
+          -PackageVersion '${{ needs.release-beta.outputs.package_version }}'
+
+      - name: NuGet trusted publishing login
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: WaynebabyWang
+
+      - name: Push package set to NuGet
         shell: bash
         run: |
-          set -euo pipefail
-          SKILL_ROOT="artifacts/skill/subtitle-extractslator"
-          rm -rf artifacts/skill
-          rm -f "artifacts/fallback/${SKILL_PACKAGE_NAME}"
-          mkdir -p "${SKILL_ROOT}/references" "${SKILL_ROOT}/assets/so-workflow"
-          cp .github/skills/subtitle-extractslator/SKILL.md "${SKILL_ROOT}/SKILL.md"
-          cp -R .github/skills/subtitle-extractslator/references/. "${SKILL_ROOT}/references/"
-          cp -R .github/skills/subtitle-extractslator/assets/so-workflow/. "${SKILL_ROOT}/assets/so-workflow/"
-          (
-            cd artifacts/skill
-            zip -qr "../fallback/${SKILL_PACKAGE_NAME}" subtitle-extractslator
-          )
+          for package in artifacts/nuget/*.nupkg; do
+            dotnet nuget push "$package" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+      - name: Remove legacy ZIP and generic package aliases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_tag="nuget-beta-latest"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            while IFS= read -r asset; do
+              case "$asset" in
+                *.nupkg|*.nupkg.sha512|subtitle-extractslator-skill.zip)
+                  gh release delete-asset "$release_tag" "$asset" --yes
+                  ;;
+              esac
+            done < <(gh release view "$release_tag" --json assets --jq '.assets[].name')
+          fi
 
       - name: Publish beta fallback release
         uses: softprops/action-gh-release@v2
@@ -130,17 +212,23 @@ jobs:
           prerelease: true
           make_latest: false
           files: |
-            artifacts/fallback/${{ env.PACKAGE_ID }}.${{ steps.version.outputs.package_version }}.nupkg
-            artifacts/fallback/${{ env.PACKAGE_ID }}.latest.nupkg
-            artifacts/fallback/${{ env.SKILL_PACKAGE_NAME }}
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.nupkg.sha512
 
-      - name: Push package to NuGet
-        shell: bash
+      - name: Sync Beta package and skill metadata
+        shell: pwsh
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          PACKAGE_VERSION: ${{ needs.release-beta.outputs.package_version }}
         run: |
-          if [ -z "${NUGET_API_KEY}" ]; then
-            echo "NUGET_API_KEY is not set, skip NuGet push."
-            exit 0
-          fi
-          dotnet nuget push artifacts/nuget/*.nupkg --api-key "${NUGET_API_KEY}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          python scripts/update_package_index_version.py --channel beta --version $env:PACKAGE_VERSION
+          $skillPath = ".github/skills/subtitle-extractslator/SKILL.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- packages.beta.md packages.beta.zh-CN.md $skillPath
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 1) {
+            git commit -m "chore(channel): mark development skill as beta [skip-release]"
+            git push origin HEAD:development
+          } elseif ($LASTEXITCODE -ne 0) {
+            throw "Could not inspect staged Beta release metadata."
+          }

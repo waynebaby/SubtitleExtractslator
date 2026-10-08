@@ -7,11 +7,6 @@ internal static class OpenSubtitlesAuthStore
     private const string DefaultEndpoint = "https://api.opensubtitles.com/api/v1";
     private const string DefaultUserAgent = "SubtitleExtractslator/0.1";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
     public static string CachePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SubtitleExtractslator",
@@ -62,7 +57,7 @@ internal static class OpenSubtitlesAuthStore
             Directory.CreateDirectory(dir);
         }
 
-        var json = JsonSerializer.Serialize(normalized, JsonOptions);
+        var json = JsonSerializer.Serialize(normalized, AppJsonContext.Default.OpenSubtitlesAuthState);
         File.WriteAllText(CachePath, json);
 
         return new AuthCommandResult(
@@ -136,7 +131,7 @@ internal static class OpenSubtitlesAuthStore
         try
         {
             var json = File.ReadAllText(CachePath);
-            var state = JsonSerializer.Deserialize<OpenSubtitlesAuthState>(json);
+            var state = JsonSerializer.Deserialize(json, AppJsonContext.Default.OpenSubtitlesAuthState);
             if (state is null)
             {
                 throw OpenSubtitlesAuthException.ReloginRequired(

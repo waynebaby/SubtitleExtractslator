@@ -38,16 +38,16 @@ dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 dotnet run --project SubtitleExtractslator.Cli -- --mode mcp
 ```
 
-## 2. CLI runtime publishing and skill packaging
+## 2. CLI NativeAOT runtime package
 
-Local external CLI runtime staging helper:
+Build one RID-specific NativeAOT NuGet package:
 
 ```powershell
-.\scripts\publish-skill-binaries.ps1
+./scripts/pack-rid-runtime.ps1 -Rid win-x64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
 
 ```bash
-pwsh ./scripts/publish-skill-binaries.ps1
+pwsh ./scripts/pack-rid-runtime.ps1 -Rid linux-arm64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
 
 ## 3. SO Workflow Compilation and Validation
@@ -128,21 +128,22 @@ nuget install Techne.Loom.SkillOrchestrator.CliTool -OutputDirectory <temp-dir>
 
 For detailed SO diagnostics, see [SO Enhancement Guide](so-enhancement-guide.md).
 
-## 4. CLI runtime publishing and skill packaging
+## 4. CLI NativeAOT runtime package
 
-Local external CLI runtime staging helper:
+Build one RID-specific package. Release workflows call this helper from a native platform runner for each supported RID:
 
 ```powershell
-.\scripts\publish-skill-binaries.ps1
+./scripts/pack-rid-runtime.ps1 -Rid win-x64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
 
 ```bash
-pwsh ./scripts/publish-skill-binaries.ps1
+pwsh ./scripts/pack-rid-runtime.ps1 -Rid linux-arm64 -PackageVersion 0.1.0 -OutputRoot artifacts
 ```
 
 Default output root:
 
-- `artifacts/cli-runtime/`
+- `artifacts/publish/<rid>/`
+- `artifacts/nuget/<rid>/`
 
 Skill packaging rule:
 

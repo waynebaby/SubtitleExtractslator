@@ -9,10 +9,10 @@ internal sealed record AppOptions(
 SubtitleExtractslator CLI
 
 Usage:
-dotnet SubtitleExtractslator.Cli.dll --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
-dotnet SubtitleExtractslator.Cli.dll --mode mcp
-dotnet SubtitleExtractslator.Cli.dll --guide
-dotnet SubtitleExtractslator.Cli.dll --help
+SubtitleExtractslator.Cli --mode cli <command> [--key value ...] [--env "KEY=VALUE;KEY2=VALUE2"]
+SubtitleExtractslator.Cli --mode mcp
+SubtitleExtractslator.Cli --guide
+SubtitleExtractslator.Cli --help
 
 Guide-first:
 Run `--guide` before operational commands to get channel/install and fallback pointers.

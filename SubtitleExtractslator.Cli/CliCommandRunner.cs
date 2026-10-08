@@ -14,23 +14,23 @@ internal static class CliCommandRunner
             "guide" => BuildGuideText(),
             "probe" => JsonSerializer.Serialize(await orchestrator.ProbeAsync(
                 options.Require("input"),
-                options.Require("lang")), JsonOptions.Pretty),
+                options.Require("lang")), AppJsonContext.Default.ProbeResult),
             "subtitle-timing-check" => JsonSerializer.Serialize(await orchestrator.CheckSubtitleTimingAsync(
                 options.Require("input"),
-                options.Require("subtitle")), JsonOptions.Pretty),
+                options.Require("subtitle")), AppJsonContext.Default.SubtitleTimingCheckResult),
             "opensubtitles-search" => JsonSerializer.Serialize(await orchestrator.SearchOpenSubtitlesAsync(
                 options.Require("input"),
                 options.Require("lang"),
                 ResolveOpenSubtitlesSearchQueries(options),
-                ResolveOpenSubtitlesCredentials(options)), JsonOptions.Pretty),
-            "opensubtitles-download" => JsonSerializer.Serialize(await RunOpenSubtitlesDownloadWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
-            "subtitle" => JsonSerializer.Serialize(await RunSubtitleAuthCommandAsync(options), JsonOptions.Pretty),
+                ResolveOpenSubtitlesCredentials(options)), AppJsonContext.Default.OpenSubtitlesResult),
+            "opensubtitles-download" => JsonSerializer.Serialize(await RunOpenSubtitlesDownloadWithOptionsAsync(orchestrator, options), AppJsonContext.Default.OpenSubtitlesDownloadResult),
+            "subtitle" => JsonSerializer.Serialize(await RunSubtitleAuthCommandAsync(options), AppJsonContext.Default.AuthCommandResult),
             "extract" => JsonSerializer.Serialize(await orchestrator.ExtractSubtitleAsync(
                 options.Require("input"),
                 options.Require("out"),
-                options.Arguments.TryGetValue("prefer", out var prefer) ? prefer : "en"), JsonOptions.Pretty),
-            "translate" => JsonSerializer.Serialize(await RunTranslateWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
-            "translate-batch" => JsonSerializer.Serialize(await RunTranslateBatchWithOptionsAsync(orchestrator, options), JsonOptions.Pretty),
+                options.Arguments.TryGetValue("prefer", out var prefer) ? prefer : "en"), AppJsonContext.Default.ExtractionResult),
+            "translate" => JsonSerializer.Serialize(await RunTranslateWithOptionsAsync(orchestrator, options), AppJsonContext.Default.WorkflowResult),
+            "translate-batch" => JsonSerializer.Serialize(await RunTranslateBatchWithOptionsAsync(orchestrator, options), AppJsonContext.Default.BatchWorkflowResult),
             _ => AppOptions.HelpText
         };
     }
@@ -41,11 +41,11 @@ internal static class CliCommandRunner
 SubtitleExtractslator Guide
 
 Preferred runtime form:
-- Portable .NET DLL via `dotnet SubtitleExtractslator.Cli.dll ...`
+- NativeAOT executable selected for the current RID
 
 Channels:
 - Stable channel: main branch release line (numeric stable versions)
-- Beta channel: development branch prerelease line
+- Beta channel: development branch with the exact `-beta` suffix
 
 Package indexes:
 - Stable: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md
@@ -57,9 +57,9 @@ Fallback when package feed is unavailable:
 - Use the corresponding latest GitHub release fallback listed in the package indexes above.
 
 Typical command entry:
-- dotnet SubtitleExtractslator.Cli.dll --mode cli probe --input "movie.mkv" --lang zh
-- dotnet SubtitleExtractslator.Cli.dll --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt"
-- dotnet SubtitleExtractslator.Cli.dll --mode mcp
+- SubtitleExtractslator.Cli --mode cli probe --input "movie.mkv" --lang zh
+- SubtitleExtractslator.Cli --mode cli translate --input "movie.en.srt" --lang zh --output "movie.zh.srt"
+- SubtitleExtractslator.Cli --mode mcp
 
 Skill routing note:
 - Skill docs should route users to this guide and package indexes, instead of maintaining a second runtime truth source.

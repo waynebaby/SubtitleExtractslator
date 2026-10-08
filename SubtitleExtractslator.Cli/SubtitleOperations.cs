@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 
@@ -626,22 +627,26 @@ internal sealed class SubtitleOperations
             .Select((x, i) => new PgsTimelineEntry(i + 1, x.ImagePath, x.Start, x.End))
             .ToList();
 
-        await File.WriteAllTextAsync(timelinePath, JsonSerializer.Serialize(timeline, JsonOptions.Pretty), Encoding.UTF8);
-        var manifest = new
-        {
+        await File.WriteAllTextAsync(
+            timelinePath,
+            JsonSerializer.Serialize(timeline, AppJsonContext.Default.ListPgsTimelineEntry),
+            Encoding.UTF8);
+        var manifest = new PgsArtifactManifest(
             input,
             output,
-            selectedLanguage = selected.Language,
+            selected.Language,
             preferredLanguage,
-            subtitleOrder = selected.SubtitleOrder,
-            codecName = selected.CodecName,
+            selected.SubtitleOrder,
+            selected.CodecName,
             supPath,
-            pngDirectory = pngDir,
+            pngDir,
             timelinePath,
-            imageCount = decoded.Count,
-            cueCount = timeline.Count
-        };
-        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest, JsonOptions.Pretty), Encoding.UTF8);
+            decoded.Count,
+            timeline.Count);
+        await File.WriteAllTextAsync(
+            manifestPath,
+            JsonSerializer.Serialize(manifest, AppJsonContext.Default.PgsArtifactManifest),
+            Encoding.UTF8);
 
         CliRuntimeLog.Info("extract", $"PGS artifacts ready. sup={supPath} pngCount={decoded.Count} timelineCount={timeline.Count}");
 
@@ -896,35 +901,31 @@ internal sealed class SubtitleOperations
 
     private static string BuildBitmapOcrPayload(string model, string imageDataUri, string? reasoningMode)
     {
-        var messageContent = new object[]
-        {
-            new Dictionary<string, object?>
+        var messageContent = new JsonArray(
+            new JsonObject
             {
                 ["type"] = "text",
                 ["text"] = "Extract subtitle text from this image. Return text only."
             },
-            new Dictionary<string, object?>
+            new JsonObject
             {
                 ["type"] = "image_url",
-                ["image_url"] = new Dictionary<string, object?>
+                ["image_url"] = new JsonObject
                 {
                     ["url"] = imageDataUri
                 }
-            }
-        };
+            });
 
-        var payload = new Dictionary<string, object?>
+        var payload = new JsonObject
         {
             ["model"] = model,
             ["temperature"] = 0.0,
-            ["messages"] = new object[]
-            {
-                new Dictionary<string, object?>
+            ["messages"] = new JsonArray(
+                new JsonObject
                 {
                     ["role"] = "user",
                     ["content"] = messageContent
-                }
-            }
+                })
         };
 
         if (!string.IsNullOrWhiteSpace(reasoningMode))
@@ -932,7 +933,7 @@ internal sealed class SubtitleOperations
             payload["reasoning"] = reasoningMode;
         }
 
-        return JsonSerializer.Serialize(payload);
+        return JsonSerializer.Serialize(payload, AppJsonContext.Default.JsonObject);
     }
 
     private static string ExtractBitmapOcrText(string responseBody)
@@ -1066,7 +1067,7 @@ internal sealed class SubtitleOperations
         return new string(chars).Trim('-');
     }
 
-    private sealed record PgsTimelineEntry(int Index, string ImagePath, TimeSpan Start, TimeSpan End);
+    internal sealed record PgsTimelineEntry(int Index, string ImagePath, TimeSpan Start, TimeSpan End);
 
     private static string InferLanguageFromFileName(string input)
     {

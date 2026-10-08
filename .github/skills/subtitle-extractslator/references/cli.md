@@ -4,28 +4,28 @@ This file is skill-facing runtime contract only.
 
 ## Runtime Package Source
 
-1. The `subtitle-extractslator/` skill package is binary-free. Do not expect `./assets/bin/`.
-2. Acquire `SubtitleExtractslator.Cli` from this repository's package index pages:
-
-- stable: `https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md`
-- beta: `https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.beta.md`
-
-1. If package feed is unavailable, use the current fallback `.nupkg` link listed in the selected package index page.
-2. After restore or `.nupkg` extraction, locate `lib/net9.0/SubtitleExtractslator.Cli.dll` outside the skill folder.
+1. The `subtitle-extractslator/` skill source is binary-free and does not ship `./assets/bin/` or a skill ZIP.
+2. Before every skill run, execute `assets/bootstrap/restore_runtime.py --channel <metadata.channel>` using Python 3. The helper detects the host RID, checks that channel's latest `SubtitleExtractslator.Cli.<rid>` NuGet version, verifies its SHA-512 sidecar, and prints the absolute native executable path.
+3. The helper downloads only when the versioned local cache is missing. Do not invoke `dotnet restore` or install the .NET runtime for the CLI package.
+4. If NuGet is unavailable, stop with the restore error and use the exact-version `.nupkg` fallback listed in the selected channel index after verifying its SHA-512 sidecar.
 
 ## Runtime Entry
 
 Execution path rules:
 
-1. Use an absolute path to the external runtime package DLL.
-2. Do not scan the skill folder for binaries.
+1. Use the absolute native executable path printed by the bootstrap as `<cli_entry>`.
+2. Do not scan the skill folder for runtime binaries.
 3. Quote paths with spaces.
-4. Refer to `dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll"` as `<cli_entry>`.
 
 Quick check:
 
-1. Resolve `<cli_entry>` from the restored or extracted package.
+1. Resolve `<cli_entry>` by running the bootstrap before other CLI work.
 2. Run: `<cli_entry> --help`
+
+Endpoint readiness rule:
+
+1. If CLI translation or bitmap OCR depends on a local HTTP endpoint, do not trust process startup text such as `READY` by itself.
+2. Verify the endpoint is actually listening and returns a valid HTTP response before routing translation or OCR traffic to it.
 
 ## Global Options
 
@@ -35,9 +35,12 @@ Quick check:
 ## Output Path Notes
 
 1. `translate` requires explicit `--output`.
-2. `translate-batch` requires explicit `--output-dir`.
-3. `translate-batch` defaults `--output-suffix` to `.<lang>.srt` when omitted.
-4. If you need deterministic paths, set explicit output/output-dir values in commands.
+2. Keep normal default output paths for non-subtitle artifacts.
+3. For media-file requests, after the final subtitle is produced, copy that subtitle beside the source video and name the copied subtitle `<original_video_basename>.<lang>.srt` unless the user explicitly requests another subtitle destination or name.
+4. For governed multi-file media runs, prefer file-by-file orchestration around CLI primitives so each copied subtitle lands beside its source video with deterministic naming.
+5. `translate-batch` requires explicit `--output-dir` when that CLI primitive is invoked directly.
+6. `translate-batch` defaults `--output-suffix` to `.<lang>.srt` when omitted.
+7. If you need deterministic paths, set explicit output/output-dir values in commands.
 
 ## CLI Commands
 
@@ -86,6 +89,11 @@ Platform command rule:
 1. Extract:
 
 - `<cli_entry> --mode cli extract --input "movie.mkv" --out "movie.en.srt" --prefer en`
+
+1. Extract notes:
+
+- If a Chinese embedded track is expected, try `prefer=zh` first and then `prefer=chi` before declaring embedded Chinese unavailable.
+- If no usable embedded track exists, continue with local subtitle discovery and then OpenSubtitles fallback instead of treating extraction failure as a batch-stopping error.
 
 1. Translate (CLI only):
 

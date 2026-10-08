@@ -15,6 +15,14 @@
     <PackageIcon>icon.nuget.png</PackageIcon>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(RuntimePackageRid)' != ''">
+    <PackageId>SubtitleExtractslator.Cli.$(RuntimePackageRid)</PackageId>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.13.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
@@ -37,8 +45,10 @@
     </None>
   </ItemGroup>
 
-  <Target Name="PublishSkillBinariesOnBuild" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipSkillBinaryPublish)' != 'true'">
-
-  </Target>
+  <ItemGroup Condition="'$(RuntimePackageRid)' != '' and '$(RuntimePackagePublishDir)' != ''">
+    <None Include="$(RuntimePackagePublishDir)**\*"
+          Pack="true"
+          PackagePath="tools/$(RuntimePackageRid)/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 
 </Project>

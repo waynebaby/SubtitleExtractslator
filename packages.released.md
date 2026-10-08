@@ -1,49 +1,55 @@
-# SubtitleExtractslator Stable Packages
+# SubtitleExtractslator Stable NativeAOT Packages
 
-This channel is the stable production line published from `main`.
+The stable runtime release set is published from `main`. The skill itself is installed from the repository; stable releases do not publish a skill ZIP.
 
-This page is the canonical runtime acquisition entry for the binary-free `.github/skills/subtitle-extractslator/` skill package.
+## Version
 
-## Install
+<!-- package-version-block:start -->
+- The latest stable per-RID NativeAOT package set is not published yet; the initial candidate follows the shared numeric high-water baseline.
+- Stable selects the next patch after the highest numeric stable or Beta RID package version; `main` emits no prerelease suffix.
+<!-- package-version-block:end -->
 
-```bash
-dotnet add package SubtitleExtractslator.Cli --version <stable-version>
-```
+## Restore the Host Runtime
 
-## Install Skill Package
-
-Use the packaged skill zip instead of repo-root discovery:
-
-```bash
-npx skills add https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip
-```
-
-## Guide First
-
-After restore or `.nupkg` extraction is available, resolve an absolute DLL path and run:
+The skill checks this channel's latest NuGet version on every run and downloads only the host RID package when its versioned cache is missing:
 
 ```bash
-dotnet "<absolute-path>/SubtitleExtractslator.Cli.dll" --guide
+python3 assets/bootstrap/restore_runtime.py --channel stable
 ```
 
-## SO Enhancement Note
+On Windows, use `py -3` if `python3` is not available. The bootstrap requires Python 3 and HTTPS access to NuGet. It verifies the package's SHA-512 sidecar and prints the absolute executable path.
 
-This skill has been enhanced by Loom SO and is now SO-exclusive governed.
+## Runtime Packages
 
-- Execution authority: SO only
+Each package contains one NativeAOT executable under `tools/<rid>/`:
+
+- `SubtitleExtractslator.Cli.win-x64`
+- `SubtitleExtractslator.Cli.win-arm64`
+- `SubtitleExtractslator.Cli.linux-x64`
+- `SubtitleExtractslator.Cli.linux-arm64`
+- `SubtitleExtractslator.Cli.linux-musl-x64`
+- `SubtitleExtractslator.Cli.linux-musl-arm64`
+- `SubtitleExtractslator.Cli.osx-x64`
+- `SubtitleExtractslator.Cli.osx-arm64`
+
+All RID package IDs in a stable release set share one version. `linux-arm` (32-bit) is not included because it has not passed the NativeAOT support gate.
+
+## Install the Skill
+
+Install the skill from the repository rather than a release archive:
+
+```bash
+npx skills add waynebaby/SubtitleExtractslator --skill subtitle-extractslator
+```
+
+## SO Execution
+
 - Official run: `dotnet so.dll run --workflow-file <skill-path>/assets/so-workflow/so-template.json`
 - Official resume: `dotnet so.dll resume --workflow-file <runtime-workflow-copy>.json --result-file <external-result>.json`
-- Direct CLI and direct MCP: runtime primitives only (not official skill execution history)
-
-For released governance references:
-
-- SO package index: <https://github.com/waynebaby/Techne-Loom/blob/main/packages.released.md>
-- SO guide: <https://github.com/waynebaby/Techne-Loom/blob/main/docs/en/reference/products/so-guide.md>
+- Direct CLI and MCP are runtime primitives only, not official skill execution history.
 
 ## GitHub Fallback
 
-Use fallback only when package feed is unavailable.
+Use the moving stable fallback release only when NuGet is unavailable. It contains the exact-version RID `.nupkg` files and matching `.nupkg.sha512` sidecars:
 
-- Latest stable fallback release: <https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest>
-- Latest stable skill zip: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/subtitle-extractslator-skill.zip>
-- Latest stable `.latest.nupkg`: <https://github.com/waynebaby/SubtitleExtractslator/releases/download/nuget-stable-latest/SubtitleExtractslator.Cli.latest.nupkg>
+<https://github.com/waynebaby/SubtitleExtractslator/releases/tag/nuget-stable-latest>
