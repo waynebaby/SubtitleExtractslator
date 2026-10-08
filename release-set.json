@@ -1,0 +1,46 @@
+{
+  "schema_version": "subtitle-extractslator-release-set.v1",
+  "release_set_id": "subtitle-extractslator-runtime-8",
+  "version_authority": {
+    "release": {
+      "source": "shared-version-job-output",
+      "baseline_source": "active-runtime-package-high-water-plus-retired-package-high-water",
+      "numeric_version_policy": "next patch after the highest published stable or beta package version",
+      "channel_suffix_policy": "development appends -beta; main emits the numeric version",
+      "monotonic_across_channels": true,
+      "requires_all_packages_same_exact_version": true
+    }
+  },
+  "channels": {
+    "stable": {
+      "branch": "main",
+      "version_pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "beta": {
+      "branch": "development",
+      "version_pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-beta$"
+    }
+  },
+  "packages": {
+    "runtime": {
+      "package_id_template": "SubtitleExtractslator.Cli.{rid}",
+      "rids": [
+        "win-x64",
+        "win-arm64",
+        "linux-x64",
+        "linux-arm64",
+        "linux-musl-x64",
+        "linux-musl-arm64",
+        "osx-x64",
+        "osx-arm64"
+      ]
+    }
+  },
+  "retired_package_high_water": {
+    "package_ids": ["SubtitleExtractslator.Cli"],
+    "stable": "0.1.20",
+    "beta": "0.2.0-beta",
+    "source": "verified GitHub fallback assets: stable 0.1.20 and legacy beta 0.2.0-alpha.6; legacy prerelease normalized to numeric high-water 0.2.0",
+    "active_release_scope": false
+  }
+}

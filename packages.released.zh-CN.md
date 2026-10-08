@@ -2,6 +2,13 @@
 
 稳定版发布集来自 `main`。Skill 从仓库安装；稳定版 Release 不发布 skill ZIP。
 
+## 版本规则
+
+<!-- package-version-block:start -->
+- per-RID NativeAOT 稳定包集合尚未首次发布；首个候选版本沿用共享数值 high-water 基线递增。
+- Stable 会在所有 stable/Beta RID 包的最高数值版本上递增 patch；`main` 不追加 prerelease 后缀。
+<!-- package-version-block:end -->
+
 ## 恢复本机运行时
 
 Skill 每次启动都会检查此通道的 NuGet 最新版本；仅当本机 RID 包缺失或缓存版本过期时才下载：

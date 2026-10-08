@@ -2,6 +2,13 @@
 
 The stable runtime release set is published from `main`. The skill itself is installed from the repository; stable releases do not publish a skill ZIP.
 
+## Version
+
+<!-- package-version-block:start -->
+- The latest stable per-RID NativeAOT package set is not published yet; the initial candidate follows the shared numeric high-water baseline.
+- Stable selects the next patch after the highest numeric stable or Beta RID package version; `main` emits no prerelease suffix.
+<!-- package-version-block:end -->
+
 ## Restore the Host Runtime
 
 The skill checks this channel's latest NuGet version on every run and downloads only the host RID package when its versioned cache is missing:

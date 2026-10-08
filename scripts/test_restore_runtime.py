@@ -36,9 +36,13 @@ class RuntimeResolutionTests(unittest.TestCase):
             restore_runtime.detect_rid("Linux", "armv7l", {}, "glibc")
 
     def test_selects_latest_stable_and_beta_versions(self):
-        versions = ["1.2.0", "1.3.0-beta.1", "1.3.0-beta.2", "1.3.0"]
+        versions = ["1.2.0", "1.3.0-beta", "1.3.0", "1.3.1-alpha.1", "1.2.10-beta"]
         self.assertEqual("1.3.0", restore_runtime.select_latest_version(versions, "stable"))
-        self.assertEqual("1.3.0-beta.2", restore_runtime.select_latest_version(versions, "beta"))
+        self.assertEqual("1.3.0-beta", restore_runtime.select_latest_version(versions, "beta"))
+
+    def test_beta_version_selection_uses_numeric_order_and_rejects_other_suffixes(self):
+        versions = ["1.2.9-beta", "1.2.10-beta", "1.2.11-alpha", "1.2.12-rc.1"]
+        self.assertEqual("1.2.10-beta", restore_runtime.select_latest_version(versions, "beta"))
 
     def test_reuses_a_valid_versioned_cache(self):
         with tempfile.TemporaryDirectory() as temp_dir:

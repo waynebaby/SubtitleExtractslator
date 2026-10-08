@@ -45,7 +45,7 @@ Preferred runtime form:
 
 Channels:
 - Stable channel: main branch release line (numeric stable versions)
-- Beta channel: development branch prerelease line
+- Beta channel: development branch with the exact `-beta` suffix
 
 Package indexes:
 - Stable: https://github.com/waynebaby/SubtitleExtractslator/blob/main/packages.released.md

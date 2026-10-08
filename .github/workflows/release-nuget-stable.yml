@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - .github/skills/subtitle-extractslator/SKILL.md
+      - packages.released.md
+      - packages.released.zh-CN.md
   workflow_dispatch:
 
 permissions:
@@ -11,11 +15,10 @@ permissions:
 
 env:
   DOTNET_VERSION: 9.0.x
-  PACKAGE_ID: SubtitleExtractslator.Cli
-  PROJECT_PATH: SubtitleExtractslator.Cli/SubtitleExtractslator.Cli.csproj
 
 jobs:
   release-stable:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip-release]') }}
     runs-on: ubuntu-latest
     outputs:
       package_version: ${{ steps.version.outputs.package_version }}
@@ -32,58 +35,47 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Setup GitVersion
-        uses: gittools/actions/gitversion/setup@v4
+        uses: gittools/actions/gitversion/setup@v4.5.0
         with:
-          versionSpec: 6.2.x
+          versionSpec: 6.7.x
 
-      - name: Determine version
+      - name: Determine branch metadata
         id: gitversion
-        shell: bash
-        run: |
-          set -euo pipefail
-          gitversion_output="$(mktemp "${RUNNER_TEMP}/gitversion.XXXXXX")"
-          trap 'rm -f "${gitversion_output}"' EXIT
-          dotnet-gitversion /output file /outputfile "${gitversion_output}"
-          python - <<'PY' "${gitversion_output}" >> "$GITHUB_OUTPUT"
-          import json
-          import sys
-          from pathlib import Path
+        uses: gittools/actions/gitversion/execute@v4.5.0
 
-          output = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8-sig"))
-          def get_value(*keys):
-              for key in keys:
-                  if key not in output:
-                      continue
-                  value = output[key]
-                  if value is None:
-                      continue
-                  if not isinstance(value, str):
-                      raise TypeError(f"GitVersion value '{key}' must be a string, got {type(value).__name__}")
-                  value = value.strip()
-                  if not value:
-                      raise ValueError(f"GitVersion value '{key}' was empty")
-                  return value
-              raise KeyError(f"Missing GitVersion value. Tried: {', '.join(keys)}")
+      - name: Test shared version resolver
+        run: python -B -m unittest discover -s scripts -p "test_release_versions.py" -v
 
-          # Prefer GitVersion's dedicated NuGet fields first, then fall back to semver fields
-          # that are present in newer output schemas.
-          print(f"majorMinorPatch={get_value('MajorMinorPatch')}")
-          print(f"nuGetVersionV2={get_value('NuGetVersionV2', 'NuGetVersion', 'SemVer', 'FullSemVer')}")
-          PY
-
-      - name: Resolve stable package version
+      - name: Resolve monotonic stable package version
         id: version
         shell: bash
+        env:
+          GITVERSION_BRANCH: ${{ steps.gitversion.outputs.branchName }}
+          PRE_RELEASE_LABEL: ${{ steps.gitversion.outputs.preReleaseLabel }}
         run: |
-          echo "PACKAGE_VERSION=${{ steps.gitversion.outputs.majorMinorPatch }}" >> "$GITHUB_ENV"
-          echo "package_version=${{ steps.gitversion.outputs.majorMinorPatch }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [ "${GITHUB_REF_NAME}" != "main" ] || [ "${GITVERSION_BRANCH}" != "main" ]; then
+            echo "Stable release requires main; ref=${GITHUB_REF_NAME}, GitVersion=${GITVERSION_BRANCH}." >&2
+            exit 1
+          fi
+          if [ -n "${PRE_RELEASE_LABEL}" ]; then
+            echo "Stable release resolved an unexpected prerelease label: ${PRE_RELEASE_LABEL}." >&2
+            exit 1
+          fi
+          PACKAGE_VERSION="$(python scripts/ResolveSharedPackageVersion.py --release-set-file release-set.json --channel stable)"
+          if ! printf '%s' "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Shared stable package version is invalid: $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "SelectedPackageVersion=$PACKAGE_VERSION"
 
-      - name: Validate skill channel metadata
+      - name: Validate promotable skill channel metadata
         shell: pwsh
         run: |
           $skill = Get-Content ".github/skills/subtitle-extractslator/SKILL.md" -Raw
-          if ($skill -notmatch '(?m)^\s*channel:\s*stable\s*$') {
-            throw "Stable release requires SKILL.md metadata.channel: stable."
+          if ($skill -notmatch '(?m)^\s*channel:\s*(stable|beta)\s*$') {
+            throw "SKILL.md metadata.channel must be stable or beta before promotion to main."
           }
 
       - name: Restore
@@ -185,14 +177,14 @@ jobs:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
           if [ -z "${NUGET_API_KEY}" ]; then
-            echo "NUGET_API_KEY is not set, skip NuGet push."
-            exit 0
+            echo "NUGET_API_KEY is required; refusing to publish only a GitHub fallback release." >&2
+            exit 1
           fi
           for package in artifacts/nuget/*.nupkg; do
             dotnet nuget push "$package" --api-key "${NUGET_API_KEY}" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
 
-      - name: Remove legacy ZIP and generic package aliases
+      - name: Remove legacy fallback assets
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -218,3 +210,21 @@ jobs:
           files: |
             artifacts/nuget/*.nupkg
             artifacts/nuget/*.nupkg.sha512
+
+      - name: Sync stable package and skill metadata
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ needs.release-stable.outputs.package_version }}
+        run: |
+          python scripts/update_package_index_version.py --channel stable --version $env:PACKAGE_VERSION
+          $skillPath = ".github/skills/subtitle-extractslator/SKILL.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- packages.released.md packages.released.zh-CN.md $skillPath
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 1) {
+            git commit -m "chore(release): sync stable package version $env:PACKAGE_VERSION [skip-release]"
+            git push origin HEAD:main
+          } elseif ($LASTEXITCODE -ne 0) {
+            throw "Could not inspect staged release metadata."
+          }

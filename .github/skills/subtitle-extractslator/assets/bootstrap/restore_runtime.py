@@ -11,6 +11,7 @@ import io
 import json
 import os
 import platform
+import re
 import shutil
 import stat
 import subprocess
@@ -24,6 +25,7 @@ from pathlib import Path, PurePosixPath
 
 NUGET_FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
 USER_AGENT = "SubtitleExtractslator-Runtime-Bootstrap/1.0"
+PACKAGE_VERSION_PATTERN = re.compile(r"^(\d+)\.(\d+)\.(\d+)(-beta)?$")
 
 
 def _detect_linux_libc() -> str:
@@ -69,11 +71,19 @@ def detect_rid(system: str | None = None, machine: str | None = None, environ=No
 
 
 def select_latest_version(versions: list[str], channel: str) -> str:
-    eligible = [version for version in versions if ("-" in version) == (channel == "beta")]
+    if channel not in {"stable", "beta"}:
+        raise ValueError(f"Unsupported release channel: {channel}")
+
+    eligible = []
+    for version in versions:
+        match = PACKAGE_VERSION_PATTERN.fullmatch(version)
+        if match is None or bool(match.group(4)) != (channel == "beta"):
+            continue
+        version_key = tuple(int(match.group(index)) for index in (1, 2, 3))
+        eligible.append((version_key, version))
     if not eligible:
         raise RuntimeError(f"NuGet contains no {channel} versions for this runtime package.")
-    # NuGet's flat-container version index is ordered by normalized SemVer.
-    return eligible[-1]
+    return max(eligible)[1]
 
 
 def _request_bytes(url: str) -> bytes:

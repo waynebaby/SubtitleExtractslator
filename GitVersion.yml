@@ -1,5 +1,6 @@
 mode: ContinuousDelivery
-next-version: 0.1.14
+# GitVersion is used only to verify branch identity and the development beta label.
+# NuGet package numbers come from the shared published-version high-water resolver.
 branches:
   main:
     regex: ^main$

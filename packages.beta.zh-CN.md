@@ -2,6 +2,13 @@
 
 预发布运行时集来自 `development` 分支。Skill 从该分支安装；Beta Release 不发布 skill ZIP。
 
+## 版本规则
+
+<!-- package-version-block:start -->
+- per-RID NativeAOT Beta 包集合尚未首次发布；首个候选版本沿用共享数值 high-water 基线递增。
+- Development 会在所有 stable/Beta RID 包的最高数值版本上递增 patch，并且只追加精确后缀 `-beta`；不使用 alpha、preview 或 RC。
+<!-- package-version-block:end -->
+
 ## 恢复本机运行时
 
 Skill 每次启动都会检查此通道最新的预发布版本；仅当本机 RID 包缺失或缓存过期时才下载：

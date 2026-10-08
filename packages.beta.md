@@ -2,6 +2,13 @@
 
 The prerelease runtime set is published from `development`. Install the skill source from that branch; Beta releases do not publish skill ZIPs.
 
+## Version
+
+<!-- package-version-block:start -->
+- The latest Beta per-RID NativeAOT package set is not published yet; the initial candidate follows the shared numeric high-water baseline.
+- Development selects the next patch after the highest numeric stable or Beta RID package version and appends exactly `-beta`; alpha, preview, and RC suffixes are not used.
+<!-- package-version-block:end -->
+
 ## Restore the Host Runtime
 
 The skill checks the latest prerelease version on every run and downloads only the host RID package when its versioned cache is missing:
